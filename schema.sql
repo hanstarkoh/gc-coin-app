@@ -44,10 +44,40 @@ create table if not exists menu_items (
 );
 create index if not exists idx_menu_date on menu_items(item_date);
 
+create table if not exists events (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  reward int not null,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists event_submissions (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references events(id) on delete cascade,
+  kid_id uuid not null references kids(id) on delete cascade,
+  kid_name text not null,
+  event_title text not null,   -- 승인 시점 스냅샷 (transactions.kid_name 패턴과 동일)
+  reward int not null,
+  status text not null default 'pending' check (status in ('pending','approved','rejected')),
+  created_at timestamptz not null default now(),
+  resolved_at timestamptz
+);
+create index if not exists idx_event_submissions_event on event_submissions(event_id);
+create index if not exists idx_event_submissions_kid on event_submissions(kid_id);
+
+-- 이벤트(미션) 완료 승인 시 지급되는 코인은 이력 구분을 위해 'event' 타입으로 기록합니다.
+alter table transactions drop constraint if exists transactions_type_check;
+alter table transactions add constraint transactions_type_check
+  check (type in ('earn','bonus','spend','event'));
+
 -- 이 앱은 Next.js 서버(API 라우트)에서 Supabase "service role" 키로만 접근합니다.
 -- 브라우저에서 테이블에 직접 접근하지 않으므로 Row Level Security 는 기본적으로 막아둡니다.
 alter table settings enable row level security;
 alter table kids enable row level security;
 alter table transactions enable row level security;
 alter table menu_items enable row level security;
+alter table events enable row level security;
+alter table event_submissions enable row level security;
 -- (정책을 추가하지 않으면 anon 키로는 아무것도 읽고 쓸 수 없고, service role 키는 항상 통과합니다.)

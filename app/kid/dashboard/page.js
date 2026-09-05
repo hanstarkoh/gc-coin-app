@@ -20,8 +20,10 @@ function DashboardInner() {
   const showToast = useToast();
   const [me, setMe] = useState(null);
   const [menu, setMenu] = useState(null);
+  const [events, setEvents] = useState(null);
   const [history, setHistory] = useState(null);
   const [ordering, setOrdering] = useState(null);
+  const [completing, setCompleting] = useState(null);
   const [celebration, setCelebration] = useState(null);
 
   const loadMe = useCallback(async () => {
@@ -41,6 +43,12 @@ function DashboardInner() {
     if (data.ok) setMenu(data.items);
   }, []);
 
+  const loadEvents = useCallback(async () => {
+    const res = await fetch('/api/kid/events');
+    const data = await res.json();
+    if (data.ok) setEvents(data.events);
+  }, []);
+
   const loadHistory = useCallback(async () => {
     const res = await fetch('/api/kid/history');
     const data = await res.json();
@@ -52,6 +60,7 @@ function DashboardInner() {
     (async () => {
       const meData = await loadMe();
       await loadMenu();
+      await loadEvents();
       const tx = await loadHistory();
       if (meData?.ok) checkCelebrations(meData, tx);
     })();
@@ -111,6 +120,25 @@ function DashboardInner() {
     }
   };
 
+  const handleCompleteEvent = async (event) => {
+    if (!confirm(`"${event.title}"을(를) 완료했나요? 관리자 승인 후 코인이 지급돼요.`)) return;
+    setCompleting(event.id);
+    try {
+      const res = await fetch(`/api/kid/events/${event.id}/complete`, { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('완료 표시했어요. 관리자 승인을 기다려주세요.');
+        await loadEvents();
+      } else {
+        showToast(data.error || '완료 표시에 실패했어요.');
+      }
+    } catch (e) {
+      showToast('네트워크 오류가 발생했어요.');
+    } finally {
+      setCompleting(null);
+    }
+  };
+
   const handleLogout = async () => {
     await fetch('/api/kid/logout', { method: 'POST' });
     router.push('/');
@@ -138,6 +166,43 @@ function DashboardInner() {
         <div className="bg-white border-2 border-gray-100 rounded-2xl p-4">
           <div className="font-display text-base text-navy mb-3">내 뱃지</div>
           <BadgeGrid earnedKeys={badges.map((b) => b.key)} />
+        </div>
+
+        <div className="bg-white border-2 border-gray-100 rounded-2xl p-4">
+          <div className="font-display text-base text-navy mb-1">진행 중인 이벤트</div>
+          {events === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
+          {events && events.length === 0 && (
+            <p className="text-xs text-gray-400 py-4 text-center">지금 진행 중인 이벤트가 없어요.</p>
+          )}
+          {events?.map((ev) => {
+            const isPending = ev.myStatus === 'pending';
+            return (
+              <div key={ev.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="font-bold text-sm">{ev.title}</div>
+                    {ev.description && <p className="text-xs text-gray-500 mt-0.5">{ev.description}</p>}
+                    <div className="text-xs text-gold-deep font-bold mt-1">+{ev.reward} GC</div>
+                  </div>
+                  <button
+                    disabled={isPending || completing === ev.id}
+                    onClick={() => handleCompleteEvent(ev)}
+                    className={`shrink-0 text-xs font-bold px-3.5 py-2 rounded-lg whitespace-nowrap ${
+                      isPending ? 'border-2 border-gray-200 text-gray-300' : 'bg-mint text-white'
+                    }`}
+                  >
+                    {isPending ? '승인 대기 중' : completing === ev.id ? '처리 중...' : '완료했어요'}
+                  </button>
+                </div>
+                {ev.myStatus === 'approved' && (
+                  <p className="text-[11px] text-mint-deep mt-1">이전에 승인되어 코인을 받았어요.</p>
+                )}
+                {ev.myStatus === 'rejected' && (
+                  <p className="text-[11px] text-coral-deep mt-1">이전 완료 표시는 거절됐어요.</p>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="bg-white border-2 border-gray-100 rounded-2xl p-4">

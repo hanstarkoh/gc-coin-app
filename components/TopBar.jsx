@@ -1,6 +1,6 @@
 'use client';
 
-export default function TopBar({ title, sub, onExit }) {
+export default function TopBar({ title, sub, onExit, right }) {
   return (
     <div className="sticky top-0 z-20 bg-navy text-white px-4 py-3 flex items-center justify-between shadow-sm">
       <div className="flex items-center gap-2.5">
@@ -12,14 +12,16 @@ export default function TopBar({ title, sub, onExit }) {
           {sub && <div className="text-[11px] text-white/70 leading-tight">{sub}</div>}
         </div>
       </div>
-      {onExit && (
-        <button
-          onClick={onExit}
-          className="text-xs border border-white/40 rounded-full px-3 py-1.5 hover:border-white transition"
-        >
-          나가기
-        </button>
-      )}
+      {right
+        ? right
+        : onExit && (
+            <button
+              onClick={onExit}
+              className="text-xs border border-white/40 rounded-full px-3 py-1.5 hover:border-white transition"
+            >
+              나가기
+            </button>
+          )}
     </div>
   );
 }

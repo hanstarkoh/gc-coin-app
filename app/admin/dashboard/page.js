@@ -7,6 +7,7 @@ import { ToastProvider, useToast } from '@/components/Toast';
 const TABS = [
   { key: 'attendance', label: '출석 · 코인 지급' },
   { key: 'menu', label: '메뉴 관리' },
+  { key: 'events', label: '이벤트' },
   { key: 'kids', label: '청소년 관리' },
   { key: 'history', label: '전체 현황' },
   { key: 'settings', label: '설정' },
@@ -30,6 +31,7 @@ function DashboardInner() {
   const [tab, setTab] = useState('attendance');
   const [kids, setKids] = useState([]);
   const [todayTx, setTodayTx] = useState([]);
+  const [pendingEventCount, setPendingEventCount] = useState(0);
 
   const checkAuth = useCallback(async () => {
     const res = await fetch('/api/admin/me');
@@ -53,11 +55,17 @@ function DashboardInner() {
     if (data.ok) setTodayTx(data.transactions);
   }, []);
 
+  const loadPendingEventCount = useCallback(async () => {
+    const res = await fetch('/api/admin/events/submissions?status=pending');
+    const data = await res.json();
+    if (data.ok) setPendingEventCount(data.submissions.length);
+  }, []);
+
   useEffect(() => {
     (async () => {
       const ok = await checkAuth();
       if (!ok) return;
-      await Promise.all([loadKids(), loadTodayTx()]);
+      await Promise.all([loadKids(), loadTodayTx(), loadPendingEventCount()]);
       setReady(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -94,7 +102,7 @@ function DashboardInner() {
                 tab === t.key ? 'bg-navy border-navy text-white' : 'border-gray-200 text-gray-500'
               }`}
             >
-              {t.label}
+              {t.key === 'events' && pendingEventCount > 0 ? `${t.label} (${pendingEventCount})` : t.label}
             </button>
           ))}
         </div>
@@ -110,6 +118,9 @@ function DashboardInner() {
           />
         )}
         {tab === 'menu' && <MenuTab showToast={showToast} />}
+        {tab === 'events' && (
+          <EventsTab showToast={showToast} onPendingCountChange={setPendingEventCount} />
+        )}
         {tab === 'kids' && (
           <KidsTab kids={kids} reload={loadKids} showToast={showToast} />
         )}
@@ -394,6 +405,203 @@ function MenuTab({ showToast }) {
         </div>
         <button onClick={add} className="w-full bg-gold text-navy-deep font-bold rounded-xl py-3 text-sm">
           메뉴에 추가
+        </button>
+      </Card>
+    </>
+  );
+}
+
+/* ---------------- EVENTS TAB ---------------- */
+function EventsTab({ showToast, onPendingCountChange }) {
+  const [events, setEvents] = useState(null);
+  const [submissions, setSubmissions] = useState(null);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [reward, setReward] = useState('');
+  const [resolving, setResolving] = useState(null);
+
+  const loadEvents = useCallback(async () => {
+    const res = await fetch('/api/admin/events');
+    const data = await res.json();
+    if (data.ok) setEvents(data.events);
+  }, []);
+
+  const loadSubmissions = useCallback(async () => {
+    const res = await fetch('/api/admin/events/submissions?status=pending');
+    const data = await res.json();
+    if (data.ok) {
+      setSubmissions(data.submissions);
+      onPendingCountChange(data.submissions.length);
+    }
+  }, [onPendingCountChange]);
+
+  useEffect(() => {
+    loadEvents();
+    loadSubmissions();
+  }, [loadEvents, loadSubmissions]);
+
+  const add = async () => {
+    const r = parseInt(reward, 10);
+    if (!title.trim() || !r || r <= 0) return showToast('이벤트 제목과 보상 코인을 확인해주세요.');
+    const res = await fetch('/api/admin/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, description, reward: r }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('이벤트를 등록했어요.');
+      setTitle('');
+      setDescription('');
+      setReward('');
+      await loadEvents();
+    } else {
+      showToast(data.error || '등록에 실패했어요.');
+    }
+  };
+
+  const toggleActive = async (ev) => {
+    const res = await fetch(`/api/admin/events/${ev.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: !ev.is_active }),
+    });
+    const data = await res.json();
+    if (data.ok) await loadEvents();
+  };
+
+  const del = async (ev) => {
+    if (!confirm(`"${ev.title}" 이벤트를 정말 삭제할까요?`)) return;
+    const res = await fetch(`/api/admin/events/${ev.id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('이벤트를 삭제했어요.');
+      await loadEvents();
+    }
+  };
+
+  const resolve = async (sub, action) => {
+    setResolving(sub.id);
+    try {
+      const res = await fetch(`/api/admin/events/submissions/${sub.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast(action === 'approve' ? '승인하고 코인을 지급했어요.' : '거절했어요.');
+        await loadSubmissions();
+      } else {
+        showToast(data.error || '처리에 실패했어요.');
+      }
+    } finally {
+      setResolving(null);
+    }
+  };
+
+  return (
+    <>
+      <Card title="완료 승인 대기">
+        {submissions === null && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
+        {submissions && submissions.length === 0 && (
+          <p className="text-xs text-gray-400 text-center py-4">대기 중인 완료 요청이 없어요.</p>
+        )}
+        {submissions?.map((sub) => (
+          <div
+            key={sub.id}
+            className="flex items-center justify-between gap-2 py-2.5 border-b border-dashed border-gray-200 last:border-0"
+          >
+            <div>
+              <div className="font-bold text-sm">
+                {sub.kid_name} · {sub.event_title}
+              </div>
+              <div className="text-xs text-gold-deep font-bold">+{sub.reward} GC</div>
+              <div className="text-[11px] text-gray-400">
+                {fmtDate(sub.created_at.slice(0, 10))} {fmtTime(sub.created_at)}
+              </div>
+            </div>
+            <div className="flex gap-1.5 shrink-0">
+              <button
+                disabled={resolving === sub.id}
+                onClick={() => resolve(sub, 'approve')}
+                className="text-xs bg-mint text-white rounded-lg px-3 py-1.5"
+              >
+                승인
+              </button>
+              <button
+                disabled={resolving === sub.id}
+                onClick={() => resolve(sub, 'reject')}
+                className="text-xs bg-coral text-white rounded-lg px-3 py-1.5"
+              >
+                거절
+              </button>
+            </div>
+          </div>
+        ))}
+      </Card>
+
+      <Card title="등록된 이벤트">
+        {events === null && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
+        {events && events.length === 0 && (
+          <p className="text-xs text-gray-400 text-center py-4">등록된 이벤트가 없어요. 아래에서 추가해주세요.</p>
+        )}
+        {events?.map((ev) => (
+          <div key={ev.id} className="flex items-center justify-between gap-2 py-2.5 border-b border-dashed border-gray-200 last:border-0">
+            <div>
+              <div className="font-bold text-sm">
+                {ev.title} {!ev.is_active && <span className="text-gray-400 text-xs">(비활성)</span>}
+              </div>
+              {ev.description && <p className="text-xs text-gray-500">{ev.description}</p>}
+              <div className="text-xs text-gold-deep font-bold">+{ev.reward} GC</div>
+            </div>
+            <div className="flex gap-1.5 shrink-0">
+              <button
+                onClick={() => toggleActive(ev)}
+                className="text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1.5"
+              >
+                {ev.is_active ? '비활성화' : '활성화'}
+              </button>
+              <button onClick={() => del(ev)} className="text-xs bg-coral text-white rounded-lg px-2.5 py-1.5">
+                삭제
+              </button>
+            </div>
+          </div>
+        ))}
+      </Card>
+
+      <Card title="이벤트 등록">
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">제목</label>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="예: 방 정리 도와주기"
+            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+          />
+        </div>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">설명 (선택)</label>
+          <input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="예: 활동 마친 뒤 자기 자리 정리하기"
+            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+          />
+        </div>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">보상 코인</label>
+          <input
+            type="number"
+            min="1"
+            value={reward}
+            onChange={(e) => setReward(e.target.value)}
+            placeholder="예: 5"
+            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+          />
+        </div>
+        <button onClick={add} className="w-full bg-gold text-navy-deep font-bold rounded-xl py-3 text-sm">
+          이벤트 등록
         </button>
       </Card>
     </>
