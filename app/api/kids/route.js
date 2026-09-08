@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
+import { unstable_noStore as noStore } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
+  noStore();
   try {
     const sb = supabaseAdmin();
     const { data, error } = await sb

@@ -1,10 +1,12 @@
 import Link from 'next/link';
 import TopBar from '@/components/TopBar';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { unstable_noStore as noStore } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
 async function getTodayMenu() {
+  noStore();
   const sb = supabaseAdmin();
   const today = new Date().toISOString().slice(0, 10);
   const { data, error } = await sb
@@ -17,6 +19,7 @@ async function getTodayMenu() {
 }
 
 async function getActiveEvents() {
+  noStore();
   const sb = supabaseAdmin();
   const { data, error } = await sb
     .from('events')
