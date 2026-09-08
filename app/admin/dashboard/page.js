@@ -7,11 +7,14 @@ import { ToastProvider, useToast } from '@/components/Toast';
 const TABS = [
   { key: 'attendance', label: '출석 · 코인 지급' },
   { key: 'menu', label: '메뉴 관리' },
+  { key: 'orders', label: '주문 현황' },
   { key: 'events', label: '이벤트' },
   { key: 'kids', label: '청소년 관리' },
   { key: 'history', label: '전체 현황' },
   { key: 'settings', label: '설정' },
 ];
+
+const ORDER_POLL_MS = 15000;
 
 function fmtDate(d) {
   return d.replaceAll('-', '.');
@@ -71,6 +74,12 @@ function DashboardInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!ready) return;
+    const id = setInterval(loadTodayTx, ORDER_POLL_MS);
+    return () => clearInterval(id);
+  }, [ready, loadTodayTx]);
+
   const handleLogout = async () => {
     await fetch('/api/admin/logout', { method: 'POST' });
     router.push('/');
@@ -80,7 +89,10 @@ function DashboardInner() {
 
   const attendedTodaySet = new Set(todayTx.filter((t) => t.reason === '출석').map((t) => t.kid_id));
   const earnedToday = todayTx.filter((t) => t.type !== 'spend').reduce((s, t) => s + t.amount, 0);
-  const spentToday = todayTx.filter((t) => t.type === 'spend').reduce((s, t) => s + t.amount, 0);
+  const todayOrders = todayTx
+    .filter((t) => t.type === 'spend')
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const spentToday = todayOrders.reduce((s, t) => s + t.amount, 0);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -102,7 +114,11 @@ function DashboardInner() {
                 tab === t.key ? 'bg-navy border-navy text-white' : 'border-gray-200 text-gray-500'
               }`}
             >
-              {t.key === 'events' && pendingEventCount > 0 ? `${t.label} (${pendingEventCount})` : t.label}
+              {t.key === 'events' && pendingEventCount > 0
+                ? `${t.label} (${pendingEventCount})`
+                : t.key === 'orders' && todayOrders.length > 0
+                ? `${t.label} (${todayOrders.length})`
+                : t.label}
             </button>
           ))}
         </div>
@@ -118,6 +134,7 @@ function DashboardInner() {
           />
         )}
         {tab === 'menu' && <MenuTab showToast={showToast} />}
+        {tab === 'orders' && <OrdersTab orders={todayOrders} onRefresh={loadTodayTx} />}
         {tab === 'events' && (
           <EventsTab showToast={showToast} onPendingCountChange={setPendingEventCount} />
         )}
@@ -407,6 +424,47 @@ function MenuTab({ showToast }) {
         </button>
       </Card>
     </>
+  );
+}
+
+/* ---------------- ORDERS TAB ---------------- */
+function OrdersTab({ orders, onRefresh }) {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  return (
+    <Card title={`오늘 주문 내역 (${orders.length}건)`}>
+      <p className="text-xs text-gray-500 -mt-2 mb-2.5">
+        청소년이 메뉴를 주문하면 여기에 실시간으로 쌓여요. 15초마다 자동으로 새로고침돼요.
+      </p>
+      <button
+        onClick={refresh}
+        disabled={refreshing}
+        className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-3 py-1.5 mb-3 disabled:opacity-40"
+      >
+        {refreshing ? '새로고침 중...' : '지금 새로고침'}
+      </button>
+      {orders.length === 0 && <p className="text-xs text-gray-400 text-center py-6">오늘 주문한 청소년이 아직 없어요.</p>}
+      {orders.map((o) => (
+        <div key={o.id} className="flex items-center justify-between py-2.5 border-b border-dashed border-gray-200 last:border-0">
+          <div>
+            <div className="font-bold text-sm">
+              {o.kid_name} · {o.reason || '구매'}
+            </div>
+            <div className="text-[11px] text-gray-400">{fmtTime(o.created_at)}</div>
+          </div>
+          <div className="text-sm font-bold text-coral-deep">-{o.amount} GC</div>
+        </div>
+      ))}
+    </Card>
   );
 }
 
