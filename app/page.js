@@ -53,7 +53,7 @@ export default async function Home() {
 
         <Link
           href="/kid"
-          className="block bg-navy text-white rounded-2xl py-5 text-center font-display text-lg hover:-translate-y-0.5 transition"
+          className="btn-3d btn-3d-navy block bg-navy text-white rounded-2xl py-5 text-center font-display text-lg"
         >
           🙋 청소년으로 시작하기
         </Link>

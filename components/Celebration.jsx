@@ -32,7 +32,7 @@ export default function Celebration({ type, amount, level, onClose }) {
         )}
         <button
           onClick={onClose}
-          className="mt-5 bg-navy text-white rounded-full px-6 py-2.5 text-sm font-bold w-full"
+          className="btn-3d btn-3d-navy mt-5 bg-navy text-white rounded-full px-6 py-2.5 text-sm font-display w-full"
         >
           확인
         </button>

@@ -223,10 +223,10 @@ function AttendanceTab({ kids, attendedTodaySet, reload, showToast }) {
           체크한 청소년에게 출석 코인을 한 번에 지급합니다. 이미 지급받은 청소년은 자동으로 제외돼요.
         </p>
         <div className="flex gap-2 mb-2.5">
-          <button onClick={selectAll} className="text-xs border-2 border-navy text-navy rounded-lg px-3 py-1.5">
+          <button onClick={selectAll} className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-3 py-1.5">
             전체 선택
           </button>
-          <button onClick={selectNone} className="text-xs border-2 border-navy text-navy rounded-lg px-3 py-1.5">
+          <button onClick={selectNone} className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-3 py-1.5">
             선택 해제
           </button>
         </div>
@@ -264,7 +264,7 @@ function AttendanceTab({ kids, attendedTodaySet, reload, showToast }) {
         <button
           onClick={giveAttendance}
           disabled={giving}
-          className="mt-3 w-full bg-gold text-navy-deep font-bold rounded-xl py-3 text-sm disabled:opacity-40"
+          className="btn-3d btn-3d-gold mt-3 w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm disabled:opacity-40"
         >
           선택 청소년 출석 지급
         </button>
@@ -309,7 +309,7 @@ function AttendanceTab({ kids, attendedTodaySet, reload, showToast }) {
             />
           </div>
         </div>
-        <button onClick={giveBonus} className="w-full bg-mint text-white font-bold rounded-xl py-3 text-sm">
+        <button onClick={giveBonus} className="btn-3d btn-3d-mint w-full bg-mint text-white font-display rounded-xl py-3 text-sm">
           보너스 지급
         </button>
       </Card>
@@ -374,7 +374,7 @@ function MenuTab({ showToast }) {
               <div className="font-bold text-sm">{it.name}</div>
               <div className="text-xs text-gold-deep font-bold">{it.price} GC</div>
             </div>
-            <button onClick={() => del(it.id)} className="text-xs bg-coral text-white rounded-lg px-3 py-1.5">
+            <button onClick={() => del(it.id)} className="btn-3d btn-3d-coral text-xs bg-coral text-white rounded-lg px-3 py-1.5">
               삭제
             </button>
           </div>
@@ -403,7 +403,7 @@ function MenuTab({ showToast }) {
             />
           </div>
         </div>
-        <button onClick={add} className="w-full bg-gold text-navy-deep font-bold rounded-xl py-3 text-sm">
+        <button onClick={add} className="btn-3d btn-3d-gold w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm">
           메뉴에 추가
         </button>
       </Card>
@@ -525,14 +525,14 @@ function EventsTab({ showToast, onPendingCountChange }) {
               <button
                 disabled={resolving === sub.id}
                 onClick={() => resolve(sub, 'approve')}
-                className="text-xs bg-mint text-white rounded-lg px-3 py-1.5"
+                className="btn-3d btn-3d-mint text-xs bg-mint text-white rounded-lg px-3 py-1.5"
               >
                 승인
               </button>
               <button
                 disabled={resolving === sub.id}
                 onClick={() => resolve(sub, 'reject')}
-                className="text-xs bg-coral text-white rounded-lg px-3 py-1.5"
+                className="btn-3d btn-3d-coral text-xs bg-coral text-white rounded-lg px-3 py-1.5"
               >
                 거절
               </button>
@@ -558,11 +558,11 @@ function EventsTab({ showToast, onPendingCountChange }) {
             <div className="flex gap-1.5 shrink-0">
               <button
                 onClick={() => toggleActive(ev)}
-                className="text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1.5"
+                className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1.5"
               >
                 {ev.is_active ? '비활성화' : '활성화'}
               </button>
-              <button onClick={() => del(ev)} className="text-xs bg-coral text-white rounded-lg px-2.5 py-1.5">
+              <button onClick={() => del(ev)} className="btn-3d btn-3d-coral text-xs bg-coral text-white rounded-lg px-2.5 py-1.5">
                 삭제
               </button>
             </div>
@@ -600,7 +600,7 @@ function EventsTab({ showToast, onPendingCountChange }) {
             className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
           />
         </div>
-        <button onClick={add} className="w-full bg-gold text-navy-deep font-bold rounded-xl py-3 text-sm">
+        <button onClick={add} className="btn-3d btn-3d-gold w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm">
           이벤트 등록
         </button>
       </Card>
@@ -675,7 +675,7 @@ function KidsTab({ kids, reload, showToast }) {
             />
           </div>
         </div>
-        <button onClick={add} className="w-full bg-gold text-navy-deep font-bold rounded-xl py-3 text-sm">
+        <button onClick={add} className="btn-3d btn-3d-gold w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm">
           청소년 추가
         </button>
       </Card>
@@ -699,11 +699,11 @@ function KidsTab({ kids, reload, showToast }) {
                   <td className="py-2">{k.hasPin ? '설정됨' : '미설정'}</td>
                   <td className="py-2 text-right space-x-1.5 whitespace-nowrap">
                     {k.hasPin && (
-                      <button onClick={() => resetPin(k)} className="text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1">
+                      <button onClick={() => resetPin(k)} className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1">
                         PIN 초기화
                       </button>
                     )}
-                    <button onClick={() => del(k)} className="text-xs bg-coral text-white rounded-lg px-2.5 py-1">
+                    <button onClick={() => del(k)} className="btn-3d btn-3d-coral text-xs bg-coral text-white rounded-lg px-2.5 py-1">
                       삭제
                     </button>
                   </td>
@@ -809,7 +809,7 @@ function SettingsTab({ showToast }) {
         placeholder="예: 1234"
         className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm mb-3"
       />
-      <button onClick={change} className="w-full border-2 border-navy text-navy font-bold rounded-xl py-3 text-sm">
+      <button onClick={change} className="btn-3d btn-3d-outline w-full border-2 border-navy text-navy font-display rounded-xl py-3 text-sm">
         비밀번호 변경
       </button>
     </Card>

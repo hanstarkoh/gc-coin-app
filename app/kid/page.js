@@ -68,7 +68,7 @@ function KidLoginInner() {
               <button
                 key={k.id}
                 onClick={() => setSelected(k)}
-                className="bg-white border-[1.5px] border-gray-200 rounded-xl py-3.5 px-1 text-sm font-medium text-navy hover:border-gold transition"
+                className="btn-3d btn-3d-white bg-white border-[1.5px] border-gray-200 rounded-xl py-3.5 px-1 text-sm font-medium text-navy hover:border-gold transition"
               >
                 {k.name}
               </button>

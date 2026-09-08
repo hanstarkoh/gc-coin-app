@@ -6,7 +6,7 @@ export default function LevelBar({ level }) {
     <div className="bg-white rounded-2xl border-2 border-gray-100 p-4">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-full bg-grape flex items-center justify-center text-white font-display text-sm">
+          <div className="icon-badge icon-badge-grape w-9 h-9 rounded-full text-white font-display text-sm">
             Lv.{level.level}
           </div>
           <span className="text-sm text-gray-500">다음 레벨까지</span>

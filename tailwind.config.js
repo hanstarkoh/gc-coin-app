@@ -15,7 +15,7 @@ module.exports = {
         paper: '#F5F6F0',
       },
       fontFamily: {
-        display: ['"Do Hyeon"', 'sans-serif'],
+        display: ['"Jua"', 'sans-serif'],
         body: ['"Noto Sans KR"', 'sans-serif'],
       },
       keyframes: {

@@ -187,8 +187,8 @@ function DashboardInner() {
                   <button
                     disabled={isPending || completing === ev.id}
                     onClick={() => handleCompleteEvent(ev)}
-                    className={`shrink-0 text-xs font-bold px-3.5 py-2 rounded-lg whitespace-nowrap ${
-                      isPending ? 'border-2 border-gray-200 text-gray-300' : 'bg-mint text-white'
+                    className={`shrink-0 text-xs font-display px-3.5 py-2 rounded-lg whitespace-nowrap ${
+                      isPending ? 'border-2 border-gray-200 text-gray-300' : 'btn-3d btn-3d-mint bg-mint text-white'
                     }`}
                   >
                     {isPending ? '승인 대기 중' : completing === ev.id ? '처리 중...' : '완료했어요'}
@@ -222,8 +222,8 @@ function DashboardInner() {
                 <button
                   disabled={!canAfford || ordering === item.id}
                   onClick={() => handleOrder(item)}
-                  className={`text-xs font-bold px-3.5 py-2 rounded-lg ${
-                    canAfford ? 'bg-gold text-navy-deep' : 'border-2 border-gray-200 text-gray-300'
+                  className={`text-xs font-display px-3.5 py-2 rounded-lg ${
+                    canAfford ? 'btn-3d btn-3d-gold bg-gold text-navy-deep' : 'border-2 border-gray-200 text-gray-300'
                   }`}
                 >
                   {ordering === item.id ? '주문 중...' : '주문하기'}

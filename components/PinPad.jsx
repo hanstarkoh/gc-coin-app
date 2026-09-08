@@ -26,18 +26,18 @@ export default function PinPad({ value, onChange, shake }) {
           <button
             key={n}
             onClick={() => press(n)}
-            className="py-4 rounded-xl border-[1.5px] border-gray-200 bg-white font-display text-xl text-navy active:bg-paper"
+            className="btn-3d btn-3d-white py-4 rounded-xl border-[1.5px] border-gray-200 bg-white font-display text-xl text-navy"
           >
             {n}
           </button>
         ))}
-        <button onClick={clear} className="py-4 rounded-xl border-[1.5px] border-gray-200 bg-white text-xs text-navy active:bg-paper">
+        <button onClick={clear} className="btn-3d btn-3d-white py-4 rounded-xl border-[1.5px] border-gray-200 bg-white text-xs text-navy">
           지우기
         </button>
-        <button onClick={() => press(0)} className="py-4 rounded-xl border-[1.5px] border-gray-200 bg-white font-display text-xl text-navy active:bg-paper">
+        <button onClick={() => press(0)} className="btn-3d btn-3d-white py-4 rounded-xl border-[1.5px] border-gray-200 bg-white font-display text-xl text-navy">
           0
         </button>
-        <button onClick={backspace} className="py-4 rounded-xl border-[1.5px] border-gray-200 bg-white text-navy active:bg-paper">
+        <button onClick={backspace} className="btn-3d btn-3d-white py-4 rounded-xl border-[1.5px] border-gray-200 bg-white text-navy">
           ←
         </button>
       </div>

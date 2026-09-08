@@ -4,7 +4,7 @@ export default function TopBar({ title, sub, onExit, right }) {
   return (
     <div className="sticky top-0 z-20 bg-navy text-white px-4 py-3 flex items-center justify-between shadow-sm">
       <div className="flex items-center gap-2.5">
-        <div className="w-9 h-9 rounded-full bg-gold border-2 border-gold-deep flex items-center justify-center font-display text-navy-deep text-xs">
+        <div className="icon-badge icon-badge-gold w-9 h-9 rounded-full font-display text-navy-deep text-xs">
           GC
         </div>
         <div>

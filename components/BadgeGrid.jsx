@@ -11,12 +11,10 @@ export default function BadgeGrid({ earnedKeys }) {
           <div
             key={b.key}
             title={`${b.name} - ${b.desc}`}
-            className={`aspect-square rounded-xl flex flex-col items-center justify-center text-center p-1.5 border-2 ${
-              earned ? 'bg-gold-light border-gold' : 'bg-gray-50 border-gray-100 grayscale opacity-50'
-            }`}
+            className={`icon-badge ${earned ? 'icon-badge-gold' : 'icon-badge-gray grayscale opacity-60'} aspect-square rounded-2xl flex-col p-1.5`}
           >
             <div className="text-xl">{b.icon}</div>
-            <div className="text-[9.5px] leading-tight mt-1 font-medium text-navy">{b.name}</div>
+            <div className="text-[9.5px] leading-tight mt-1 font-medium text-navy text-center">{b.name}</div>
           </div>
         );
       })}
