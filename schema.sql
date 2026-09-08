@@ -76,6 +76,9 @@ alter table transactions add constraint transactions_type_check
 -- 채워지고, 새 주문 건만 서버에서 false로 넣어서 "미완료"로 시작합니다.
 alter table transactions add column if not exists fulfilled boolean not null default true;
 
+-- 모의투자 최초 이용 시 설명 동의 여부 (null = 아직 동의 안 함)
+alter table kids add column if not exists invest_agreed_at timestamptz;
+
 -- 모의투자: 종목, 시세 이력, 청소년별 보유 주식, 매수/매도 내역.
 -- 매수/매도는 kids.balance만 증감시키고 total_earned/total_spent/purchase_count(레벨·뱃지용)는
 -- 건드리지 않습니다. 반복 매매로 레벨을 어뷰징하는 걸 막기 위함이며, 같은 이유로 transactions

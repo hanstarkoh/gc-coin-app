@@ -31,6 +31,8 @@ function DashboardInner() {
   const [tradeMode, setTradeMode] = useState(null);
   const [tradeQty, setTradeQty] = useState('');
   const [trading, setTrading] = useState(false);
+  const [agreeChecked, setAgreeChecked] = useState(false);
+  const [agreeing, setAgreeing] = useState(false);
 
   const loadMe = useCallback(async () => {
     const res = await fetch('/api/kid/me');
@@ -152,6 +154,22 @@ function DashboardInner() {
     }
   };
 
+  const handleAgreeInvest = async () => {
+    if (!agreeChecked) return;
+    setAgreeing(true);
+    try {
+      const res = await fetch('/api/kid/invest-agree', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        await loadMe();
+      } else {
+        showToast(data.error || '처리에 실패했어요.');
+      }
+    } finally {
+      setAgreeing(false);
+    }
+  };
+
   const openTrade = (stock, mode) => {
     setTradeStockId(stock.id);
     setTradeMode(mode);
@@ -228,17 +246,49 @@ function DashboardInner() {
               <div className="icon-badge icon-badge-navy w-7 h-7 rounded-lg text-sm">📈</div>
               <div className="font-display text-base text-navy">모의투자</div>
             </div>
-            {stocks && stocks.length > 0 && (
+            {kid.investAgreedAt && stocks && stocks.length > 0 && (
               <span className="text-xs font-bold text-navy">
                 총 평가액 {stocks.reduce((s, x) => s + x.myShares * x.price, 0)} GC
               </span>
             )}
           </div>
-          {stocks === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
-          {stocks && stocks.length === 0 && (
-            <p className="text-xs text-gray-400 py-4 text-center">아직 등록된 종목이 없어요.</p>
-          )}
-          {stocks?.map((s) => {
+
+          {!kid.investAgreedAt ? (
+            <div>
+              <p className="text-xs text-gray-600 leading-relaxed mb-3">
+                모의투자는 실제 돈이 아니라 코인으로 해보는 가상의 투자 놀이예요.
+                <br />
+                · 종목 가격은 매일 낮 12시에 무작위로 최대 ±8%까지 오르내려요.
+                <br />
+                · 가격이 내려간 뒤에 팔면 산 만큼 코인을 잃을 수도 있어요. 오른다고 무조건
+                이득인 것도, 내린다고 무조건 손해인 것도 아니니 신중하게 생각하고 투자해보세요.
+                <br />· &apos;쌀 때 사서 비쌀 때 파는&apos; 원리를 코인으로 연습해보는
+                거예요. 재미있게, 그리고 조심스럽게 즐겨봐요!
+              </p>
+              <label className="flex items-center gap-2 text-xs text-gray-600 mb-3">
+                <input
+                  type="checkbox"
+                  checked={agreeChecked}
+                  onChange={(e) => setAgreeChecked(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                위 내용을 이해했어요
+              </label>
+              <button
+                disabled={!agreeChecked || agreeing}
+                onClick={handleAgreeInvest}
+                className="btn-3d btn-3d-navy w-full bg-navy text-white font-display rounded-xl py-3 text-sm disabled:opacity-40"
+              >
+                {agreeing ? '처리 중...' : '동의하고 시작하기'}
+              </button>
+            </div>
+          ) : (
+            <>
+              {stocks === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
+              {stocks && stocks.length === 0 && (
+                <p className="text-xs text-gray-400 py-4 text-center">아직 등록된 종목이 없어요.</p>
+              )}
+              {stocks?.map((s) => {
             const up = s.changePct >= 0;
             const isTrading = tradeStockId === s.id;
             return (
@@ -298,8 +348,10 @@ function DashboardInner() {
                   </div>
                 )}
               </div>
-            );
-          })}
+                );
+              })}
+            </>
+          )}
         </div>
 
         <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">

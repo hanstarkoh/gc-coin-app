@@ -27,6 +27,7 @@ export async function GET() {
         totalSpent: kid.total_spent,
         attendanceCount: kid.attendance_count,
         purchaseCount: kid.purchase_count,
+        investAgreedAt: kid.invest_agreed_at,
       },
       level: levelInfo,
       badges,
