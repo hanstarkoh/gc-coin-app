@@ -79,22 +79,36 @@ function KidLoginInner() {
           )}
           <div className="grid grid-cols-3 gap-3">
             {kids?.map((k) => {
-              const avatar = avatarFor(k.id);
+              const fallback = avatarFor(k.id);
+              const emoji = k.avatarEmoji || fallback.emoji;
               return (
                 <button
                   key={k.id}
                   onClick={() => setSelected(k)}
                   className="btn-3d btn-3d-white bg-white border-[1.5px] border-gray-200 rounded-2xl py-3.5 px-1 flex flex-col items-center gap-1.5 hover:border-gold transition"
                 >
-                  <div className={`icon-badge icon-badge-${avatar.color} w-12 h-12 rounded-full text-2xl`}>
-                    {avatar.emoji}
+                  <div className="relative">
+                    <div className={`icon-badge icon-badge-${fallback.color} w-12 h-12 rounded-full text-2xl`}>
+                      {emoji}
+                    </div>
+                    {k.accessoryEmoji && (
+                      <span className="absolute -top-1.5 -right-1.5 text-base leading-none">{k.accessoryEmoji}</span>
+                    )}
                   </div>
                   {k.title && (
                     <span className="text-[9.5px] font-bold text-gold-deep leading-none">
                       {k.title.icon} {k.title.name}
                     </span>
                   )}
-                  <span className="text-sm font-medium text-navy">{k.name}</span>
+                  <span
+                    className={`text-sm font-medium flex items-center gap-0.5 ${
+                      k.nameGlow ? 'text-gold-deep font-bold' : 'text-navy'
+                    }`}
+                  >
+                    {k.stickerEmoji && <span className="text-xs">{k.stickerEmoji}</span>}
+                    {k.name}
+                    {k.nameGlow && <span className="text-xs">✨</span>}
+                  </span>
                 </button>
               );
             })}

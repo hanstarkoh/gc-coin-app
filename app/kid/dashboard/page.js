@@ -221,14 +221,17 @@ function DashboardInner() {
     return <p className="text-center text-gray-400 text-sm mt-16">불러오는 중...</p>;
   }
 
-  const { kid, level, badges, title } = me;
+  const { kid, level, badges, title, theme } = me;
   const nameLabel = title ? `${title.icon} ${title.name} ${kid.name}` : kid.name;
+  const heroStyle = theme
+    ? { background: `linear-gradient(165deg, ${theme.from} 0%, ${theme.mid} 55%, ${theme.to} 100%)` }
+    : undefined;
 
   return (
     <div className="min-h-screen flex flex-col">
       <TopBar title="금정코인" sub={`${nameLabel}님`} onExit={handleLogout} />
       <div className="flex-1 max-w-[480px] w-full mx-auto px-4 py-5 space-y-4">
-        <div className="hero-coin-card text-white rounded-3xl p-6 text-center">
+        <div className="hero-coin-card text-white rounded-3xl p-6 text-center" style={heroStyle}>
           <div className="icon-badge icon-badge-gold w-14 h-14 rounded-full text-2xl mx-auto mb-2">🪙</div>
           <div className="text-xs text-white/60">현재 보유 코인</div>
           <div className="font-display text-5xl text-gold my-1">{kid.balance} GC</div>
@@ -244,6 +247,8 @@ function DashboardInner() {
           </div>
           <BadgeGrid earnedKeys={badges.map((b) => b.key)} />
         </div>
+
+        <ShopCard kidBalance={kid.balance} onChange={loadMe} showToast={showToast} />
 
         <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
           <div className="flex items-center justify-between mb-2">
@@ -526,6 +531,134 @@ function DashboardInner() {
           onClose={closeCelebration}
         />
       )}
+    </div>
+  );
+}
+
+const SHOP_SECTIONS = [
+  { key: 'avatar', label: '아바타', equippable: true },
+  { key: 'accessory', label: '액세서리', equippable: true },
+  { key: 'sticker', label: '이름 스티커', equippable: true },
+  { key: 'theme', label: '카드 테마', equippable: true },
+  { key: 'special', label: '특별 효과', equippable: false },
+];
+
+function ShopCard({ kidBalance, onChange, showToast }) {
+  const [data, setData] = useState(null);
+  const [busyKey, setBusyKey] = useState(null);
+
+  const load = useCallback(async () => {
+    const res = await fetch('/api/kid/shop');
+    const json = await res.json();
+    if (json.ok) setData(json);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const buy = async (category, key) => {
+    setBusyKey(key);
+    try {
+      const res = await fetch('/api/kid/shop/buy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category, key }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        showToast('구매했어요!');
+        await load();
+        await onChange();
+      } else {
+        showToast(json.error || '구매에 실패했어요.');
+      }
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const equip = async (category, key) => {
+    setBusyKey(key || `unequip-${category}`);
+    try {
+      const res = await fetch('/api/kid/shop/equip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category, key }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        await load();
+        if (category === 'theme') await onChange();
+      } else {
+        showToast(json.error || '처리에 실패했어요.');
+      }
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  return (
+    <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="icon-badge icon-badge-gold w-7 h-7 rounded-lg text-sm">🛍️</div>
+        <div className="font-display text-base text-navy">상점</div>
+      </div>
+      {data === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
+      {data?.categories &&
+        SHOP_SECTIONS.map((sec) => (
+          <div key={sec.key} className="mb-4 last:mb-0">
+            <div className="text-xs font-bold text-gray-500 mb-2">{sec.label}</div>
+            <div className="grid grid-cols-4 gap-2">
+              {data.categories[sec.key].map((item) => {
+                const isEquipped = sec.equippable && data.equipped[sec.key] === item.key;
+                const isBusy = busyKey === item.key;
+                return (
+                  <div
+                    key={item.key}
+                    className={`rounded-xl border-2 p-2 text-center ${
+                      isEquipped ? 'border-gold bg-gold/10' : 'border-gray-100'
+                    }`}
+                  >
+                    {sec.key === 'theme' ? (
+                      <div
+                        className="w-8 h-8 rounded-full mx-auto mb-1"
+                        style={{ background: `linear-gradient(135deg, ${item.from}, ${item.to})` }}
+                      />
+                    ) : (
+                      <div className="text-xl mb-1">{item.emoji}</div>
+                    )}
+                    <div className="text-[10px] font-medium text-navy leading-tight">{item.name}</div>
+                    {!item.owned && <div className="text-[10px] text-gold-deep font-bold">{item.price} GC</div>}
+                    {!item.owned ? (
+                      <button
+                        disabled={isBusy || kidBalance < item.price}
+                        onClick={() => buy(sec.key, item.key)}
+                        className="btn-3d btn-3d-gold mt-1 w-full text-[10px] bg-gold text-navy-deep rounded-lg py-1 disabled:opacity-40"
+                      >
+                        구매
+                      </button>
+                    ) : sec.equippable ? (
+                      <button
+                        disabled={isBusy}
+                        onClick={() => equip(sec.key, isEquipped ? null : item.key)}
+                        className={`mt-1 w-full text-[10px] rounded-lg py-1 ${
+                          isEquipped
+                            ? 'bg-gold text-navy-deep font-bold'
+                            : 'btn-3d btn-3d-outline border-2 border-navy text-navy'
+                        }`}
+                      >
+                        {isEquipped ? '착용 중' : '착용'}
+                      </button>
+                    ) : (
+                      <div className="mt-1 text-[10px] text-mint-deep font-bold">보유 중</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
     </div>
   );
 }

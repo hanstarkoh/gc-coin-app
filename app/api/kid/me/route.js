@@ -4,6 +4,7 @@ import { getKidId } from '@/lib/session';
 import { calcLevel } from '@/lib/level';
 import { getEarnedBadges, getNextBadge } from '@/lib/badges';
 import { getActiveTitle } from '@/lib/titles';
+import { findShopItem } from '@/lib/shop';
 
 export async function GET() {
   const kidId = getKidId();
@@ -18,6 +19,18 @@ export async function GET() {
     const badges = getEarnedBadges(kid);
     const nextBadge = getNextBadge(kid);
     const title = getActiveTitle(kid);
+
+    let themeItem = null;
+    try {
+      const { data: equippedRow } = await sb
+        .from('kid_equipped')
+        .select('theme_key')
+        .eq('kid_id', kidId)
+        .maybeSingle();
+      themeItem = findShopItem('theme', equippedRow?.theme_key);
+    } catch (e) {
+      themeItem = null;
+    }
 
     return NextResponse.json({
       ok: true,
@@ -37,6 +50,7 @@ export async function GET() {
       badges,
       nextBadge,
       title,
+      theme: themeItem,
     });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 });

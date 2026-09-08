@@ -134,6 +134,27 @@ alter table settings add column if not exists orders_open boolean not null defau
 -- 메뉴 재고. null = 무제한, 숫자 = 남은 개수(0이면 품절)
 alter table menu_items add column if not exists stock int;
 
+-- 상점: 아바타/액세서리/스티커/테마/특수효과. 카탈로그(가격, 이름, 이모지 등)는
+-- lib/shop.js 코드에 정의하고, 여기 두 테이블은 "누가 뭘 샀는지"와
+-- "지금 뭘 착용 중인지"만 저장합니다.
+create table if not exists kid_inventory (
+  id uuid primary key default gen_random_uuid(),
+  kid_id uuid not null references kids(id) on delete cascade,
+  category text not null,
+  item_key text not null,
+  purchased_at timestamptz not null default now(),
+  unique (kid_id, item_key)
+);
+create index if not exists idx_kid_inventory_kid on kid_inventory(kid_id);
+
+create table if not exists kid_equipped (
+  kid_id uuid primary key references kids(id) on delete cascade,
+  avatar_key text,
+  accessory_key text,
+  sticker_key text,
+  theme_key text
+);
+
 -- 이 앱은 Next.js 서버(API 라우트)에서 Supabase "service role" 키로만 접근합니다.
 -- 브라우저에서 테이블에 직접 접근하지 않으므로 Row Level Security 는 기본적으로 막아둡니다.
 alter table settings enable row level security;
@@ -146,4 +167,6 @@ alter table stocks enable row level security;
 alter table stock_price_history enable row level security;
 alter table stock_holdings enable row level security;
 alter table stock_orders enable row level security;
+alter table kid_inventory enable row level security;
+alter table kid_equipped enable row level security;
 -- (정책을 추가하지 않으면 anon 키로는 아무것도 읽고 쓸 수 없고, service role 키는 항상 통과합니다.)
