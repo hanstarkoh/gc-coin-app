@@ -105,6 +105,7 @@ create table if not exists stock_holdings (
   kid_id uuid not null references kids(id) on delete cascade,
   stock_id uuid not null references stocks(id) on delete cascade,
   shares int not null default 0,
+  avg_price int not null default 0,   -- 가중평균 매수단가 (손익 계산용)
   unique (kid_id, stock_id)
 );
 
@@ -118,9 +119,17 @@ create table if not exists stock_orders (
   shares int not null,
   price int not null,
   amount int not null,
+  fee int not null default 0,
   created_at timestamptz not null default now()
 );
 create index if not exists idx_stock_orders_kid on stock_orders(kid_id);
+
+-- 실현 손익 누적(매도 시점마다 갱신, 수수료 반영) + 총 매매 횟수. '주식왕' 등 칭호/뱃지 조건에 사용.
+alter table kids add column if not exists invest_realized_profit int not null default 0;
+alter table kids add column if not exists invest_trade_count int not null default 0;
+
+-- 간식 주문 오픈/마감을 관리자가 직접 켜고 끔 (날짜 기준 아님)
+alter table settings add column if not exists orders_open boolean not null default false;
 
 -- 이 앱은 Next.js 서버(API 라우트)에서 Supabase "service role" 키로만 접근합니다.
 -- 브라우저에서 테이블에 직접 접근하지 않으므로 Row Level Security 는 기본적으로 막아둡니다.

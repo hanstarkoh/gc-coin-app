@@ -6,12 +6,9 @@ export async function GET() {
   if (!isAdmin()) return NextResponse.json({ ok: false, error: '관리자 로그인이 필요해요.' }, { status: 401 });
   try {
     const sb = supabaseAdmin();
-    const { data, error } = await sb
-      .from('menu_items')
-      .select('id, name, price')
-      .order('created_at', { ascending: true });
+    const { data, error } = await sb.from('settings').select('orders_open').eq('id', 1).single();
     if (error) throw error;
-    return NextResponse.json({ ok: true, items: data });
+    return NextResponse.json({ ok: true, ordersOpen: data.orders_open });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
   }
@@ -20,20 +17,11 @@ export async function GET() {
 export async function POST(req) {
   if (!isAdmin()) return NextResponse.json({ ok: false, error: '관리자 로그인이 필요해요.' }, { status: 401 });
   try {
-    const { name, price } = await req.json();
-    const trimmed = (name || '').trim();
-    const p = Number(price);
-    if (!trimmed || !p || p <= 0) {
-      return NextResponse.json({ ok: false, error: '메뉴 이름과 가격을 확인해주세요.' }, { status: 400 });
-    }
+    const { open } = await req.json();
     const sb = supabaseAdmin();
-    const { data, error } = await sb
-      .from('menu_items')
-      .insert({ name: trimmed, price: p })
-      .select('id, name, price')
-      .single();
+    const { error } = await sb.from('settings').update({ orders_open: !!open }).eq('id', 1);
     if (error) throw error;
-    return NextResponse.json({ ok: true, item: data });
+    return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
   }

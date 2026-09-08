@@ -8,14 +8,15 @@ export async function GET() {
 
   try {
     const sb = supabaseAdmin();
-    const today = new Date().toISOString().slice(0, 10);
+    const { data: settings, error: settingsErr } = await sb.from('settings').select('orders_open').eq('id', 1).single();
+    if (settingsErr) throw settingsErr;
+
     const { data, error } = await sb
       .from('menu_items')
       .select('id, name, price')
-      .eq('item_date', today)
       .order('created_at', { ascending: true });
     if (error) throw error;
-    return NextResponse.json({ ok: true, items: data, date: today });
+    return NextResponse.json({ ok: true, items: data, ordersOpen: settings.orders_open });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
   }

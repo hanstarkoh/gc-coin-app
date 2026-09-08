@@ -89,6 +89,11 @@ function KidLoginInner() {
                   <div className={`icon-badge icon-badge-${avatar.color} w-12 h-12 rounded-full text-2xl`}>
                     {avatar.emoji}
                   </div>
+                  {k.title && (
+                    <span className="text-[9.5px] font-bold text-gold-deep leading-none">
+                      {k.title.icon} {k.title.name}
+                    </span>
+                  )}
                   <span className="text-sm font-medium text-navy">{k.name}</span>
                 </button>
               );

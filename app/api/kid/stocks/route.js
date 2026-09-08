@@ -19,10 +19,10 @@ export async function GET() {
 
     const { data: holdings, error: holdingsErr } = await sb
       .from('stock_holdings')
-      .select('stock_id, shares')
+      .select('stock_id, shares, avg_price')
       .eq('kid_id', kidId);
     if (holdingsErr) throw holdingsErr;
-    const holdingsMap = new Map(holdings.map((h) => [h.stock_id, h.shares]));
+    const holdingsMap = new Map(holdings.map((h) => [h.stock_id, h]));
 
     const items = await Promise.all(
       stocks.map(async (s) => {
@@ -35,11 +35,17 @@ export async function GET() {
         if (histErr) throw histErr;
         const prices = history.map((h) => h.price).reverse();
         const prevClose = prices.length > 1 ? prices[prices.length - 2] : s.price;
+        const holding = holdingsMap.get(s.id);
+        const myShares = holding?.shares || 0;
+        const avgPrice = holding?.avg_price || 0;
         return {
           ...s,
           history: prices,
           changePct: prevClose ? Math.round(((s.price - prevClose) / prevClose) * 1000) / 10 : 0,
-          myShares: holdingsMap.get(s.id) || 0,
+          myShares,
+          avgPrice,
+          plPct: avgPrice > 0 ? Math.round(((s.price - avgPrice) / avgPrice) * 1000) / 10 : 0,
+          plAmount: avgPrice > 0 ? (s.price - avgPrice) * myShares : 0,
         };
       })
     );

@@ -7,6 +7,7 @@ import BadgeGrid from '@/components/BadgeGrid';
 import Celebration from '@/components/Celebration';
 import Sparkline from '@/components/Sparkline';
 import { ToastProvider, useToast } from '@/components/Toast';
+import { TRADE_FEE_RATE } from '@/lib/stocks';
 
 function fmtDate(d) {
   return d.replaceAll('-', '.');
@@ -21,6 +22,7 @@ function DashboardInner() {
   const showToast = useToast();
   const [me, setMe] = useState(null);
   const [menu, setMenu] = useState(null);
+  const [ordersOpen, setOrdersOpen] = useState(false);
   const [events, setEvents] = useState(null);
   const [history, setHistory] = useState(null);
   const [ordering, setOrdering] = useState(null);
@@ -48,7 +50,10 @@ function DashboardInner() {
   const loadMenu = useCallback(async () => {
     const res = await fetch('/api/kid/menu');
     const data = await res.json();
-    if (data.ok) setMenu(data.items);
+    if (data.ok) {
+      setMenu(data.items);
+      setOrdersOpen(data.ordersOpen);
+    }
   }, []);
 
   const loadEvents = useCallback(async () => {
@@ -216,18 +221,18 @@ function DashboardInner() {
     return <p className="text-center text-gray-400 text-sm mt-16">불러오는 중...</p>;
   }
 
-  const { kid, level, badges } = me;
-  const today = new Date().toISOString().slice(0, 10);
+  const { kid, level, badges, title } = me;
+  const nameLabel = title ? `${title.icon} ${title.name} ${kid.name}` : kid.name;
 
   return (
     <div className="min-h-screen flex flex-col">
-      <TopBar title="금정코인" sub={`${kid.name}님`} onExit={handleLogout} />
+      <TopBar title="금정코인" sub={`${nameLabel}님`} onExit={handleLogout} />
       <div className="flex-1 max-w-[480px] w-full mx-auto px-4 py-5 space-y-4">
         <div className="hero-coin-card text-white rounded-3xl p-6 text-center">
           <div className="icon-badge icon-badge-gold w-14 h-14 rounded-full text-2xl mx-auto mb-2">🪙</div>
           <div className="text-xs text-white/60">현재 보유 코인</div>
           <div className="font-display text-5xl text-gold my-1">{kid.balance} GC</div>
-          <div className="text-sm">{kid.name}님</div>
+          <div className="text-sm">{nameLabel}님</div>
         </div>
 
         <LevelBar level={level} />
@@ -246,12 +251,18 @@ function DashboardInner() {
               <div className="icon-badge icon-badge-navy w-7 h-7 rounded-lg text-sm">📈</div>
               <div className="font-display text-base text-navy">모의투자</div>
             </div>
-            {kid.investAgreedAt && stocks && stocks.length > 0 && (
-              <span className="text-xs font-bold text-navy">
-                총 평가액 {stocks.reduce((s, x) => s + x.myShares * x.price, 0)} GC
-              </span>
-            )}
           </div>
+          {kid.investAgreedAt && (
+            <div className="flex items-center justify-between text-xs mb-2">
+              <span className="text-gray-500">
+                평가액 {stocks ? stocks.reduce((s, x) => s + x.myShares * x.price, 0) : 0} GC
+              </span>
+              <span className={`font-bold ${kid.investRealizedProfit >= 0 ? 'text-mint-deep' : 'text-coral-deep'}`}>
+                실현손익 {kid.investRealizedProfit >= 0 ? '+' : ''}
+                {kid.investRealizedProfit} GC
+              </span>
+            </div>
+          )}
 
           {!kid.investAgreedAt ? (
             <div>
@@ -304,7 +315,12 @@ function DashboardInner() {
                     </div>
                     {s.myShares > 0 && (
                       <div className="text-[11px] text-gray-400 mt-0.5">
-                        보유 {s.myShares}주 · 평가 {s.myShares * s.price} GC
+                        보유 {s.myShares}주 · 평가 {s.myShares * s.price} GC ·{' '}
+                        <span className={s.plAmount >= 0 ? 'text-mint-deep' : 'text-coral-deep'}>
+                          {s.plAmount >= 0 ? '+' : ''}
+                          {s.plAmount} GC ({s.plPct >= 0 ? '+' : ''}
+                          {s.plPct}%)
+                        </span>
                       </div>
                     )}
                   </div>
@@ -326,25 +342,33 @@ function DashboardInner() {
                   </button>
                 </div>
                 {isTrading && (
-                  <div className="flex items-center gap-1.5 mt-2 bg-paper rounded-lg p-2">
-                    <input
-                      type="number"
-                      min="1"
-                      value={tradeQty}
-                      onChange={(e) => setTradeQty(e.target.value)}
-                      placeholder="주식 수"
-                      className="flex-1 min-w-0 border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-sm"
-                    />
-                    <button
-                      disabled={trading}
-                      onClick={confirmTrade}
-                      className="btn-3d btn-3d-navy shrink-0 text-xs bg-navy text-white rounded-lg px-3 py-1.5 disabled:opacity-40"
-                    >
-                      확인
-                    </button>
-                    <button onClick={cancelTrade} className="shrink-0 text-xs text-gray-400 underline px-1">
-                      취소
-                    </button>
+                  <div className="mt-2 bg-paper rounded-lg p-2">
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min="1"
+                        value={tradeQty}
+                        onChange={(e) => setTradeQty(e.target.value)}
+                        placeholder="주식 수"
+                        className="flex-1 min-w-0 border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+                      />
+                      <button
+                        disabled={trading}
+                        onClick={confirmTrade}
+                        className="btn-3d btn-3d-navy shrink-0 text-xs bg-navy text-white rounded-lg px-3 py-1.5 disabled:opacity-40"
+                      >
+                        확인
+                      </button>
+                      <button onClick={cancelTrade} className="shrink-0 text-xs text-gray-400 underline px-1">
+                        취소
+                      </button>
+                    </div>
+                    <p className="text-[10.5px] text-gray-400 mt-1.5">
+                      수수료 {TRADE_FEE_RATE * 100}%가 붙어요
+                      {tradeQty && Number(tradeQty) > 0
+                        ? ` (약 ${Math.round(s.price * Number(tradeQty) * TRADE_FEE_RATE)} GC)`
+                        : ''}
+                    </p>
                   </div>
                 )}
               </div>
@@ -395,16 +419,28 @@ function DashboardInner() {
         </div>
 
         <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="icon-badge icon-badge-mint w-7 h-7 rounded-lg text-sm">🍪</div>
-            <div className="font-display text-base text-navy">오늘의 메뉴 ({fmtDate(today)})</div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="icon-badge icon-badge-mint w-7 h-7 rounded-lg text-sm">🍪</div>
+              <div className="font-display text-base text-navy">간식 메뉴</div>
+            </div>
+            <span
+              className={`text-[11px] font-bold px-2 py-1 rounded-full ${
+                ordersOpen ? 'bg-mint/15 text-mint-deep' : 'bg-gray-100 text-gray-400'
+              }`}
+            >
+              {ordersOpen ? '주문 가능' : '주문 마감'}
+            </span>
           </div>
           {menu === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
           {menu && menu.length === 0 && (
-            <p className="text-xs text-gray-400 py-4 text-center">오늘은 아직 메뉴가 올라오지 않았어요.</p>
+            <p className="text-xs text-gray-400 py-4 text-center">등록된 메뉴가 없어요.</p>
+          )}
+          {!ordersOpen && menu && menu.length > 0 && (
+            <p className="text-xs text-gray-400 py-2 text-center">지금은 주문을 받지 않고 있어요.</p>
           )}
           {menu?.map((item) => {
-            const canAfford = kid.balance >= item.price;
+            const canAfford = ordersOpen && kid.balance >= item.price;
             return (
               <div key={item.id} className="flex items-center justify-between py-3 border-b border-dashed border-gray-200 last:border-0">
                 <div>

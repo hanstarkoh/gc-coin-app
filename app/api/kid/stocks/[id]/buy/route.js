@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getKidId } from '@/lib/session';
+import { calcFee } from '@/lib/stocks';
 
 export async function POST(req, { params }) {
   const kidId = getKidId();
@@ -23,30 +24,46 @@ export async function POST(req, { params }) {
       return NextResponse.json({ ok: false, error: '거래할 수 없는 종목이에요.' }, { status: 400 });
     }
 
-    const { data: kid, error: kidErr } = await sb.from('kids').select('id, name, balance').eq('id', kidId).single();
+    const { data: kid, error: kidErr } = await sb
+      .from('kids')
+      .select('id, name, balance, invest_trade_count')
+      .eq('id', kidId)
+      .single();
     if (kidErr || !kid) return NextResponse.json({ ok: false, error: '학생 정보를 찾을 수 없어요.' }, { status: 404 });
 
     const amount = stock.price * qty;
-    if (kid.balance < amount) {
-      return NextResponse.json({ ok: false, error: '코인이 부족해요.' }, { status: 400 });
+    const fee = calcFee(amount);
+    const totalDebit = amount + fee;
+    if (kid.balance < totalDebit) {
+      return NextResponse.json({ ok: false, error: '코인이 부족해요. (수수료 포함)' }, { status: 400 });
     }
 
-    const { error: updErr } = await sb.from('kids').update({ balance: kid.balance - amount }).eq('id', kid.id);
+    const { error: updErr } = await sb
+      .from('kids')
+      .update({ balance: kid.balance - totalDebit, invest_trade_count: (kid.invest_trade_count || 0) + 1 })
+      .eq('id', kid.id);
     if (updErr) throw updErr;
 
     const { data: holding, error: holdingErr } = await sb
       .from('stock_holdings')
-      .select('id, shares')
+      .select('id, shares, avg_price')
       .eq('kid_id', kid.id)
       .eq('stock_id', stock.id)
       .maybeSingle();
     if (holdingErr) throw holdingErr;
 
     if (holding) {
-      const { error: e1 } = await sb.from('stock_holdings').update({ shares: holding.shares + qty }).eq('id', holding.id);
+      const newShares = holding.shares + qty;
+      const newAvgPrice = Math.round((holding.avg_price * holding.shares + stock.price * qty) / newShares);
+      const { error: e1 } = await sb
+        .from('stock_holdings')
+        .update({ shares: newShares, avg_price: newAvgPrice })
+        .eq('id', holding.id);
       if (e1) throw e1;
     } else {
-      const { error: e2 } = await sb.from('stock_holdings').insert({ kid_id: kid.id, stock_id: stock.id, shares: qty });
+      const { error: e2 } = await sb
+        .from('stock_holdings')
+        .insert({ kid_id: kid.id, stock_id: stock.id, shares: qty, avg_price: stock.price });
       if (e2) throw e2;
     }
 
@@ -59,6 +76,7 @@ export async function POST(req, { params }) {
       shares: qty,
       price: stock.price,
       amount,
+      fee,
     });
     if (orderErr) throw orderErr;
 

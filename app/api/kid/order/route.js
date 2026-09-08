@@ -13,13 +13,19 @@ export async function POST(req) {
     const sb = supabaseAdmin();
     const today = new Date().toISOString().slice(0, 10);
 
+    const { data: settings, error: settingsErr } = await sb.from('settings').select('orders_open').eq('id', 1).single();
+    if (settingsErr) throw settingsErr;
+    if (!settings.orders_open) {
+      return NextResponse.json({ ok: false, error: '지금은 주문을 받지 않고 있어요.' }, { status: 400 });
+    }
+
     const { data: item, error: itemErr } = await sb
       .from('menu_items')
-      .select('id, name, price, item_date')
+      .select('id, name, price')
       .eq('id', itemId)
       .single();
-    if (itemErr || !item || item.item_date !== today) {
-      return NextResponse.json({ ok: false, error: '오늘 판매하는 메뉴가 아니에요.' }, { status: 400 });
+    if (itemErr || !item) {
+      return NextResponse.json({ ok: false, error: '판매하지 않는 메뉴예요.' }, { status: 400 });
     }
 
     const { data: kid, error: kidErr } = await sb

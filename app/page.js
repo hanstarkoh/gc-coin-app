@@ -8,17 +8,23 @@ export const dynamic = 'force-dynamic';
 
 const HISTORY_POINTS = 14;
 
-async function getTodayMenu() {
+async function getMenu() {
   noStore();
   const sb = supabaseAdmin();
-  const today = new Date().toISOString().slice(0, 10);
   const { data, error } = await sb
     .from('menu_items')
     .select('id, name, price')
-    .eq('item_date', today)
     .order('created_at', { ascending: true });
   if (error) return [];
   return data;
+}
+
+async function getOrdersOpen() {
+  noStore();
+  const sb = supabaseAdmin();
+  const { data, error } = await sb.from('settings').select('orders_open').eq('id', 1).single();
+  if (error) return false;
+  return data.orders_open;
 }
 
 async function getActiveEvents() {
@@ -63,7 +69,12 @@ async function getActiveStocks() {
 }
 
 export default async function Home() {
-  const [menu, events, stocks] = await Promise.all([getTodayMenu(), getActiveEvents(), getActiveStocks()]);
+  const [menu, events, stocks, ordersOpen] = await Promise.all([
+    getMenu(),
+    getActiveEvents(),
+    getActiveStocks(),
+    getOrdersOpen(),
+  ]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -95,13 +106,20 @@ export default async function Home() {
         </Link>
 
         <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="icon-badge icon-badge-mint w-7 h-7 rounded-lg text-sm">🍪</div>
-            <div className="font-display text-base text-navy">오늘의 메뉴</div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="icon-badge icon-badge-mint w-7 h-7 rounded-lg text-sm">🍪</div>
+              <div className="font-display text-base text-navy">간식 메뉴</div>
+            </div>
+            <span
+              className={`text-[11px] font-bold px-2 py-1 rounded-full ${
+                ordersOpen ? 'bg-mint/15 text-mint-deep' : 'bg-gray-100 text-gray-400'
+              }`}
+            >
+              {ordersOpen ? '주문 가능' : '주문 마감'}
+            </span>
           </div>
-          {menu.length === 0 && (
-            <p className="text-xs text-gray-400 py-4 text-center">오늘은 아직 메뉴가 올라오지 않았어요.</p>
-          )}
+          {menu.length === 0 && <p className="text-xs text-gray-400 py-4 text-center">등록된 메뉴가 없어요.</p>}
           {menu.map((item) => (
             <div
               key={item.id}
@@ -112,7 +130,9 @@ export default async function Home() {
             </div>
           ))}
           {menu.length > 0 && (
-            <p className="text-xs text-gray-400 mt-2">로그인하면 코인으로 바로 주문할 수 있어요.</p>
+            <p className="text-xs text-gray-400 mt-2">
+              {ordersOpen ? '로그인하면 코인으로 바로 주문할 수 있어요.' : '지금은 주문을 받지 않고 있어요.'}
+            </p>
           )}
         </div>
 

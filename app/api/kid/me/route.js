@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getKidId } from '@/lib/session';
 import { calcLevel } from '@/lib/level';
 import { getEarnedBadges, getNextBadge } from '@/lib/badges';
+import { getActiveTitle } from '@/lib/titles';
 
 export async function GET() {
   const kidId = getKidId();
@@ -16,6 +17,7 @@ export async function GET() {
     const levelInfo = calcLevel(kid.total_earned);
     const badges = getEarnedBadges(kid);
     const nextBadge = getNextBadge(kid);
+    const title = getActiveTitle(kid);
 
     return NextResponse.json({
       ok: true,
@@ -28,10 +30,13 @@ export async function GET() {
         attendanceCount: kid.attendance_count,
         purchaseCount: kid.purchase_count,
         investAgreedAt: kid.invest_agreed_at,
+        investRealizedProfit: kid.invest_realized_profit || 0,
+        investTradeCount: kid.invest_trade_count || 0,
       },
       level: levelInfo,
       badges,
       nextBadge,
+      title,
     });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 });

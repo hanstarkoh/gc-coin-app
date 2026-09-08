@@ -341,6 +341,8 @@ function MenuTab({ showToast }) {
   const [items, setItems] = useState(null);
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
+  const [ordersOpen, setOrdersOpen] = useState(null);
+  const [toggling, setToggling] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/menu');
@@ -348,9 +350,36 @@ function MenuTab({ showToast }) {
     if (data.ok) setItems(data.items);
   }, []);
 
+  const loadOrdersOpen = useCallback(async () => {
+    const res = await fetch('/api/admin/settings/orders');
+    const data = await res.json();
+    if (data.ok) setOrdersOpen(data.ordersOpen);
+  }, []);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadOrdersOpen();
+  }, [load, loadOrdersOpen]);
+
+  const toggleOrders = async () => {
+    setToggling(true);
+    try {
+      const res = await fetch('/api/admin/settings/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ open: !ordersOpen }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast(!ordersOpen ? '주문을 열었어요.' : '주문을 닫았어요.');
+        await loadOrdersOpen();
+      } else {
+        showToast(data.error || '처리에 실패했어요.');
+      }
+    } finally {
+      setToggling(false);
+    }
+  };
 
   const add = async () => {
     const p = parseInt(price, 10);
@@ -382,7 +411,20 @@ function MenuTab({ showToast }) {
 
   return (
     <>
-      <Card title={`오늘의 메뉴 (${fmtDate(todayStr())})`}>
+      <Card title="주문 받기">
+        <p className="text-xs text-gray-500 -mt-2 mb-2.5">
+          주말에만 여는 등 필요할 때만 켜고 끄면 돼요. 날짜와 상관없이 이 상태를 그대로 따라가요.
+        </p>
+        <button
+          onClick={toggleOrders}
+          disabled={ordersOpen === null || toggling}
+          className={`btn-3d ${ordersOpen ? 'btn-3d-coral bg-coral' : 'btn-3d-mint bg-mint'} w-full text-white font-display rounded-xl py-3 text-sm disabled:opacity-40`}
+        >
+          {ordersOpen === null ? '불러오는 중...' : ordersOpen ? '주문 닫기' : '주문 열기'}
+        </button>
+      </Card>
+
+      <Card title="등록된 메뉴">
         {items === null && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
         {items && items.length === 0 && (
           <p className="text-xs text-gray-400 text-center py-4">등록된 메뉴가 없어요. 아래에서 추가해주세요.</p>

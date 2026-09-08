@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getKidId } from '@/lib/session';
+import { calcFee } from '@/lib/stocks';
 
 export async function POST(req, { params }) {
   const kidId = getKidId();
@@ -23,7 +24,7 @@ export async function POST(req, { params }) {
 
     const { data: holding, error: holdingErr } = await sb
       .from('stock_holdings')
-      .select('id, shares')
+      .select('id, shares, avg_price')
       .eq('kid_id', kidId)
       .eq('stock_id', stock.id)
       .maybeSingle();
@@ -32,12 +33,26 @@ export async function POST(req, { params }) {
       return NextResponse.json({ ok: false, error: '보유한 주식보다 많이 팔 수 없어요.' }, { status: 400 });
     }
 
-    const { data: kid, error: kidErr } = await sb.from('kids').select('id, name, balance').eq('id', kidId).single();
+    const { data: kid, error: kidErr } = await sb
+      .from('kids')
+      .select('id, name, balance, invest_realized_profit, invest_trade_count')
+      .eq('id', kidId)
+      .single();
     if (kidErr || !kid) return NextResponse.json({ ok: false, error: '학생 정보를 찾을 수 없어요.' }, { status: 404 });
 
     const amount = stock.price * qty;
+    const fee = calcFee(amount);
+    const netCredit = amount - fee;
+    const realized = (stock.price - holding.avg_price) * qty - fee;
 
-    const { error: updErr } = await sb.from('kids').update({ balance: kid.balance + amount }).eq('id', kid.id);
+    const { error: updErr } = await sb
+      .from('kids')
+      .update({
+        balance: kid.balance + netCredit,
+        invest_realized_profit: (kid.invest_realized_profit || 0) + realized,
+        invest_trade_count: (kid.invest_trade_count || 0) + 1,
+      })
+      .eq('id', kid.id);
     if (updErr) throw updErr;
 
     const { error: holdingUpdErr } = await sb
@@ -55,6 +70,7 @@ export async function POST(req, { params }) {
       shares: qty,
       price: stock.price,
       amount,
+      fee,
     });
     if (orderErr) throw orderErr;
 
