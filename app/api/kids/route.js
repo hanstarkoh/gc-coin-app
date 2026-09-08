@@ -3,6 +3,7 @@ import { unstable_noStore as noStore } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getActiveTitle } from '@/lib/titles';
 import { findShopItem } from '@/lib/shop';
+import { calcLevel } from '@/lib/level';
 
 // 상점 착용 정보(kid_equipped/kid_inventory)는 아직 마이그레이션 전일 수 있으니
 // 실패해도 기본 목록 응답 자체는 막지 않도록 별도로 조회합니다.
@@ -28,15 +29,21 @@ export async function GET() {
     const sb = supabaseAdmin();
     const { data, error } = await sb
       .from('kids')
-      .select('id, name, pin, invest_realized_profit')
+      .select('id, name, pin, total_earned, invest_realized_profit')
       .order('name', { ascending: true });
 
     if (error) {
       // invest_realized_profit 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니
       // 이름 목록만이라도 정상 표시되도록 기본 컬럼으로 한 번 더 시도합니다.
-      const fallback = await sb.from('kids').select('id, name, pin').order('name', { ascending: true });
+      const fallback = await sb.from('kids').select('id, name, pin, total_earned').order('name', { ascending: true });
       if (fallback.error) throw fallback.error;
-      const kids = fallback.data.map((k) => ({ id: k.id, name: k.name, hasPin: !!k.pin, title: null }));
+      const kids = fallback.data.map((k) => ({
+        id: k.id,
+        name: k.name,
+        hasPin: !!k.pin,
+        title: null,
+        level: calcLevel(k.total_earned).level,
+      }));
       return NextResponse.json({ ok: true, kids });
     }
 
@@ -52,6 +59,7 @@ export async function GET() {
         name: k.name,
         hasPin: !!k.pin,
         title: getActiveTitle(k),
+        level: calcLevel(k.total_earned).level,
         avatarEmoji: avatarItem?.emoji || null,
         accessoryEmoji: accessoryItem?.emoji || null,
         stickerEmoji: stickerItem?.emoji || null,

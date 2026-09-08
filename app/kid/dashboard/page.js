@@ -17,6 +17,27 @@ function fmtTime(ts) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
+function Collapsible({ icon, badgeColor = 'navy', title, right, defaultOpen = true, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
+      <button onClick={() => setOpen((o) => !o)} className="w-full flex items-center justify-between gap-2 text-left">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={`icon-badge icon-badge-${badgeColor} w-7 h-7 rounded-lg text-sm shrink-0`}>{icon}</div>
+          <div className="font-display text-base text-navy truncate">{title}</div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {right}
+          <span className={`text-gray-400 text-[10px] transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
+            ▼
+          </span>
+        </div>
+      </button>
+      {open && <div className="mt-3">{children}</div>}
+    </div>
+  );
+}
+
 function DashboardInner() {
   const router = useRouter();
   const showToast = useToast();
@@ -234,29 +255,19 @@ function DashboardInner() {
         <div className="hero-coin-card text-white rounded-3xl p-6 text-center" style={heroStyle}>
           <div className="icon-badge icon-badge-gold w-14 h-14 rounded-full text-2xl mx-auto mb-2">🪙</div>
           <div className="text-xs text-white/60">현재 보유 코인</div>
-          <div className="font-display text-5xl text-gold my-1">{kid.balance} GC</div>
+          <div className="balance-glow font-display text-5xl text-gold my-1">{kid.balance} GC</div>
           <div className="text-sm">{nameLabel}님</div>
         </div>
 
         <LevelBar level={level} />
 
-        <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="icon-badge icon-badge-gold w-7 h-7 rounded-lg text-sm">🏅</div>
-            <div className="font-display text-base text-navy">내 뱃지</div>
-          </div>
+        <Collapsible icon="🏅" badgeColor="gold" title="내 뱃지" defaultOpen={false}>
           <BadgeGrid earnedKeys={badges.map((b) => b.key)} />
-        </div>
+        </Collapsible>
 
         <ShopCard kidBalance={kid.balance} onChange={loadMe} showToast={showToast} />
 
-        <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div className="icon-badge icon-badge-navy w-7 h-7 rounded-lg text-sm">📈</div>
-              <div className="font-display text-base text-navy">모의투자</div>
-            </div>
-          </div>
+        <Collapsible icon="📈" badgeColor="navy" title="모의투자" defaultOpen={true}>
           {kid.investAgreedAt && (
             <div className="flex items-center justify-between text-xs mb-2">
               <span className="text-gray-500">
@@ -406,13 +417,9 @@ function DashboardInner() {
               })}
             </>
           )}
-        </div>
+        </Collapsible>
 
-        <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="icon-badge icon-badge-grape w-7 h-7 rounded-lg text-sm">🎯</div>
-            <div className="font-display text-base text-navy">진행 중인 이벤트</div>
-          </div>
+        <Collapsible icon="🎯" badgeColor="grape" title="진행 중인 이벤트" defaultOpen={true}>
           {events === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
           {events && events.length === 0 && (
             <p className="text-xs text-gray-400 py-4 text-center">지금 진행 중인 이벤트가 없어요.</p>
@@ -446,14 +453,14 @@ function DashboardInner() {
               </div>
             );
           })}
-        </div>
+        </Collapsible>
 
-        <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div className="icon-badge icon-badge-mint w-7 h-7 rounded-lg text-sm">🍪</div>
-              <div className="font-display text-base text-navy">간식 메뉴</div>
-            </div>
+        <Collapsible
+          icon="🍪"
+          badgeColor="mint"
+          title="간식 메뉴"
+          defaultOpen={true}
+          right={
             <span
               className={`text-[11px] font-bold px-2 py-1 rounded-full ${
                 ordersOpen ? 'bg-mint/15 text-mint-deep' : 'bg-gray-100 text-gray-400'
@@ -461,7 +468,8 @@ function DashboardInner() {
             >
               {ordersOpen ? '주문 가능' : '주문 마감'}
             </span>
-          </div>
+          }
+        >
           {menu === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
           {menu && menu.length === 0 && (
             <p className="text-xs text-gray-400 py-4 text-center">등록된 메뉴가 없어요.</p>
@@ -497,13 +505,9 @@ function DashboardInner() {
               </div>
             );
           })}
-        </div>
+        </Collapsible>
 
-        <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="icon-badge icon-badge-navy w-7 h-7 rounded-lg text-sm">📜</div>
-            <div className="font-display text-base text-navy">내 사용 내역</div>
-          </div>
+        <Collapsible icon="📜" badgeColor="navy" title="내 사용 내역" defaultOpen={false}>
           {history === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
           {history && history.length === 0 && <p className="text-xs text-gray-400 py-4 text-center">아직 내역이 없어요.</p>}
           {history?.map((t) => (
@@ -520,7 +524,7 @@ function DashboardInner() {
               </div>
             </div>
           ))}
-        </div>
+        </Collapsible>
       </div>
 
       {celebration && (
@@ -599,11 +603,7 @@ function ShopCard({ kidBalance, onChange, showToast }) {
   };
 
   return (
-    <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="icon-badge icon-badge-gold w-7 h-7 rounded-lg text-sm">🛍️</div>
-        <div className="font-display text-base text-navy">상점</div>
-      </div>
+    <Collapsible icon="🛍️" badgeColor="gold" title="상점" defaultOpen={false}>
       {data === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
       {data?.categories &&
         SHOP_SECTIONS.map((sec) => (
@@ -659,7 +659,7 @@ function ShopCard({ kidBalance, onChange, showToast }) {
             </div>
           </div>
         ))}
-    </div>
+    </Collapsible>
   );
 }
 

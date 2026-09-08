@@ -94,6 +94,9 @@ function KidLoginInner() {
                     {k.accessoryEmoji && (
                       <span className="absolute -top-1.5 -right-1.5 text-base leading-none">{k.accessoryEmoji}</span>
                     )}
+                    <span className="icon-badge icon-badge-grape absolute -bottom-1 -left-1 w-5 h-5 rounded-full text-[8.5px] font-display text-white">
+                      {k.level}
+                    </span>
                   </div>
                   {k.title && (
                     <span className="text-[9.5px] font-bold text-gold-deep leading-none">
