@@ -341,8 +341,10 @@ function MenuTab({ showToast }) {
   const [items, setItems] = useState(null);
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
+  const [stock, setStock] = useState('');
   const [ordersOpen, setOrdersOpen] = useState(null);
   const [toggling, setToggling] = useState(false);
+  const [restockDrafts, setRestockDrafts] = useState({});
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/menu');
@@ -387,13 +389,14 @@ function MenuTab({ showToast }) {
     const res = await fetch('/api/admin/menu', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, price: p }),
+      body: JSON.stringify({ name, price: p, stock: stock === '' ? null : parseInt(stock, 10) }),
     });
     const data = await res.json();
     if (data.ok) {
       showToast('메뉴를 추가했어요.');
       setName('');
       setPrice('');
+      setStock('');
       await load();
     } else {
       showToast(data.error || '추가에 실패했어요.');
@@ -406,6 +409,28 @@ function MenuTab({ showToast }) {
     if (data.ok) {
       showToast('메뉴를 삭제했어요.');
       await load();
+    }
+  };
+
+  const saveStock = async (item) => {
+    const draft = restockDrafts[item.id];
+    const value = draft === '' ? null : parseInt(draft, 10);
+    const res = await fetch(`/api/admin/menu/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stock: value }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('재고를 저장했어요.');
+      setRestockDrafts((prev) => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
+      await load();
+    } else {
+      showToast(data.error || '저장에 실패했어요.');
     }
   };
 
@@ -429,17 +454,45 @@ function MenuTab({ showToast }) {
         {items && items.length === 0 && (
           <p className="text-xs text-gray-400 text-center py-4">등록된 메뉴가 없어요. 아래에서 추가해주세요.</p>
         )}
-        {items?.map((it) => (
-          <div key={it.id} className="flex items-center justify-between py-2.5 border-b border-dashed border-gray-200 last:border-0">
-            <div>
-              <div className="font-bold text-sm">{it.name}</div>
-              <div className="text-xs text-gold-deep font-bold">{it.price} GC</div>
+        {items?.map((it) => {
+          const soldOut = it.stock !== null && it.stock <= 0;
+          const draft = restockDrafts[it.id];
+          const draftValue = draft !== undefined ? draft : it.stock === null ? '' : String(it.stock);
+          return (
+            <div key={it.id} className="py-2.5 border-b border-dashed border-gray-200 last:border-0">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="font-bold text-sm">
+                    {it.name} {soldOut && <span className="text-coral-deep text-xs">(품절)</span>}
+                  </div>
+                  <div className="text-xs text-gold-deep font-bold">{it.price} GC</div>
+                </div>
+                <button onClick={() => del(it.id)} className="btn-3d btn-3d-coral shrink-0 text-xs bg-coral text-white rounded-lg px-3 py-1.5">
+                  삭제
+                </button>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <input
+                  type="number"
+                  min="0"
+                  value={draftValue}
+                  onChange={(e) =>
+                    setRestockDrafts((prev) => ({ ...prev, [it.id]: e.target.value }))
+                  }
+                  placeholder="무제한"
+                  className="w-24 border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-xs"
+                />
+                <button
+                  onClick={() => saveStock(it)}
+                  className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1.5"
+                >
+                  재고 저장
+                </button>
+                <span className="text-[10.5px] text-gray-400">비워두면 무제한</span>
+              </div>
             </div>
-            <button onClick={() => del(it.id)} className="btn-3d btn-3d-coral text-xs bg-coral text-white rounded-lg px-3 py-1.5">
-              삭제
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </Card>
       <Card title="메뉴 추가">
         <div className="flex gap-2 mb-3">
@@ -463,6 +516,17 @@ function MenuTab({ showToast }) {
               className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
             />
           </div>
+        </div>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">수량 (선택, 비워두면 무제한)</label>
+          <input
+            type="number"
+            min="0"
+            value={stock}
+            onChange={(e) => setStock(e.target.value)}
+            placeholder="예: 10"
+            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+          />
         </div>
         <button onClick={add} className="btn-3d btn-3d-gold w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm">
           메뉴에 추가

@@ -465,22 +465,30 @@ function DashboardInner() {
             <p className="text-xs text-gray-400 py-2 text-center">지금은 주문을 받지 않고 있어요.</p>
           )}
           {menu?.map((item) => {
-            const canAfford = ordersOpen && kid.balance >= item.price;
+            const soldOut = item.stock !== null && item.stock <= 0;
+            const canAfford = ordersOpen && !soldOut && kid.balance >= item.price;
             return (
               <div key={item.id} className="flex items-center justify-between py-3 border-b border-dashed border-gray-200 last:border-0">
                 <div>
                   <div className="font-bold text-sm">{item.name}</div>
                   <div className="text-xs text-gold-deep font-bold">{item.price} GC</div>
+                  {item.stock !== null && !soldOut && (
+                    <div className="text-[11px] text-gray-400">재고 {item.stock}개</div>
+                  )}
                 </div>
-                <button
-                  disabled={!canAfford || ordering === item.id}
-                  onClick={() => handleOrder(item)}
-                  className={`text-xs font-display px-3.5 py-2 rounded-lg ${
-                    canAfford ? 'btn-3d btn-3d-gold bg-gold text-navy-deep' : 'border-2 border-gray-200 text-gray-300'
-                  }`}
-                >
-                  {ordering === item.id ? '주문 중...' : '주문하기'}
-                </button>
+                {soldOut ? (
+                  <span className="text-xs font-bold px-3.5 py-2 rounded-lg bg-gray-100 text-gray-400">품절</span>
+                ) : (
+                  <button
+                    disabled={!canAfford || ordering === item.id}
+                    onClick={() => handleOrder(item)}
+                    className={`text-xs font-display px-3.5 py-2 rounded-lg ${
+                      canAfford ? 'btn-3d btn-3d-gold bg-gold text-navy-deep' : 'border-2 border-gray-200 text-gray-300'
+                    }`}
+                  >
+                    {ordering === item.id ? '주문 중...' : '주문하기'}
+                  </button>
+                )}
               </div>
             );
           })}

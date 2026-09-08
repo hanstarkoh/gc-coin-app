@@ -21,11 +21,14 @@ export async function POST(req) {
 
     const { data: item, error: itemErr } = await sb
       .from('menu_items')
-      .select('id, name, price')
+      .select('id, name, price, stock')
       .eq('id', itemId)
       .single();
     if (itemErr || !item) {
       return NextResponse.json({ ok: false, error: '판매하지 않는 메뉴예요.' }, { status: 400 });
+    }
+    if (item.stock !== null && item.stock <= 0) {
+      return NextResponse.json({ ok: false, error: '품절된 메뉴예요.' }, { status: 400 });
     }
 
     const { data: kid, error: kidErr } = await sb
@@ -49,6 +52,11 @@ export async function POST(req) {
       })
       .eq('id', kidId);
     if (updErr) throw updErr;
+
+    if (item.stock !== null) {
+      const { error: stockErr } = await sb.from('menu_items').update({ stock: item.stock - 1 }).eq('id', item.id);
+      if (stockErr) throw stockErr;
+    }
 
     const { error: txErr } = await sb.from('transactions').insert({
       kid_id: kidId,

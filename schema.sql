@@ -131,6 +131,9 @@ alter table kids add column if not exists invest_trade_count int not null defaul
 -- 간식 주문 오픈/마감을 관리자가 직접 켜고 끔 (날짜 기준 아님)
 alter table settings add column if not exists orders_open boolean not null default false;
 
+-- 메뉴 재고. null = 무제한, 숫자 = 남은 개수(0이면 품절)
+alter table menu_items add column if not exists stock int;
+
 -- 이 앱은 Next.js 서버(API 라우트)에서 Supabase "service role" 키로만 접근합니다.
 -- 브라우저에서 테이블에 직접 접근하지 않으므로 Row Level Security 는 기본적으로 막아둡니다.
 alter table settings enable row level security;

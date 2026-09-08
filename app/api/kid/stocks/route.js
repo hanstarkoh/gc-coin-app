@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getKidId } from '@/lib/session';
+import { maybeUpdateStockPrices } from '@/lib/stocks';
 
 const HISTORY_POINTS = 14;
 
@@ -10,6 +11,7 @@ export async function GET() {
 
   try {
     const sb = supabaseAdmin();
+    await maybeUpdateStockPrices(sb);
     const { data: stocks, error: stocksErr } = await sb
       .from('stocks')
       .select('id, name, emoji, price')
