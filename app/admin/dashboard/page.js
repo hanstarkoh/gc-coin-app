@@ -9,6 +9,7 @@ const TABS = [
   { key: 'menu', label: '메뉴 관리' },
   { key: 'orders', label: '주문 현황' },
   { key: 'events', label: '이벤트' },
+  { key: 'stocks', label: '종목 관리' },
   { key: 'kids', label: '청소년 관리' },
   { key: 'history', label: '전체 현황' },
   { key: 'settings', label: '설정' },
@@ -139,6 +140,7 @@ function DashboardInner() {
         {tab === 'events' && (
           <EventsTab showToast={showToast} onPendingCountChange={setPendingEventCount} />
         )}
+        {tab === 'stocks' && <StocksTab showToast={showToast} />}
         {tab === 'kids' && (
           <KidsTab kids={kids} reload={loadKids} showToast={showToast} />
         )}
@@ -282,7 +284,7 @@ function AttendanceTab({ kids, attendedTodaySet, reload, showToast }) {
         </table>
       </Card>
 
-      <Card title="오늘 출석 코인 지급 (+5 GC)">
+      <Card title="오늘 출석 코인 지급 (+2 GC)">
         <p className="text-xs text-gray-500 -mt-2 mb-2.5">
           선택된 청소년에게 출석 코인을 지급합니다. 이미 지급받은 청소년은 자동으로 제외돼요.
         </p>
@@ -715,6 +717,164 @@ function EventsTab({ showToast, onPendingCountChange }) {
         </div>
         <button onClick={add} className="btn-3d btn-3d-gold w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm">
           이벤트 등록
+        </button>
+      </Card>
+    </>
+  );
+}
+
+/* ---------------- STOCKS TAB ---------------- */
+function StocksTab({ showToast }) {
+  const [stocks, setStocks] = useState(null);
+  const [name, setName] = useState('');
+  const [emoji, setEmoji] = useState('');
+  const [price, setPrice] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    const res = await fetch('/api/admin/stocks');
+    const data = await res.json();
+    if (data.ok) setStocks(data.stocks);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const add = async () => {
+    const p = parseInt(price, 10);
+    if (!name.trim() || !p || p <= 0) return showToast('종목 이름과 시작 가격을 확인해주세요.');
+    const res = await fetch('/api/admin/stocks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, emoji, price: p }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('종목을 등록했어요.');
+      setName('');
+      setEmoji('');
+      setPrice('');
+      await load();
+    } else {
+      showToast(data.error || '등록에 실패했어요.');
+    }
+  };
+
+  const toggleActive = async (stock) => {
+    const res = await fetch(`/api/admin/stocks/${stock.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: !stock.is_active }),
+    });
+    const data = await res.json();
+    if (data.ok) await load();
+  };
+
+  const del = async (stock) => {
+    if (!confirm(`"${stock.name}" 종목을 정말 삭제할까요? 청소년들의 보유 현황도 함께 사라져요.`)) return;
+    const res = await fetch(`/api/admin/stocks/${stock.id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('종목을 삭제했어요.');
+      await load();
+    }
+  };
+
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      const res = await fetch('/api/admin/stocks/refresh', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        showToast(`${data.updated}개 종목 시세를 갱신했어요.`);
+        await load();
+      } else {
+        showToast(data.error || '갱신에 실패했어요.');
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  return (
+    <>
+      <Card title="시세 갱신">
+        <p className="text-xs text-gray-500 -mt-2 mb-2.5">
+          시세는 매일 낮 12시에 자동으로 바뀌어요(±8% 이내). 지금 바로 테스트하거나 수동으로 보정하고
+          싶으면 아래 버튼을 눌러주세요.
+        </p>
+        <button
+          onClick={refresh}
+          disabled={refreshing}
+          className="btn-3d btn-3d-navy w-full bg-navy text-white font-display rounded-xl py-3 text-sm disabled:opacity-40"
+        >
+          {refreshing ? '갱신 중...' : '지금 시세 갱신'}
+        </button>
+      </Card>
+
+      <Card title="등록된 종목">
+        {stocks === null && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
+        {stocks && stocks.length === 0 && (
+          <p className="text-xs text-gray-400 text-center py-4">등록된 종목이 없어요. 아래에서 추가해주세요.</p>
+        )}
+        {stocks?.map((s) => (
+          <div key={s.id} className="flex items-center justify-between gap-2 py-2.5 border-b border-dashed border-gray-200 last:border-0">
+            <div>
+              <div className="font-bold text-sm">
+                {s.emoji} {s.name} {!s.is_active && <span className="text-gray-400 text-xs">(비활성)</span>}
+              </div>
+              <div className="text-xs text-gold-deep font-bold">{s.price} GC</div>
+            </div>
+            <div className="flex gap-1.5 shrink-0">
+              <button
+                onClick={() => toggleActive(s)}
+                className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1.5"
+              >
+                {s.is_active ? '비활성화' : '활성화'}
+              </button>
+              <button onClick={() => del(s)} className="btn-3d btn-3d-coral text-xs bg-coral text-white rounded-lg px-2.5 py-1.5">
+                삭제
+              </button>
+            </div>
+          </div>
+        ))}
+      </Card>
+
+      <Card title="종목 등록">
+        <div className="flex gap-2 mb-3">
+          <div className="w-16">
+            <label className="block text-xs text-gray-500 mb-1">이모지</label>
+            <input
+              value={emoji}
+              onChange={(e) => setEmoji(e.target.value)}
+              placeholder="📈"
+              className="w-full border-[1.5px] border-gray-200 rounded-lg px-2 py-2.5 text-sm text-center"
+            />
+          </div>
+          <div className="flex-[2]">
+            <label className="block text-xs text-gray-500 mb-1">종목 이름</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="예: 간식전자"
+              className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs text-gray-500 mb-1">시작가 (GC)</label>
+            <input
+              type="number"
+              min="1"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="예: 100"
+              className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+            />
+          </div>
+        </div>
+        <button onClick={add} className="btn-3d btn-3d-gold w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm">
+          종목 등록
         </button>
       </Card>
     </>

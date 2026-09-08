@@ -5,6 +5,7 @@ import TopBar from '@/components/TopBar';
 import LevelBar from '@/components/LevelBar';
 import BadgeGrid from '@/components/BadgeGrid';
 import Celebration from '@/components/Celebration';
+import Sparkline from '@/components/Sparkline';
 import { ToastProvider, useToast } from '@/components/Toast';
 
 function fmtDate(d) {
@@ -25,6 +26,11 @@ function DashboardInner() {
   const [ordering, setOrdering] = useState(null);
   const [completing, setCompleting] = useState(null);
   const [celebration, setCelebration] = useState(null);
+  const [stocks, setStocks] = useState(null);
+  const [tradeStockId, setTradeStockId] = useState(null);
+  const [tradeMode, setTradeMode] = useState(null);
+  const [tradeQty, setTradeQty] = useState('');
+  const [trading, setTrading] = useState(false);
 
   const loadMe = useCallback(async () => {
     const res = await fetch('/api/kid/me');
@@ -56,11 +62,18 @@ function DashboardInner() {
     return data.ok ? data.transactions : [];
   }, []);
 
+  const loadStocks = useCallback(async () => {
+    const res = await fetch('/api/kid/stocks');
+    const data = await res.json();
+    if (data.ok) setStocks(data.stocks);
+  }, []);
+
   useEffect(() => {
     (async () => {
       const meData = await loadMe();
       await loadMenu();
       await loadEvents();
+      await loadStocks();
       const tx = await loadHistory();
       if (meData?.ok) checkCelebrations(meData, tx);
     })();
@@ -139,6 +152,43 @@ function DashboardInner() {
     }
   };
 
+  const openTrade = (stock, mode) => {
+    setTradeStockId(stock.id);
+    setTradeMode(mode);
+    setTradeQty('');
+  };
+
+  const cancelTrade = () => {
+    setTradeStockId(null);
+    setTradeMode(null);
+    setTradeQty('');
+  };
+
+  const confirmTrade = async () => {
+    const qty = parseInt(tradeQty, 10);
+    if (!qty || qty <= 0) return showToast('주식 수를 입력해주세요.');
+    setTrading(true);
+    try {
+      const res = await fetch(`/api/kid/stocks/${tradeStockId}/${tradeMode}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shares: qty }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast(tradeMode === 'buy' ? '매수 완료!' : '매도 완료!');
+        cancelTrade();
+        await Promise.all([loadStocks(), loadMe()]);
+      } else {
+        showToast(data.error || '거래에 실패했어요.');
+      }
+    } catch (e) {
+      showToast('네트워크 오류가 발생했어요.');
+    } finally {
+      setTrading(false);
+    }
+  };
+
   const handleLogout = async () => {
     await fetch('/api/kid/logout', { method: 'POST' });
     router.push('/');
@@ -170,6 +220,86 @@ function DashboardInner() {
             <div className="font-display text-base text-navy">내 뱃지</div>
           </div>
           <BadgeGrid earnedKeys={badges.map((b) => b.key)} />
+        </div>
+
+        <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="icon-badge icon-badge-navy w-7 h-7 rounded-lg text-sm">📈</div>
+              <div className="font-display text-base text-navy">모의투자</div>
+            </div>
+            {stocks && stocks.length > 0 && (
+              <span className="text-xs font-bold text-navy">
+                총 평가액 {stocks.reduce((s, x) => s + x.myShares * x.price, 0)} GC
+              </span>
+            )}
+          </div>
+          {stocks === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
+          {stocks && stocks.length === 0 && (
+            <p className="text-xs text-gray-400 py-4 text-center">아직 등록된 종목이 없어요.</p>
+          )}
+          {stocks?.map((s) => {
+            const up = s.changePct >= 0;
+            const isTrading = tradeStockId === s.id;
+            return (
+              <div key={s.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm truncate">
+                      {s.emoji} {s.name}
+                    </div>
+                    <div className={`text-xs font-bold ${up ? 'text-mint-deep' : 'text-coral-deep'}`}>
+                      {s.price} GC ({up ? '+' : ''}
+                      {s.changePct}%)
+                    </div>
+                    {s.myShares > 0 && (
+                      <div className="text-[11px] text-gray-400 mt-0.5">
+                        보유 {s.myShares}주 · 평가 {s.myShares * s.price} GC
+                      </div>
+                    )}
+                  </div>
+                  <Sparkline values={s.history} color={up ? '#3FB68B' : '#E2574C'} />
+                </div>
+                <div className="flex gap-1.5 mt-2">
+                  <button
+                    onClick={() => openTrade(s, 'buy')}
+                    className="btn-3d btn-3d-mint flex-1 text-xs bg-mint text-white rounded-lg py-1.5"
+                  >
+                    매수
+                  </button>
+                  <button
+                    disabled={s.myShares === 0}
+                    onClick={() => openTrade(s, 'sell')}
+                    className="btn-3d btn-3d-coral flex-1 text-xs bg-coral text-white rounded-lg py-1.5 disabled:opacity-30"
+                  >
+                    매도
+                  </button>
+                </div>
+                {isTrading && (
+                  <div className="flex items-center gap-1.5 mt-2 bg-paper rounded-lg p-2">
+                    <input
+                      type="number"
+                      min="1"
+                      value={tradeQty}
+                      onChange={(e) => setTradeQty(e.target.value)}
+                      placeholder="주식 수"
+                      className="flex-1 min-w-0 border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+                    />
+                    <button
+                      disabled={trading}
+                      onClick={confirmTrade}
+                      className="btn-3d btn-3d-navy shrink-0 text-xs bg-navy text-white rounded-lg px-3 py-1.5 disabled:opacity-40"
+                    >
+                      확인
+                    </button>
+                    <button onClick={cancelTrade} className="shrink-0 text-xs text-gray-400 underline px-1">
+                      취소
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">

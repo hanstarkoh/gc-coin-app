@@ -1,9 +1,12 @@
 import Link from 'next/link';
 import TopBar from '@/components/TopBar';
+import Sparkline from '@/components/Sparkline';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { unstable_noStore as noStore } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
+
+const HISTORY_POINTS = 14;
 
 async function getTodayMenu() {
   noStore();
@@ -30,8 +33,37 @@ async function getActiveEvents() {
   return data;
 }
 
+async function getActiveStocks() {
+  noStore();
+  const sb = supabaseAdmin();
+  const { data: stocks, error } = await sb
+    .from('stocks')
+    .select('id, name, emoji, price')
+    .eq('is_active', true)
+    .order('created_at', { ascending: true });
+  if (error || stocks.length === 0) return [];
+
+  return Promise.all(
+    stocks.map(async (s) => {
+      const { data: history } = await sb
+        .from('stock_price_history')
+        .select('price, recorded_at')
+        .eq('stock_id', s.id)
+        .order('recorded_at', { ascending: false })
+        .limit(HISTORY_POINTS);
+      const prices = (history || []).map((h) => h.price).reverse();
+      const prevClose = prices.length > 1 ? prices[prices.length - 2] : s.price;
+      return {
+        ...s,
+        history: prices,
+        changePct: prevClose ? Math.round(((s.price - prevClose) / prevClose) * 1000) / 10 : 0,
+      };
+    })
+  );
+}
+
 export default async function Home() {
-  const [menu, events] = await Promise.all([getTodayMenu(), getActiveEvents()]);
+  const [menu, events, stocks] = await Promise.all([getTodayMenu(), getActiveEvents(), getActiveStocks()]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -105,6 +137,32 @@ export default async function Home() {
             <p className="text-xs text-gray-400 mt-2">로그인하고 완료 표시를 하면 관리자 승인 후 코인을 받아요.</p>
           )}
         </div>
+
+        {stocks.length > 0 && (
+          <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="icon-badge icon-badge-navy w-7 h-7 rounded-lg text-sm">📈</div>
+              <div className="font-display text-base text-navy">실시간 모의투자</div>
+            </div>
+            {stocks.map((s) => {
+              const up = s.changePct >= 0;
+              return (
+                <div key={s.id} className="flex items-center justify-between gap-2 py-2.5 border-b border-dashed border-gray-200 last:border-0">
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm truncate">
+                      {s.emoji} {s.name}
+                    </div>
+                    <div className={`text-xs font-bold ${up ? 'text-mint-deep' : 'text-coral-deep'}`}>
+                      {s.price} GC ({up ? '+' : ''}{s.changePct}%)
+                    </div>
+                  </div>
+                  <Sparkline values={s.history} color={up ? '#3FB68B' : '#E2574C'} />
+                </div>
+              );
+            })}
+            <p className="text-xs text-gray-400 mt-2">로그인하고 코인으로 종목을 사고팔 수 있어요.</p>
+          </div>
+        )}
       </div>
     </div>
   );

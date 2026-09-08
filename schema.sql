@@ -76,6 +76,49 @@ alter table transactions add constraint transactions_type_check
 -- 채워지고, 새 주문 건만 서버에서 false로 넣어서 "미완료"로 시작합니다.
 alter table transactions add column if not exists fulfilled boolean not null default true;
 
+-- 모의투자: 종목, 시세 이력, 청소년별 보유 주식, 매수/매도 내역.
+-- 매수/매도는 kids.balance만 증감시키고 total_earned/total_spent/purchase_count(레벨·뱃지용)는
+-- 건드리지 않습니다. 반복 매매로 레벨을 어뷰징하는 걸 막기 위함이며, 같은 이유로 transactions
+-- 테이블과도 분리된 별도 원장(stock_orders)에 기록합니다.
+create table if not exists stocks (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  emoji text default '📈',
+  price int not null,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists stock_price_history (
+  id uuid primary key default gen_random_uuid(),
+  stock_id uuid not null references stocks(id) on delete cascade,
+  price int not null,
+  recorded_at timestamptz not null default now()
+);
+create index if not exists idx_stock_price_history_stock on stock_price_history(stock_id, recorded_at);
+
+create table if not exists stock_holdings (
+  id uuid primary key default gen_random_uuid(),
+  kid_id uuid not null references kids(id) on delete cascade,
+  stock_id uuid not null references stocks(id) on delete cascade,
+  shares int not null default 0,
+  unique (kid_id, stock_id)
+);
+
+create table if not exists stock_orders (
+  id uuid primary key default gen_random_uuid(),
+  kid_id uuid not null references kids(id) on delete cascade,
+  kid_name text not null,
+  stock_id uuid not null references stocks(id) on delete cascade,
+  stock_name text not null,
+  type text not null check (type in ('buy','sell')),
+  shares int not null,
+  price int not null,
+  amount int not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_stock_orders_kid on stock_orders(kid_id);
+
 -- 이 앱은 Next.js 서버(API 라우트)에서 Supabase "service role" 키로만 접근합니다.
 -- 브라우저에서 테이블에 직접 접근하지 않으므로 Row Level Security 는 기본적으로 막아둡니다.
 alter table settings enable row level security;
@@ -84,4 +127,8 @@ alter table transactions enable row level security;
 alter table menu_items enable row level security;
 alter table events enable row level security;
 alter table event_submissions enable row level security;
+alter table stocks enable row level security;
+alter table stock_price_history enable row level security;
+alter table stock_holdings enable row level security;
+alter table stock_orders enable row level security;
 -- (정책을 추가하지 않으면 anon 키로는 아무것도 읽고 쓸 수 없고, service role 키는 항상 통과합니다.)
