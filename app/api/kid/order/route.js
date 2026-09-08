@@ -51,6 +51,7 @@ export async function POST(req) {
       amount: item.price,
       reason: item.name,
       tx_date: today,
+      fulfilled: false,
     });
     if (txErr) throw txErr;
 

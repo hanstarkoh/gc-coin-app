@@ -93,6 +93,7 @@ function DashboardInner() {
     .filter((t) => t.type === 'spend')
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const spentToday = todayOrders.reduce((s, t) => s + t.amount, 0);
+  const unfulfilledOrderCount = todayOrders.filter((t) => !t.fulfilled).length;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -116,8 +117,8 @@ function DashboardInner() {
             >
               {t.key === 'events' && pendingEventCount > 0
                 ? `${t.label} (${pendingEventCount})`
-                : t.key === 'orders' && todayOrders.length > 0
-                ? `${t.label} (${todayOrders.length})`
+                : t.key === 'orders' && unfulfilledOrderCount > 0
+                ? `${t.label} (${unfulfilledOrderCount})`
                 : t.label}
             </button>
           ))}
@@ -134,7 +135,7 @@ function DashboardInner() {
           />
         )}
         {tab === 'menu' && <MenuTab showToast={showToast} />}
-        {tab === 'orders' && <OrdersTab orders={todayOrders} onRefresh={loadTodayTx} />}
+        {tab === 'orders' && <OrdersTab orders={todayOrders} onRefresh={loadTodayTx} showToast={showToast} />}
         {tab === 'events' && (
           <EventsTab showToast={showToast} onPendingCountChange={setPendingEventCount} />
         )}
@@ -428,8 +429,9 @@ function MenuTab({ showToast }) {
 }
 
 /* ---------------- ORDERS TAB ---------------- */
-function OrdersTab({ orders, onRefresh }) {
+function OrdersTab({ orders, onRefresh, showToast }) {
   const [refreshing, setRefreshing] = useState(false);
+  const [updating, setUpdating] = useState(null);
 
   const refresh = async () => {
     setRefreshing(true);
@@ -440,31 +442,85 @@ function OrdersTab({ orders, onRefresh }) {
     }
   };
 
+  const setFulfilled = async (order, fulfilled) => {
+    setUpdating(order.id);
+    try {
+      const res = await fetch(`/api/admin/transactions/${order.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fulfilled }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        await onRefresh();
+      } else {
+        showToast(data.error || '처리에 실패했어요.');
+      }
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const pending = orders.filter((o) => !o.fulfilled);
+  const done = orders.filter((o) => o.fulfilled);
+
   return (
-    <Card title={`오늘 주문 내역 (${orders.length}건)`}>
-      <p className="text-xs text-gray-500 -mt-2 mb-2.5">
-        청소년이 메뉴를 주문하면 여기에 실시간으로 쌓여요. 15초마다 자동으로 새로고침돼요.
-      </p>
-      <button
-        onClick={refresh}
-        disabled={refreshing}
-        className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-3 py-1.5 mb-3 disabled:opacity-40"
-      >
-        {refreshing ? '새로고침 중...' : '지금 새로고침'}
-      </button>
-      {orders.length === 0 && <p className="text-xs text-gray-400 text-center py-6">오늘 주문한 청소년이 아직 없어요.</p>}
-      {orders.map((o) => (
-        <div key={o.id} className="flex items-center justify-between py-2.5 border-b border-dashed border-gray-200 last:border-0">
-          <div>
-            <div className="font-bold text-sm">
-              {o.kid_name} · {o.reason || '구매'}
+    <>
+      <Card title={`지급 대기 중 (${pending.length}건)`}>
+        <p className="text-xs text-gray-500 -mt-2 mb-2.5">
+          청소년이 메뉴를 주문하면 여기 쌓여요. 간식을 전달했으면 완료 처리해주세요. 15초마다 자동 새로고침돼요.
+        </p>
+        <button
+          onClick={refresh}
+          disabled={refreshing}
+          className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-3 py-1.5 mb-3 disabled:opacity-40"
+        >
+          {refreshing ? '새로고침 중...' : '지금 새로고침'}
+        </button>
+        {pending.length === 0 && <p className="text-xs text-gray-400 text-center py-6">지급 대기 중인 주문이 없어요.</p>}
+        {pending.map((o) => (
+          <div key={o.id} className="flex items-center justify-between gap-2 py-2.5 border-b border-dashed border-gray-200 last:border-0">
+            <div>
+              <div className="font-bold text-sm">
+                {o.kid_name} · {o.reason || '구매'}
+              </div>
+              <div className="text-[11px] text-gray-400">
+                {fmtTime(o.created_at)} · <span className="text-coral-deep font-bold">-{o.amount} GC</span>
+              </div>
             </div>
-            <div className="text-[11px] text-gray-400">{fmtTime(o.created_at)}</div>
+            <button
+              disabled={updating === o.id}
+              onClick={() => setFulfilled(o, true)}
+              className="btn-3d btn-3d-mint shrink-0 text-xs bg-mint text-white rounded-lg px-3 py-1.5 disabled:opacity-40"
+            >
+              지급 완료
+            </button>
           </div>
-          <div className="text-sm font-bold text-coral-deep">-{o.amount} GC</div>
-        </div>
-      ))}
-    </Card>
+        ))}
+      </Card>
+
+      {done.length > 0 && (
+        <Card title={`지급 완료 (${done.length}건)`}>
+          {done.map((o) => (
+            <div key={o.id} className="flex items-center justify-between gap-2 py-2 border-b border-gray-100 last:border-0">
+              <div>
+                <div className="text-sm text-gray-400 line-through">
+                  {o.kid_name} · {o.reason || '구매'}
+                </div>
+                <div className="text-[11px] text-gray-300">{fmtTime(o.created_at)}</div>
+              </div>
+              <button
+                disabled={updating === o.id}
+                onClick={() => setFulfilled(o, false)}
+                className="shrink-0 text-xs text-gray-400 underline disabled:opacity-40"
+              >
+                되돌리기
+              </button>
+            </div>
+          ))}
+        </Card>
+      )}
+    </>
   );
 }
 

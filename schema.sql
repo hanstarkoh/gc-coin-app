@@ -72,6 +72,10 @@ alter table transactions drop constraint if exists transactions_type_check;
 alter table transactions add constraint transactions_type_check
   check (type in ('earn','bonus','spend','event'));
 
+-- 주문(type='spend') 지급 완료 체크용. 기존 행/코인 지급 타입은 기본값 true로
+-- 채워지고, 새 주문 건만 서버에서 false로 넣어서 "미완료"로 시작합니다.
+alter table transactions add column if not exists fulfilled boolean not null default true;
+
 -- 이 앱은 Next.js 서버(API 라우트)에서 Supabase "service role" 키로만 접근합니다.
 -- 브라우저에서 테이블에 직접 접근하지 않으므로 Row Level Security 는 기본적으로 막아둡니다.
 alter table settings enable row level security;
