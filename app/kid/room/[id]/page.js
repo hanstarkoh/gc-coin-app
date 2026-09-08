@@ -58,26 +58,21 @@ export default function FriendRoomPage() {
           </div>
         </div>
 
-        <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
-          <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${room.cols}, 1fr)` }}>
+        <div className="rounded-3xl p-4 room-scene">
+          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${room.cols}, 1fr)` }}>
             {Array.from({ length: room.rows }).map((_, y) =>
               Array.from({ length: room.cols }).map((_, x) => {
                 const item = itemAt(x, y);
                 return (
-                  <div
-                    key={`${x}-${y}`}
-                    className={`aspect-square rounded-xl border-2 flex items-center justify-center text-2xl ${
-                      item ? 'border-gold bg-gold/10' : 'border-dashed border-gray-200 bg-paper'
-                    }`}
-                  >
-                    {item?.emoji || ''}
+                  <div key={`${x}-${y}`} className="aspect-square flex items-center justify-center">
+                    {item && <span className="room-slot text-4xl">{item.emoji}</span>}
                   </div>
                 );
               })
             )}
           </div>
           {room.items.length === 0 && (
-            <p className="text-xs text-gray-400 text-center mt-3">아직 꾸민 가구가 없어요.</p>
+            <p className="text-xs text-white font-bold text-center mt-2 drop-shadow">아직 꾸민 가구가 없어요.</p>
           )}
         </div>
       </div>

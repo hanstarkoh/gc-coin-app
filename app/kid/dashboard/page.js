@@ -262,12 +262,20 @@ function DashboardInner() {
 
         <LevelBar level={level} />
 
-        <Link
-          href="/kid/room"
-          className="btn-3d btn-3d-navy block bg-navy text-white rounded-2xl py-3 text-center font-display text-sm"
-        >
-          🏠 내 마이룸 꾸미기
-        </Link>
+        <div className="grid grid-cols-2 gap-2">
+          <Link
+            href="/kid/room"
+            className="btn-3d btn-3d-navy block bg-navy text-white rounded-2xl py-3 text-center font-display text-sm"
+          >
+            🏠 내 마이룸
+          </Link>
+          <Link
+            href="/kid/room/friends"
+            className="btn-3d btn-3d-grape block bg-grape text-white rounded-2xl py-3 text-center font-display text-sm"
+          >
+            👥 친구 마이룸
+          </Link>
+        </div>
 
         <Collapsible icon="🏅" badgeColor="gold" title="내 뱃지" defaultOpen={false}>
           <BadgeGrid earnedKeys={badges.map((b) => b.key)} />

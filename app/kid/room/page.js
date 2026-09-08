@@ -98,8 +98,8 @@ function RoomInner() {
           👥 친구 마이룸 구경하기
         </Link>
 
-        <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
-          <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${room.cols}, 1fr)` }}>
+        <div className="rounded-3xl p-4 room-scene">
+          <div className="grid gap-2 relative" style={{ gridTemplateColumns: `repeat(${room.cols}, 1fr)` }}>
             {Array.from({ length: room.rows }).map((_, y) =>
               Array.from({ length: room.cols }).map((_, x) => {
                 const item = cellItem(x, y);
@@ -108,18 +108,18 @@ function RoomInner() {
                     key={`${x}-${y}`}
                     disabled={busy}
                     onClick={() => handleCellClick(x, y)}
-                    className={`aspect-square rounded-xl border-2 flex items-center justify-center text-2xl disabled:opacity-60 ${
-                      item ? 'border-gold bg-gold/10' : 'border-dashed border-gray-200 bg-paper'
+                    className={`aspect-square rounded-xl flex items-center justify-center disabled:opacity-60 ${
+                      !item && selectedItem ? 'room-slot-empty' : ''
                     }`}
                   >
-                    {item?.emoji || ''}
+                    {item && <span className="room-slot text-4xl">{item.emoji}</span>}
                   </button>
                 );
               })
             )}
           </div>
           {selectedItem && (
-            <p className="text-xs text-gold-deep font-bold text-center mt-2">
+            <p className="text-xs text-white font-bold text-center mt-2 drop-shadow">
               {room.furniture.find((f) => f.key === selectedItem)?.name} 선택됨 - 빈 칸을 눌러 배치하세요
             </p>
           )}
@@ -145,7 +145,7 @@ function RoomInner() {
                     : 'border-gray-100'
                 }`}
               >
-                <div className="text-xl mb-1">{f.emoji}</div>
+                <div className="text-2xl mb-1">{f.emoji}</div>
                 <div className="text-[10px] font-medium text-navy leading-tight">{f.name}</div>
                 <div className="text-[9.5px] text-gray-400 mt-0.5">{f.placed ? '배치됨' : '미배치'}</div>
               </button>

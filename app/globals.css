@@ -99,3 +99,47 @@ html, body {
 .balance-glow {
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
+
+/* ---- 마이룸: 벽지 + 나무 바닥이 있는 방처럼 보이는 배경 ---- */
+.room-scene {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #FCEFDD 0%, #FCEFDD 40%, #C9A06C 40%, #A87C4C 100%);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.room-scene::before {
+  /* 벽지 은은한 점무늬 */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.6) 1.5px, transparent 1.5px);
+  background-size: 18px 18px;
+  -webkit-mask-image: linear-gradient(180deg, black 0%, black 40%, transparent 40%);
+  mask-image: linear-gradient(180deg, black 0%, black 40%, transparent 40%);
+  pointer-events: none;
+}
+.room-scene::after {
+  /* 바닥 나무 결 무늬 */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.08) 0,
+    rgba(0, 0, 0, 0.08) 2px,
+    transparent 2px,
+    transparent 26px
+  );
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, transparent 40%, black 40%);
+  mask-image: linear-gradient(180deg, transparent 0%, transparent 40%, black 40%);
+  pointer-events: none;
+}
+.room-slot {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.3));
+}
+.room-slot-empty {
+  border: 2px dashed rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.18);
+}
