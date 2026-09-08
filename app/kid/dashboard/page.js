@@ -341,36 +341,61 @@ function DashboardInner() {
                     매도
                   </button>
                 </div>
-                {isTrading && (
-                  <div className="mt-2 bg-paper rounded-lg p-2">
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        min="1"
-                        value={tradeQty}
-                        onChange={(e) => setTradeQty(e.target.value)}
-                        placeholder="주식 수"
-                        className="flex-1 min-w-0 border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-sm"
-                      />
-                      <button
-                        disabled={trading}
-                        onClick={confirmTrade}
-                        className="btn-3d btn-3d-navy shrink-0 text-xs bg-navy text-white rounded-lg px-3 py-1.5 disabled:opacity-40"
-                      >
-                        확인
-                      </button>
-                      <button onClick={cancelTrade} className="shrink-0 text-xs text-gray-400 underline px-1">
-                        취소
-                      </button>
+                {isTrading && (() => {
+                  const qty = Math.max(0, parseInt(tradeQty, 10) || 0);
+                  const subtotal = s.price * qty;
+                  const fee = Math.round(subtotal * TRADE_FEE_RATE);
+                  const total = tradeMode === 'buy' ? subtotal + fee : subtotal - fee;
+                  const overBalance = tradeMode === 'buy' && qty > 0 && total > kid.balance;
+                  return (
+                    <div className="mt-2 bg-paper rounded-lg p-2">
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          min="1"
+                          value={tradeQty}
+                          onChange={(e) => setTradeQty(e.target.value)}
+                          placeholder="주식 수"
+                          className="flex-1 min-w-0 border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+                        />
+                        <button
+                          disabled={trading || qty === 0 || overBalance}
+                          onClick={confirmTrade}
+                          className="btn-3d btn-3d-navy shrink-0 text-xs bg-navy text-white rounded-lg px-3 py-1.5 disabled:opacity-40"
+                        >
+                          확인
+                        </button>
+                        <button onClick={cancelTrade} className="shrink-0 text-xs text-gray-400 underline px-1">
+                          취소
+                        </button>
+                      </div>
+                      {qty === 0 ? (
+                        <p className="text-[10.5px] text-gray-400 mt-1.5">수수료 {TRADE_FEE_RATE * 100}%가 붙어요</p>
+                      ) : (
+                        <div className="text-[11px] text-gray-500 mt-1.5 space-y-0.5">
+                          <div className="flex justify-between">
+                            <span>
+                              {s.price} GC × {qty}주
+                            </span>
+                            <span>{subtotal} GC</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>수수료 ({TRADE_FEE_RATE * 100}%)</span>
+                            <span>
+                              {tradeMode === 'buy' ? '+' : '-'}
+                              {fee} GC
+                            </span>
+                          </div>
+                          <div className="flex justify-between font-bold text-navy pt-1 mt-0.5 border-t border-gray-200">
+                            <span>{tradeMode === 'buy' ? '총 결제 금액' : '총 입금 금액'}</span>
+                            <span>{total} GC</span>
+                          </div>
+                          {overBalance && <p className="text-coral-deep font-bold mt-0.5">코인이 부족해요</p>}
+                        </div>
+                      )}
                     </div>
-                    <p className="text-[10.5px] text-gray-400 mt-1.5">
-                      수수료 {TRADE_FEE_RATE * 100}%가 붙어요
-                      {tradeQty && Number(tradeQty) > 0
-                        ? ` (약 ${Math.round(s.price * Number(tradeQty) * TRADE_FEE_RATE)} GC)`
-                        : ''}
-                    </p>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
                 );
               })}
