@@ -155,7 +155,8 @@ function DashboardInner() {
     <div className="min-h-screen flex flex-col">
       <TopBar title="금정코인" sub={`${kid.name}님`} onExit={handleLogout} />
       <div className="flex-1 max-w-[480px] w-full mx-auto px-4 py-5 space-y-4">
-        <div className="bg-navy text-white rounded-2xl p-6 text-center">
+        <div className="hero-coin-card text-white rounded-3xl p-6 text-center">
+          <div className="icon-badge icon-badge-gold w-14 h-14 rounded-full text-2xl mx-auto mb-2">🪙</div>
           <div className="text-xs text-white/60">현재 보유 코인</div>
           <div className="font-display text-5xl text-gold my-1">{kid.balance} GC</div>
           <div className="text-sm">{kid.name}님</div>
@@ -163,13 +164,19 @@ function DashboardInner() {
 
         <LevelBar level={level} />
 
-        <div className="bg-white border-2 border-gray-100 rounded-2xl p-4">
-          <div className="font-display text-base text-navy mb-3">내 뱃지</div>
+        <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="icon-badge icon-badge-gold w-7 h-7 rounded-lg text-sm">🏅</div>
+            <div className="font-display text-base text-navy">내 뱃지</div>
+          </div>
           <BadgeGrid earnedKeys={badges.map((b) => b.key)} />
         </div>
 
-        <div className="bg-white border-2 border-gray-100 rounded-2xl p-4">
-          <div className="font-display text-base text-navy mb-1">진행 중인 이벤트</div>
+        <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="icon-badge icon-badge-grape w-7 h-7 rounded-lg text-sm">🎯</div>
+            <div className="font-display text-base text-navy">진행 중인 이벤트</div>
+          </div>
           {events === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
           {events && events.length === 0 && (
             <p className="text-xs text-gray-400 py-4 text-center">지금 진행 중인 이벤트가 없어요.</p>
@@ -205,8 +212,11 @@ function DashboardInner() {
           })}
         </div>
 
-        <div className="bg-white border-2 border-gray-100 rounded-2xl p-4">
-          <div className="font-display text-base text-navy mb-1">오늘의 메뉴 ({fmtDate(today)})</div>
+        <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="icon-badge icon-badge-mint w-7 h-7 rounded-lg text-sm">🍪</div>
+            <div className="font-display text-base text-navy">오늘의 메뉴 ({fmtDate(today)})</div>
+          </div>
           {menu === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
           {menu && menu.length === 0 && (
             <p className="text-xs text-gray-400 py-4 text-center">오늘은 아직 메뉴가 올라오지 않았어요.</p>
@@ -233,8 +243,11 @@ function DashboardInner() {
           })}
         </div>
 
-        <div className="bg-white border-2 border-gray-100 rounded-2xl p-4">
-          <div className="font-display text-base text-navy mb-1">내 사용 내역</div>
+        <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="icon-badge icon-badge-navy w-7 h-7 rounded-lg text-sm">📜</div>
+            <div className="font-display text-base text-navy">내 사용 내역</div>
+          </div>
           {history === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
           {history && history.length === 0 && <p className="text-xs text-gray-400 py-4 text-center">아직 내역이 없어요.</p>}
           {history?.map((t) => (

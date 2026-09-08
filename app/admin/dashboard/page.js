@@ -87,10 +87,10 @@ function DashboardInner() {
       <TopBar title="관리자 화면" sub={fmtDate(todayStr())} onExit={handleLogout} />
       <div className="flex-1 max-w-[920px] w-full mx-auto px-4 py-5">
         <div className="grid grid-cols-4 gap-2.5 mb-5">
-          <StatBox num={kids.length} label="전체 청소년" />
-          <StatBox num={attendedTodaySet.size} label="오늘 출석" />
-          <StatBox num={`+${earnedToday}`} label="오늘 지급 GC" />
-          <StatBox num={`-${spentToday}`} label="오늘 사용 GC" />
+          <StatBox icon="🧒" badge="navy" num={kids.length} label="전체 청소년" />
+          <StatBox icon="✅" badge="mint" num={attendedTodaySet.size} label="오늘 출석" />
+          <StatBox icon="🪙" badge="gold" num={`+${earnedToday}`} label="오늘 지급 GC" />
+          <StatBox icon="🛍️" badge="grape" num={`-${spentToday}`} label="오늘 사용 GC" />
         </div>
 
         <div className="flex gap-1.5 overflow-x-auto pb-1 mb-4">
@@ -131,10 +131,11 @@ function DashboardInner() {
   );
 }
 
-function StatBox({ num, label }) {
+function StatBox({ icon, badge, num, label }) {
   return (
-    <div className="bg-white border-[1.5px] border-gray-200 rounded-xl p-3.5 text-center">
-      <div className="font-display text-2xl text-navy">{num}</div>
+    <div className="bg-white border-[1.5px] border-gray-200 rounded-2xl p-3 text-center">
+      <div className={`icon-badge icon-badge-${badge} w-9 h-9 rounded-full text-base mx-auto mb-1.5`}>{icon}</div>
+      <div className="font-display text-xl text-navy">{num}</div>
       <div className="text-[11px] text-gray-500 mt-0.5">{label}</div>
     </div>
   );
@@ -152,14 +153,10 @@ function Card({ title, children }) {
 /* ---------------- ATTENDANCE / BONUS TAB ---------------- */
 function AttendanceTab({ kids, attendedTodaySet, reload, showToast }) {
   const [selected, setSelected] = useState(new Set());
-  const [bonusKid, setBonusKid] = useState(kids[0]?.id || '');
   const [bonusAmount, setBonusAmount] = useState('');
   const [bonusReason, setBonusReason] = useState('');
   const [giving, setGiving] = useState(false);
-
-  useEffect(() => {
-    if (!bonusKid && kids[0]) setBonusKid(kids[0].id);
-  }, [kids, bonusKid]);
+  const [givingBonus, setGivingBonus] = useState(false);
 
   if (kids.length === 0) {
     return <Card>등록된 청소년이 없어요. 먼저 &apos;청소년 관리&apos; 탭에서 추가해주세요.</Card>;
@@ -172,7 +169,7 @@ function AttendanceTab({ kids, attendedTodaySet, reload, showToast }) {
       return next;
     });
   };
-  const selectAll = () => setSelected(new Set(kids.filter((k) => !attendedTodaySet.has(k.id)).map((k) => k.id)));
+  const selectAll = () => setSelected(new Set(kids.map((k) => k.id)));
   const selectNone = () => setSelected(new Set());
 
   const giveAttendance = async () => {
@@ -187,7 +184,6 @@ function AttendanceTab({ kids, attendedTodaySet, reload, showToast }) {
       const data = await res.json();
       if (data.ok) {
         showToast(data.message || '출석 코인을 지급했어요.');
-        setSelected(new Set());
         await reload();
       } else {
         showToast(data.error || '지급에 실패했어요.');
@@ -199,28 +195,34 @@ function AttendanceTab({ kids, attendedTodaySet, reload, showToast }) {
 
   const giveBonus = async () => {
     const amt = parseInt(bonusAmount, 10);
-    if (!bonusKid || !amt || amt <= 0) return showToast('청소년과 지급 코인을 확인해주세요.');
-    const res = await fetch('/api/admin/bonus', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kidId: bonusKid, amount: amt, reason: bonusReason }),
-    });
-    const data = await res.json();
-    if (data.ok) {
-      showToast('보너스 코인을 지급했어요.');
-      setBonusAmount('');
-      setBonusReason('');
-      await reload();
-    } else {
-      showToast(data.error || '지급에 실패했어요.');
+    if (selected.size === 0) return showToast('보너스를 받을 청소년을 선택해주세요.');
+    if (!amt || amt <= 0) return showToast('지급 코인을 확인해주세요.');
+    setGivingBonus(true);
+    try {
+      const res = await fetch('/api/admin/bonus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kidIds: Array.from(selected), amount: amt, reason: bonusReason }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast(`${data.given}명에게 보너스 코인을 지급했어요.`);
+        setBonusAmount('');
+        setBonusReason('');
+        await reload();
+      } else {
+        showToast(data.error || '지급에 실패했어요.');
+      }
+    } finally {
+      setGivingBonus(false);
     }
   };
 
   return (
     <>
-      <Card title="오늘 출석 코인 지급 (+5 GC)">
+      <Card title={`청소년 선택 (${selected.size}명 선택됨)`}>
         <p className="text-xs text-gray-500 -mt-2 mb-2.5">
-          체크한 청소년에게 출석 코인을 한 번에 지급합니다. 이미 지급받은 청소년은 자동으로 제외돼요.
+          체크한 청소년에게 아래 출석 지급 · 보너스 지급을 한 번에 적용할 수 있어요.
         </p>
         <div className="flex gap-2 mb-2.5">
           <button onClick={selectAll} className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-3 py-1.5">
@@ -248,12 +250,11 @@ function AttendanceTab({ kids, attendedTodaySet, reload, showToast }) {
                       type="checkbox"
                       className="w-[18px] h-[18px]"
                       checked={selected.has(k.id)}
-                      disabled={done}
                       onChange={() => toggle(k.id)}
                     />
                   </td>
                   <td className="py-1.5">
-                    {k.name} {done && <span className="text-gray-400 text-xs">(오늘 지급됨)</span>}
+                    {k.name} {done && <span className="text-gray-400 text-xs">(오늘 출석지급됨)</span>}
                   </td>
                   <td className="py-1.5 text-right">{k.balance} GC</td>
                 </tr>
@@ -261,31 +262,25 @@ function AttendanceTab({ kids, attendedTodaySet, reload, showToast }) {
             })}
           </tbody>
         </table>
+      </Card>
+
+      <Card title="오늘 출석 코인 지급 (+5 GC)">
+        <p className="text-xs text-gray-500 -mt-2 mb-2.5">
+          선택된 청소년에게 출석 코인을 지급합니다. 이미 지급받은 청소년은 자동으로 제외돼요.
+        </p>
         <button
           onClick={giveAttendance}
           disabled={giving}
-          className="btn-3d btn-3d-gold mt-3 w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm disabled:opacity-40"
+          className="btn-3d btn-3d-gold w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm disabled:opacity-40"
         >
-          선택 청소년 출석 지급
+          선택한 {selected.size}명 출석 지급
         </button>
       </Card>
 
       <Card title="보너스 코인 지급">
-        <p className="text-xs text-gray-500 -mt-2 mb-2.5">잘한 일이 있을 때 개별 청소년에게 추가 코인을 줄 수 있어요.</p>
-        <div className="mb-3">
-          <label className="block text-xs text-gray-500 mb-1">청소년 선택</label>
-          <select
-            value={bonusKid}
-            onChange={(e) => setBonusKid(e.target.value)}
-            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
-          >
-            {kids.map((k) => (
-              <option key={k.id} value={k.id}>
-                {k.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <p className="text-xs text-gray-500 -mt-2 mb-2.5">
+          잘한 일이 있을 때 선택된 청소년 전체에게 한 번에 추가 코인을 줄 수 있어요. 한 명만 선택해도 돼요.
+        </p>
         <div className="flex gap-2 mb-3">
           <div className="flex-1">
             <label className="block text-xs text-gray-500 mb-1">지급 코인</label>
@@ -309,8 +304,12 @@ function AttendanceTab({ kids, attendedTodaySet, reload, showToast }) {
             />
           </div>
         </div>
-        <button onClick={giveBonus} className="btn-3d btn-3d-mint w-full bg-mint text-white font-display rounded-xl py-3 text-sm">
-          보너스 지급
+        <button
+          onClick={giveBonus}
+          disabled={givingBonus}
+          className="btn-3d btn-3d-mint w-full bg-mint text-white font-display rounded-xl py-3 text-sm disabled:opacity-40"
+        >
+          선택한 {selected.size}명에게 보너스 지급
         </button>
       </Card>
     </>

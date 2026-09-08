@@ -5,6 +5,20 @@ import TopBar from '@/components/TopBar';
 import PinPad from '@/components/PinPad';
 import { ToastProvider, useToast } from '@/components/Toast';
 
+const AVATAR_EMOJIS = ['🦁', '🐯', '🐰', '🐻', '🐼', '🦊', '🐸', '🐵', '🐨', '🐷', '🐹', '🐔'];
+const AVATAR_COLORS = ['gold', 'mint', 'navy', 'grape'];
+
+function hashCode(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function avatarFor(kidId) {
+  const h = hashCode(kidId);
+  return { emoji: AVATAR_EMOJIS[h % AVATAR_EMOJIS.length], color: AVATAR_COLORS[h % AVATAR_COLORS.length] };
+}
+
 function KidLoginInner() {
   const router = useRouter();
   const showToast = useToast();
@@ -63,16 +77,22 @@ function KidLoginInner() {
               관리자에게 등록을 요청해주세요.
             </p>
           )}
-          <div className="grid grid-cols-3 gap-2.5">
-            {kids?.map((k) => (
-              <button
-                key={k.id}
-                onClick={() => setSelected(k)}
-                className="btn-3d btn-3d-white bg-white border-[1.5px] border-gray-200 rounded-xl py-3.5 px-1 text-sm font-medium text-navy hover:border-gold transition"
-              >
-                {k.name}
-              </button>
-            ))}
+          <div className="grid grid-cols-3 gap-3">
+            {kids?.map((k) => {
+              const avatar = avatarFor(k.id);
+              return (
+                <button
+                  key={k.id}
+                  onClick={() => setSelected(k)}
+                  className="btn-3d btn-3d-white bg-white border-[1.5px] border-gray-200 rounded-2xl py-3.5 px-1 flex flex-col items-center gap-1.5 hover:border-gold transition"
+                >
+                  <div className={`icon-badge icon-badge-${avatar.color} w-12 h-12 rounded-full text-2xl`}>
+                    {avatar.emoji}
+                  </div>
+                  <span className="text-sm font-medium text-navy">{k.name}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

@@ -46,7 +46,8 @@ export default async function Home() {
         }
       />
       <div className="flex-1 max-w-[480px] w-full mx-auto px-4 py-8 space-y-4">
-        <div className="text-center px-4 mb-2">
+        <div className="text-center px-4 mb-1">
+          <div className="icon-badge icon-badge-gold w-16 h-16 rounded-full text-3xl mx-auto mb-3 animate-popIn">🪙</div>
           <div className="font-display text-3xl text-navy">오늘도 코인을 모아볼까요?</div>
           <p className="text-sm text-gray-500 mt-2">출석하면 코인을 받고, 코인으로 간식을 사 먹어요.</p>
         </div>
@@ -58,8 +59,11 @@ export default async function Home() {
           🙋 청소년으로 시작하기
         </Link>
 
-        <div className="bg-white border-2 border-gray-100 rounded-2xl p-4">
-          <div className="font-display text-base text-navy mb-1">오늘의 메뉴</div>
+        <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="icon-badge icon-badge-mint w-7 h-7 rounded-lg text-sm">🍪</div>
+            <div className="font-display text-base text-navy">오늘의 메뉴</div>
+          </div>
           {menu.length === 0 && (
             <p className="text-xs text-gray-400 py-4 text-center">오늘은 아직 메뉴가 올라오지 않았어요.</p>
           )}
@@ -77,8 +81,11 @@ export default async function Home() {
           )}
         </div>
 
-        <div className="bg-white border-2 border-gray-100 rounded-2xl p-4">
-          <div className="font-display text-base text-navy mb-1">진행 중인 이벤트</div>
+        <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="icon-badge icon-badge-grape w-7 h-7 rounded-lg text-sm">🎯</div>
+            <div className="font-display text-base text-navy">진행 중인 이벤트</div>
+          </div>
           {events.length === 0 && (
             <p className="text-xs text-gray-400 py-4 text-center">지금 진행 중인 이벤트가 없어요.</p>
           )}
