@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getKidId } from '@/lib/session';
 import { findShopItem } from '@/lib/shop';
 import { ROOM_COLS, ROOM_ROWS } from '@/lib/room';
+import { getEarnedBadges } from '@/lib/badges';
 
 export async function GET() {
   const kidId = getKidId();
@@ -13,7 +14,9 @@ export async function GET() {
 
     const { data: kid, error: kidErr } = await sb
       .from('kids')
-      .select('room_balance_public')
+      .select(
+        'room_balance_public, attendance_count, total_earned, purchase_count, invest_trade_count, invest_realized_profit'
+      )
       .eq('id', kidId)
       .single();
     if (kidErr || !kid) throw kidErr || new Error('학생 정보를 찾을 수 없어요.');
@@ -31,6 +34,12 @@ export async function GET() {
       .eq('kid_id', kidId);
     if (placeErr) throw placeErr;
 
+    const { data: equippedRow } = await sb
+      .from('kid_equipped')
+      .select('theme_key')
+      .eq('kid_id', kidId)
+      .maybeSingle();
+
     const placedMap = new Map(placements.map((p) => [p.item_key, { x: p.grid_x, y: p.grid_y }]));
     const furniture = owned
       .map((o) => {
@@ -46,6 +55,8 @@ export async function GET() {
       rows: ROOM_ROWS,
       furniture,
       balancePublic: kid.room_balance_public,
+      theme: findShopItem('theme', equippedRow?.theme_key),
+      badges: getEarnedBadges(kid),
     });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 });

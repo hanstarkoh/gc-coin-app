@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import TopBar from '@/components/TopBar';
+import BadgeGrid from '@/components/BadgeGrid';
 
 export default function FriendRoomPage() {
   const router = useRouter();
@@ -37,6 +38,9 @@ export default function FriendRoomPage() {
   if (!room) return <p className="text-center text-gray-400 text-sm mt-16">불러오는 중...</p>;
 
   const itemAt = (x, y) => room.items.find((it) => it.x === x && it.y === y);
+  const roomStyle = room.theme
+    ? { background: `linear-gradient(180deg, ${room.theme.wall} 0%, ${room.theme.wall} 40%, ${room.theme.floor} 40%, ${room.theme.floor} 100%)` }
+    : undefined;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -58,7 +62,7 @@ export default function FriendRoomPage() {
           </div>
         </div>
 
-        <div className="rounded-3xl p-4 room-scene">
+        <div className="rounded-3xl p-4 room-scene" style={roomStyle}>
           <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${room.cols}, 1fr)` }}>
             {Array.from({ length: room.rows }).map((_, y) =>
               Array.from({ length: room.cols }).map((_, x) => {
@@ -74,6 +78,11 @@ export default function FriendRoomPage() {
           {room.items.length === 0 && (
             <p className="text-xs text-white font-bold text-center mt-2 drop-shadow">아직 꾸민 가구가 없어요.</p>
           )}
+        </div>
+
+        <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
+          <div className="font-display text-base text-navy mb-3">{room.name}님의 도전과제</div>
+          <BadgeGrid earnedKeys={room.badges.map((b) => b.key)} />
         </div>
       </div>
     </div>

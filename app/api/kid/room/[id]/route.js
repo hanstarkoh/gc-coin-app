@@ -5,6 +5,7 @@ import { getActiveTitle } from '@/lib/titles';
 import { calcLevel } from '@/lib/level';
 import { findShopItem } from '@/lib/shop';
 import { ROOM_COLS, ROOM_ROWS } from '@/lib/room';
+import { getEarnedBadges } from '@/lib/badges';
 
 export async function GET(_req, { params }) {
   const viewerId = getKidId();
@@ -14,14 +15,16 @@ export async function GET(_req, { params }) {
     const sb = supabaseAdmin();
     const { data: kid, error: kidErr } = await sb
       .from('kids')
-      .select('id, name, balance, total_earned, invest_realized_profit, room_balance_public')
+      .select(
+        'id, name, balance, total_earned, invest_realized_profit, room_balance_public, attendance_count, purchase_count, invest_trade_count'
+      )
       .eq('id', params.id)
       .single();
     if (kidErr || !kid) return NextResponse.json({ ok: false, error: '학생을 찾을 수 없어요.' }, { status: 404 });
 
     const { data: equippedRow } = await sb
       .from('kid_equipped')
-      .select('avatar_key, accessory_key, sticker_key')
+      .select('avatar_key, accessory_key, sticker_key, theme_key')
       .eq('kid_id', kid.id)
       .maybeSingle();
 
@@ -49,6 +52,8 @@ export async function GET(_req, { params }) {
       stickerEmoji: findShopItem('sticker', equippedRow?.sticker_key)?.emoji || null,
       balance: kid.room_balance_public ? kid.balance : null,
       balancePublic: kid.room_balance_public,
+      theme: findShopItem('theme', equippedRow?.theme_key),
+      badges: getEarnedBadges(kid),
       cols: ROOM_COLS,
       rows: ROOM_ROWS,
       items,

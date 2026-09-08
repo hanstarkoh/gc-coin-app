@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import TopBar from '@/components/TopBar';
+import BadgeGrid from '@/components/BadgeGrid';
 import { ToastProvider, useToast } from '@/components/Toast';
 
 function RoomInner() {
@@ -87,6 +88,10 @@ function RoomInner() {
 
   if (!room) return <p className="text-center text-gray-400 text-sm mt-16">불러오는 중...</p>;
 
+  const roomStyle = room.theme
+    ? { background: `linear-gradient(180deg, ${room.theme.wall} 0%, ${room.theme.wall} 40%, ${room.theme.floor} 40%, ${room.theme.floor} 100%)` }
+    : undefined;
+
   return (
     <div className="min-h-screen flex flex-col">
       <TopBar title="내 마이룸" sub="가구를 사서 방을 꾸며보세요" onExit={() => router.push('/kid/dashboard')} />
@@ -98,7 +103,7 @@ function RoomInner() {
           👥 친구 마이룸 구경하기
         </Link>
 
-        <div className="rounded-3xl p-4 room-scene">
+        <div className="rounded-3xl p-4 room-scene" style={roomStyle}>
           <div className="grid gap-2 relative" style={{ gridTemplateColumns: `repeat(${room.cols}, 1fr)` }}>
             {Array.from({ length: room.rows }).map((_, y) =>
               Array.from({ length: room.cols }).map((_, x) => {
@@ -151,6 +156,11 @@ function RoomInner() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
+          <div className="font-display text-base text-navy mb-3">내 도전과제</div>
+          <BadgeGrid earnedKeys={room.badges.map((b) => b.key)} />
         </div>
 
         <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
