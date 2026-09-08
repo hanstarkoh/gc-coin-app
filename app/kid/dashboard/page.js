@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import TopBar from '@/components/TopBar';
 import LevelBar from '@/components/LevelBar';
 import BadgeGrid from '@/components/BadgeGrid';
@@ -260,6 +261,13 @@ function DashboardInner() {
         </div>
 
         <LevelBar level={level} />
+
+        <Link
+          href="/kid/room"
+          className="btn-3d btn-3d-navy block bg-navy text-white rounded-2xl py-3 text-center font-display text-sm"
+        >
+          🏠 내 마이룸 꾸미기
+        </Link>
 
         <Collapsible icon="🏅" badgeColor="gold" title="내 뱃지" defaultOpen={false}>
           <BadgeGrid earnedKeys={badges.map((b) => b.key)} />
@@ -544,6 +552,7 @@ const SHOP_SECTIONS = [
   { key: 'accessory', label: '액세서리', equippable: true },
   { key: 'sticker', label: '이름 스티커', equippable: true },
   { key: 'theme', label: '카드 테마', equippable: true },
+  { key: 'furniture', label: '가구 (마이룸에 배치)', equippable: false },
   { key: 'special', label: '특별 효과', equippable: false },
 ];
 

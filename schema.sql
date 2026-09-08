@@ -155,6 +155,23 @@ create table if not exists kid_equipped (
   theme_key text
 );
 
+-- 마이룸: 가구는 상점의 'furniture' 카테고리로 kid_inventory에 구매 기록이 남고,
+-- 어디에 배치했는지는 여기 따로 저장합니다. 한 아이템은 한 칸에만, 한 칸엔 하나만.
+create table if not exists kid_room_items (
+  id uuid primary key default gen_random_uuid(),
+  kid_id uuid not null references kids(id) on delete cascade,
+  item_key text not null,
+  grid_x int not null,
+  grid_y int not null,
+  created_at timestamptz not null default now(),
+  unique (kid_id, item_key),
+  unique (kid_id, grid_x, grid_y)
+);
+create index if not exists idx_kid_room_items_kid on kid_room_items(kid_id);
+
+-- 마이룸에서 잔액을 친구들에게 공개할지 (기본은 비공개)
+alter table kids add column if not exists room_balance_public boolean not null default false;
+
 -- 이 앱은 Next.js 서버(API 라우트)에서 Supabase "service role" 키로만 접근합니다.
 -- 브라우저에서 테이블에 직접 접근하지 않으므로 Row Level Security 는 기본적으로 막아둡니다.
 alter table settings enable row level security;
@@ -169,4 +186,5 @@ alter table stock_holdings enable row level security;
 alter table stock_orders enable row level security;
 alter table kid_inventory enable row level security;
 alter table kid_equipped enable row level security;
+alter table kid_room_items enable row level security;
 -- (정책을 추가하지 않으면 anon 키로는 아무것도 읽고 쓸 수 없고, service role 키는 항상 통과합니다.)
