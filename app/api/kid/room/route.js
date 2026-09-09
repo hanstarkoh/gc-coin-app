@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getKidId } from '@/lib/session';
 import { findShopItem } from '@/lib/shop';
-import { ROOM_COLS, ROOM_ROWS } from '@/lib/room';
+import { roomDims, nextExpansionCost } from '@/lib/room';
 import { getEarnedBadges } from '@/lib/badges';
 
 export async function GET() {
@@ -15,7 +15,7 @@ export async function GET() {
     const { data: kid, error: kidErr } = await sb
       .from('kids')
       .select(
-        'room_balance_public, attendance_count, total_earned, purchase_count, invest_trade_count, invest_realized_profit'
+        'room_balance_public, room_expansions, attendance_count, total_earned, purchase_count, invest_trade_count, invest_realized_profit'
       )
       .eq('id', kidId)
       .single();
@@ -49,10 +49,13 @@ export async function GET() {
       })
       .filter(Boolean);
 
+    const { cols, rows } = roomDims(kid.room_expansions);
     return NextResponse.json({
       ok: true,
-      cols: ROOM_COLS,
-      rows: ROOM_ROWS,
+      cols,
+      rows,
+      expansions: kid.room_expansions,
+      nextExpansionCost: nextExpansionCost(kid.room_expansions),
       furniture,
       balancePublic: kid.room_balance_public,
       theme: findShopItem('theme', equippedRow?.theme_key),

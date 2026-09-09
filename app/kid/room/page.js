@@ -72,6 +72,24 @@ function RoomInner() {
     }
   };
 
+  const expandRoom = async () => {
+    if (room.nextExpansionCost === null) return;
+    if (!confirm(`${room.nextExpansionCost} GC를 내고 방을 한 줄 넓힐까요?`)) return;
+    setBusy(true);
+    try {
+      const res = await fetch('/api/kid/room/expand', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('방이 넓어졌어요!');
+        await load();
+      } else {
+        showToast(data.error || '실패했어요.');
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const toggleBalancePublic = async () => {
     const next = !room.balancePublic;
     const res = await fetch('/api/kid/room/settings', {
@@ -127,6 +145,26 @@ function RoomInner() {
             <p className="text-xs text-white font-bold text-center mt-2 drop-shadow">
               {room.furniture.find((f) => f.key === selectedItem)?.name} 선택됨 - 빈 칸을 눌러 배치하세요
             </p>
+          )}
+        </div>
+
+        <div className="bg-white border-2 border-gray-100 rounded-3xl p-4 flex items-center justify-between gap-3">
+          <div>
+            <div className="font-display text-base text-navy">🏠 방 넓히기</div>
+            <p className="text-xs text-gray-500 mt-1">
+              지금 {room.cols}×{room.rows}칸 · {room.expansions}/4단계 확장
+            </p>
+          </div>
+          {room.nextExpansionCost !== null ? (
+            <button
+              disabled={busy}
+              onClick={expandRoom}
+              className="btn-3d btn-3d-gold shrink-0 text-xs font-display px-4 py-2 rounded-lg bg-gold text-navy-deep disabled:opacity-40"
+            >
+              {room.nextExpansionCost} GC로 넓히기
+            </button>
+          ) : (
+            <span className="text-xs text-mint-deep font-bold shrink-0">최대로 넓혔어요</span>
           )}
         </div>
 

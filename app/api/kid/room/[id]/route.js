@@ -4,7 +4,7 @@ import { getKidId } from '@/lib/session';
 import { getActiveTitle } from '@/lib/titles';
 import { calcLevel } from '@/lib/level';
 import { findShopItem } from '@/lib/shop';
-import { ROOM_COLS, ROOM_ROWS } from '@/lib/room';
+import { roomDims } from '@/lib/room';
 import { getEarnedBadges } from '@/lib/badges';
 
 export async function GET(_req, { params }) {
@@ -16,7 +16,7 @@ export async function GET(_req, { params }) {
     const { data: kid, error: kidErr } = await sb
       .from('kids')
       .select(
-        'id, name, balance, total_earned, invest_realized_profit, room_balance_public, attendance_count, purchase_count, invest_trade_count'
+        'id, name, balance, total_earned, invest_realized_profit, room_balance_public, room_expansions, attendance_count, purchase_count, invest_trade_count'
       )
       .eq('id', params.id)
       .single();
@@ -54,8 +54,7 @@ export async function GET(_req, { params }) {
       balancePublic: kid.room_balance_public,
       theme: findShopItem('theme', equippedRow?.theme_key),
       badges: getEarnedBadges(kid),
-      cols: ROOM_COLS,
-      rows: ROOM_ROWS,
+      ...roomDims(kid.room_expansions),
       items,
     });
   } catch (e) {

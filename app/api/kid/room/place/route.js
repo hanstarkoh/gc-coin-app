@@ -9,11 +9,18 @@ export async function POST(req) {
 
   try {
     const { itemKey, x, y } = await req.json();
-    if (!itemKey || !isValidCell(x, y)) {
+    const sb = supabaseAdmin();
+
+    const { data: kid, error: kidErr } = await sb
+      .from('kids')
+      .select('room_expansions')
+      .eq('id', kidId)
+      .single();
+    if (kidErr || !kid) throw kidErr || new Error('학생 정보를 찾을 수 없어요.');
+
+    if (!itemKey || !isValidCell(x, y, kid.room_expansions)) {
       return NextResponse.json({ ok: false, error: '잘못된 요청이에요.' }, { status: 400 });
     }
-
-    const sb = supabaseAdmin();
 
     const { data: owned, error: ownedErr } = await sb
       .from('kid_inventory')

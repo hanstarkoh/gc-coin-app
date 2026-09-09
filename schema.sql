@@ -128,6 +128,23 @@ create index if not exists idx_stock_orders_kid on stock_orders(kid_id);
 alter table kids add column if not exists invest_realized_profit int not null default 0;
 alter table kids add column if not exists invest_trade_count int not null default 0;
 
+-- 예금(정기예금): 주식(위험자산)과 대비되는 안전자산. 상품 목록(기간/이율)은 lib/deposits.js에서
+-- 관리하고, 여기는 "누가 얼마를 언제까지 넣었는지"만 저장합니다. 만기 시점 이후 조회가 들어오면
+-- 그때 이자를 더해 잔액에 넣어주고 claimed=true로 표시합니다(주식 시세 갱신과 같은 지연 처리 방식).
+create table if not exists kid_deposits (
+  id uuid primary key default gen_random_uuid(),
+  kid_id uuid not null references kids(id) on delete cascade,
+  principal int not null,
+  rate_pct numeric not null,
+  term_days int not null,
+  created_at timestamptz not null default now(),
+  matures_at timestamptz not null,
+  claimed boolean not null default false,
+  payout int
+);
+create index if not exists idx_kid_deposits_kid on kid_deposits(kid_id);
+alter table kid_deposits enable row level security;
+
 -- 간식 주문 오픈/마감을 관리자가 직접 켜고 끔 (날짜 기준 아님)
 alter table settings add column if not exists orders_open boolean not null default false;
 
@@ -176,6 +193,9 @@ create index if not exists idx_kid_room_items_kid on kid_room_items(kid_id);
 -- 마이룸에서 잔액을 친구들에게 공개할지 (기본은 비공개)
 alter table kids add column if not exists room_balance_public boolean not null default false;
 
+-- 마이룸 확장 단계(0~4). lib/room.js의 ROOM_EXPANSION_COSTS와 짝을 이룹니다.
+alter table kids add column if not exists room_expansions int not null default 0;
+
 -- 기부함(공동 목표): 관리자가 "피자데이" 같은 목표를 정하면 청소년들이 코인을 기부해서
 -- 채우고, 달성되면 관리자가 실제로 진행한 뒤 완료 처리합니다. 목표별 기부 순위 1등에게
 -- 메뉴 선정권을 주는 식으로 씁니다(순위는 group_goal_donations를 집계해서 그때그때 계산).
@@ -221,6 +241,38 @@ create table if not exists announcements (
   removed_at timestamptz
 );
 create index if not exists idx_announcements_active on announcements(expires_at);
+
+-- 예측 시장(베팅 풀): 관리자가 질문(예: "이번 주 출석 20명 넘을까?")을 올리면 청소년들이
+-- 두 선택지 중 하나에 코인을 걸고, 관리자가 나중에 정답을 발표하면 맞춘 사람들이 틀린 쪽의
+-- 판돈을 자기 베팅액 비율대로 나눠 가집니다(패리뮤추얼 방식). 새 코인을 만들어내지 않고
+-- 참가자끼리 돈이 오가기만 하는 구조라 전체 코인 총량에는 영향이 없습니다.
+create table if not exists predictions (
+  id uuid primary key default gen_random_uuid(),
+  question text not null,
+  option_a text not null default '예',
+  option_b text not null default '아니오',
+  status text not null default 'open' check (status in ('open', 'closed', 'resolved')),
+  resolved_option text check (resolved_option in ('a', 'b')),
+  created_at timestamptz not null default now(),
+  closes_at timestamptz,
+  resolved_at timestamptz
+);
+
+create table if not exists prediction_bets (
+  id uuid primary key default gen_random_uuid(),
+  prediction_id uuid not null references predictions(id) on delete cascade,
+  kid_id uuid not null references kids(id) on delete cascade,
+  kid_name text not null,
+  option text not null check (option in ('a', 'b')),
+  amount int not null,
+  payout int,
+  created_at timestamptz not null default now(),
+  unique (prediction_id, kid_id)
+);
+create index if not exists idx_prediction_bets_prediction on prediction_bets(prediction_id);
+create index if not exists idx_prediction_bets_kid on prediction_bets(kid_id);
+alter table predictions enable row level security;
+alter table prediction_bets enable row level security;
 
 -- 이 앱은 Next.js 서버(API 라우트)에서 Supabase "service role" 키로만 접근합니다.
 -- 브라우저에서 테이블에 직접 접근하지 않으므로 Row Level Security 는 기본적으로 막아둡니다.

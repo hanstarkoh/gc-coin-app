@@ -9,6 +9,7 @@ import Celebration from '@/components/Celebration';
 import Sparkline from '@/components/Sparkline';
 import { ToastProvider, useToast } from '@/components/Toast';
 import { TRADE_FEE_RATE } from '@/lib/stocks';
+import { calcPayout } from '@/lib/deposits';
 import { MEGAPHONE_PRICE, MESSAGE_MAX_LENGTH } from '@/lib/announcements';
 
 function fmtDate(d) {
@@ -549,6 +550,10 @@ function DashboardInner() {
           )}
         </Collapsible>
 
+        <DepositsCard kidBalance={kid.balance} onChange={loadMe} showToast={showToast} />
+
+        <PredictionsCard kidBalance={kid.balance} onChange={loadMe} showToast={showToast} />
+
         <Collapsible icon="🎉" badgeColor="coral" title="기부함" defaultOpen={true}>
           {goals === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
           {goals && goals.goals.length === 0 && (
@@ -978,6 +983,284 @@ function ShopCard({ kidBalance, onChange, showToast }) {
           </div>
         </>
       )}
+    </Collapsible>
+  );
+}
+
+function DepositsCard({ kidBalance, onChange, showToast }) {
+  const [data, setData] = useState(null);
+  const [selectedDays, setSelectedDays] = useState(null);
+  const [amount, setAmount] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    const res = await fetch('/api/kid/deposits');
+    const json = await res.json();
+    if (json.ok) {
+      setData(json);
+      if (json.claimed) await onChange();
+    }
+  }, [onChange]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const subscribe = async () => {
+    const amt = parseInt(amount, 10);
+    if (!selectedDays || !amt || amt <= 0) return;
+    setBusy(true);
+    try {
+      const res = await fetch('/api/kid/deposits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ days: selectedDays, amount: amt }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        showToast('예금에 가입했어요!');
+        setAmount('');
+        setSelectedDays(null);
+        await load();
+        await onChange();
+      } else {
+        showToast(json.error || '가입에 실패했어요.');
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const activeDeposits = (data?.deposits || []).filter((d) => !d.claimed);
+
+  return (
+    <Collapsible icon="🏦" badgeColor="mint" title="예금" defaultOpen={false}>
+      {data === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
+      {data && (
+        <>
+          <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+            정해진 기간 동안 코인을 넣어두면 이자를 더해 돌려받아요. 주식보다 안전한 대신 적게 벌어요.
+          </p>
+          <div className="grid grid-cols-3 gap-1.5 mb-2">
+            {data.plans.map((p) => (
+              <button
+                key={p.days}
+                onClick={() => setSelectedDays(p.days === selectedDays ? null : p.days)}
+                className={`rounded-xl border-2 p-2 text-center ${
+                  selectedDays === p.days ? 'border-gold bg-gold/10' : 'border-gray-100'
+                }`}
+              >
+                <div className="text-xs font-bold text-navy">{p.days}일</div>
+                <div className="text-[10px] text-mint-deep font-bold">+{p.ratePct}%</div>
+              </button>
+            ))}
+          </div>
+          {selectedDays && (
+            <div className="flex items-center gap-1.5 mb-3 bg-paper rounded-lg p-2">
+              <input
+                type="number"
+                min={data.minAmount}
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder={`최소 ${data.minAmount} GC`}
+                className="flex-1 min-w-0 border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+              />
+              <button
+                disabled={busy || !amount || Number(amount) > kidBalance}
+                onClick={subscribe}
+                className="btn-3d btn-3d-mint shrink-0 text-xs bg-mint text-white rounded-lg px-3 py-1.5 disabled:opacity-40"
+              >
+                가입하기
+              </button>
+            </div>
+          )}
+
+          {activeDeposits.length === 0 ? (
+            <p className="text-xs text-gray-400 py-2 text-center border-t border-gray-100 pt-3">
+              가입한 예금이 없어요.
+            </p>
+          ) : (
+            activeDeposits.map((d) => {
+              const daysLeft = Math.max(0, Math.ceil((new Date(d.matures_at) - Date.now()) / 86400000));
+              return (
+                <div key={d.id} className="flex items-center justify-between py-2 border-t border-gray-100 text-sm">
+                  <div>
+                    <div className="font-medium">
+                      {d.principal} GC · {d.term_days}일 (+{Number(d.rate_pct)}%)
+                    </div>
+                    <div className="text-[11px] text-gray-400">
+                      {daysLeft === 0 ? '오늘 만기' : `만기까지 ${daysLeft}일`}
+                    </div>
+                  </div>
+                  <div className="text-xs text-gold-deep font-bold">
+                    만기 시 {calcPayout(d.principal, Number(d.rate_pct))} GC
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </>
+      )}
+    </Collapsible>
+  );
+}
+
+function PredictionsCard({ kidBalance, onChange, showToast }) {
+  const [predictions, setPredictions] = useState(null);
+  const [betId, setBetId] = useState(null);
+  const [betOption, setBetOption] = useState(null);
+  const [betAmount, setBetAmount] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    const res = await fetch('/api/kid/predictions');
+    const json = await res.json();
+    if (json.ok) setPredictions(json.predictions);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const openBet = (p) => {
+    setBetId(p.id === betId ? null : p.id);
+    setBetOption(null);
+    setBetAmount('');
+  };
+
+  const confirmBet = async (p) => {
+    const amt = parseInt(betAmount, 10);
+    if (!betOption || !amt || amt <= 0) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/kid/predictions/${p.id}/bet`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ option: betOption, amount: amt }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        showToast('베팅했어요!');
+        setBetId(null);
+        await load();
+        await onChange();
+      } else {
+        showToast(json.error || '베팅에 실패했어요.');
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Collapsible icon="🎲" badgeColor="grape" title="예측 시장" defaultOpen={false}>
+      {predictions === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
+      {predictions && predictions.length === 0 && (
+        <p className="text-xs text-gray-400 py-4 text-center">아직 올라온 질문이 없어요.</p>
+      )}
+      {predictions?.map((p) => {
+        const total = p.poolA + p.poolB;
+        const pctA = total > 0 ? Math.round((p.poolA / total) * 100) : 50;
+        const isBetting = betId === p.id;
+        const isOpen = p.status === 'open';
+        return (
+          <div key={p.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
+            <div className="flex items-center justify-between gap-2">
+              <div className="font-bold text-sm">{p.question}</div>
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                  p.status === 'open'
+                    ? 'bg-mint/15 text-mint-deep'
+                    : p.status === 'closed'
+                    ? 'bg-gray-100 text-gray-500'
+                    : 'bg-gold/15 text-gold-deep'
+                }`}
+              >
+                {p.status === 'open' ? '진행 중' : p.status === 'closed' ? '마감' : '결과 발표'}
+              </span>
+            </div>
+            <div className="h-2.5 rounded-full bg-coral/20 overflow-hidden mt-2">
+              <div className="h-full bg-mint" style={{ width: `${pctA}%` }} />
+            </div>
+            <div className="flex justify-between text-[11px] text-gray-500 mt-1">
+              <span>
+                {p.option_a} {p.poolA} GC
+              </span>
+              <span>
+                {p.option_b} {p.poolB} GC
+              </span>
+            </div>
+
+            {p.status === 'resolved' && (
+              <p className="text-xs font-bold text-gold-deep mt-1.5">
+                정답: {p.resolved_option === 'a' ? p.option_a : p.option_b}
+                {p.myBet && (
+                  <span className={p.myBet.payout > 0 ? 'text-mint-deep' : 'text-coral-deep'}>
+                    {' '}
+                    · {p.myBet.payout > 0 ? `+${p.myBet.payout} GC 받음!` : '틀렸어요'}
+                  </span>
+                )}
+              </p>
+            )}
+
+            {p.status !== 'resolved' && p.myBet && (
+              <p className="text-xs text-gray-500 mt-1.5">
+                내 베팅: {p.myBet.option === 'a' ? p.option_a : p.option_b} {p.myBet.amount} GC
+              </p>
+            )}
+
+            {isOpen && !p.myBet && (
+              <>
+                <button
+                  onClick={() => openBet(p)}
+                  className="btn-3d btn-3d-grape mt-2 w-full text-xs bg-grape text-white rounded-lg py-1.5"
+                >
+                  {isBetting ? '접기' : '베팅하기'}
+                </button>
+                {isBetting && (
+                  <div className="mt-2 bg-paper rounded-lg p-2">
+                    <div className="flex gap-1.5 mb-1.5">
+                      <button
+                        onClick={() => setBetOption('a')}
+                        className={`flex-1 text-xs rounded-lg py-1.5 ${
+                          betOption === 'a' ? 'bg-mint text-white font-bold' : 'border-2 border-gray-200 text-gray-500'
+                        }`}
+                      >
+                        {p.option_a}
+                      </button>
+                      <button
+                        onClick={() => setBetOption('b')}
+                        className={`flex-1 text-xs rounded-lg py-1.5 ${
+                          betOption === 'b' ? 'bg-coral text-white font-bold' : 'border-2 border-gray-200 text-gray-500'
+                        }`}
+                      >
+                        {p.option_b}
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min="1"
+                        value={betAmount}
+                        onChange={(e) => setBetAmount(e.target.value)}
+                        placeholder="베팅할 GC"
+                        className="flex-1 min-w-0 border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+                      />
+                      <button
+                        disabled={busy || !betOption || !betAmount || Number(betAmount) > kidBalance}
+                        onClick={() => confirmBet(p)}
+                        className="btn-3d btn-3d-navy shrink-0 text-xs bg-navy text-white rounded-lg px-3 py-1.5 disabled:opacity-40"
+                      >
+                        확인
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })}
     </Collapsible>
   );
 }
