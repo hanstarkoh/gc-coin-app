@@ -51,6 +51,7 @@ function DashboardInner() {
   const [history, setHistory] = useState(null);
   const [historyMonth, setHistoryMonth] = useState(null);
   const [historyPage, setHistoryPage] = useState(1);
+  const [historyRefreshing, setHistoryRefreshing] = useState(false);
   const [ordering, setOrdering] = useState(null);
   const [completing, setCompleting] = useState(null);
   const [celebration, setCelebration] = useState(null);
@@ -350,6 +351,14 @@ function DashboardInner() {
   const changeHistoryMonth = (m) => {
     setHistoryMonth(m);
     setHistoryPage(1);
+  };
+  const refreshHistory = async () => {
+    setHistoryRefreshing(true);
+    try {
+      await loadHistory();
+    } finally {
+      setHistoryRefreshing(false);
+    }
   };
 
   return (
@@ -756,7 +765,25 @@ function DashboardInner() {
           })}
         </Collapsible>
 
-        <Collapsible icon="📜" badgeColor="navy" title="내 사용 내역" defaultOpen={false}>
+        <Collapsible
+          icon="📜"
+          badgeColor="navy"
+          title="내 사용 내역"
+          defaultOpen={false}
+          right={
+            <span
+              role="button"
+              aria-label="새로고침"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!historyRefreshing) refreshHistory();
+              }}
+              className={`text-gray-400 text-sm px-1 ${historyRefreshing ? 'animate-spin' : ''}`}
+            >
+              🔄
+            </span>
+          }
+        >
           {history === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
           {history && history.length === 0 && <p className="text-xs text-gray-400 py-4 text-center">아직 내역이 없어요.</p>}
           {history && history.length > 0 && (
