@@ -1050,7 +1050,7 @@ function DepositsCard({ kidBalance, onChange, showToast }) {
                   selectedDays === p.days ? 'border-gold bg-gold/10' : 'border-gray-100'
                 }`}
               >
-                <div className="text-xs font-bold text-navy">{p.days}일</div>
+                <div className="text-xs font-bold text-navy">{p.weeks}주</div>
                 <div className="text-[10px] text-mint-deep font-bold">+{p.ratePct}%</div>
               </button>
             ))}
