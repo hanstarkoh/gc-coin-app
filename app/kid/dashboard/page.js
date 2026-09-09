@@ -48,6 +48,8 @@ function DashboardInner() {
   const [ordersOpen, setOrdersOpen] = useState(false);
   const [events, setEvents] = useState(null);
   const [history, setHistory] = useState(null);
+  const [historyMonth, setHistoryMonth] = useState(null);
+  const [historyPage, setHistoryPage] = useState(1);
   const [ordering, setOrdering] = useState(null);
   const [completing, setCompleting] = useState(null);
   const [celebration, setCelebration] = useState(null);
@@ -333,6 +335,21 @@ function DashboardInner() {
     ? { background: `linear-gradient(165deg, ${theme.from} 0%, ${theme.mid} 55%, ${theme.to} 100%)` }
     : undefined;
   const readyOrders = (history || []).filter((t) => t.type === 'spend' && !t.fulfilled && t.ready_at);
+
+  const HISTORY_PAGE_SIZE = 10;
+  const historyMonths = [...new Set((history || []).map((t) => t.tx_date.slice(0, 7)))].sort().reverse();
+  const currentHistoryMonth = historyMonth && historyMonths.includes(historyMonth) ? historyMonth : historyMonths[0];
+  const historyForMonth = (history || []).filter((t) => t.tx_date.slice(0, 7) === currentHistoryMonth);
+  const historyTotalPages = Math.max(1, Math.ceil(historyForMonth.length / HISTORY_PAGE_SIZE));
+  const historyPageClamped = Math.min(historyPage, historyTotalPages);
+  const pagedHistory = historyForMonth.slice(
+    (historyPageClamped - 1) * HISTORY_PAGE_SIZE,
+    historyPageClamped * HISTORY_PAGE_SIZE
+  );
+  const changeHistoryMonth = (m) => {
+    setHistoryMonth(m);
+    setHistoryPage(1);
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -737,7 +754,30 @@ function DashboardInner() {
         <Collapsible icon="📜" badgeColor="navy" title="내 사용 내역" defaultOpen={false}>
           {history === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
           {history && history.length === 0 && <p className="text-xs text-gray-400 py-4 text-center">아직 내역이 없어요.</p>}
-          {history?.map((t) => (
+          {history && history.length > 0 && (
+            <div className="flex items-center justify-between mb-2">
+              <button
+                disabled={historyMonths.indexOf(currentHistoryMonth) >= historyMonths.length - 1}
+                onClick={() => changeHistoryMonth(historyMonths[historyMonths.indexOf(currentHistoryMonth) + 1])}
+                className="text-xs px-2 py-1 rounded-lg border-2 border-gray-200 text-gray-500 disabled:opacity-30"
+              >
+                ← 이전달
+              </button>
+              <span className="font-display text-sm text-navy">
+                {currentHistoryMonth
+                  ? `${currentHistoryMonth.slice(0, 4)}년 ${Number(currentHistoryMonth.slice(5, 7))}월`
+                  : ''}
+              </span>
+              <button
+                disabled={historyMonths.indexOf(currentHistoryMonth) <= 0}
+                onClick={() => changeHistoryMonth(historyMonths[historyMonths.indexOf(currentHistoryMonth) - 1])}
+                className="text-xs px-2 py-1 rounded-lg border-2 border-gray-200 text-gray-500 disabled:opacity-30"
+              >
+                다음달 →
+              </button>
+            </div>
+          )}
+          {pagedHistory.map((t) => (
             <div key={t.id} className="py-2 border-b border-gray-100 last:border-0 text-sm">
               <div className="flex items-center justify-between">
                 <div>
@@ -761,6 +801,27 @@ function DashboardInner() {
               )}
             </div>
           ))}
+          {historyForMonth.length > 0 && historyTotalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-3">
+              <button
+                disabled={historyPageClamped <= 1}
+                onClick={() => setHistoryPage(historyPageClamped - 1)}
+                className="text-xs w-7 h-7 rounded-full border-2 border-gray-200 text-gray-500 disabled:opacity-30"
+              >
+                ‹
+              </button>
+              <span className="text-xs text-gray-400">
+                {historyPageClamped} / {historyTotalPages}
+              </span>
+              <button
+                disabled={historyPageClamped >= historyTotalPages}
+                onClick={() => setHistoryPage(historyPageClamped + 1)}
+                className="text-xs w-7 h-7 rounded-full border-2 border-gray-200 text-gray-500 disabled:opacity-30"
+              >
+                ›
+              </button>
+            </div>
+          )}
         </Collapsible>
       </div>
 

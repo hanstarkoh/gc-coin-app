@@ -9,7 +9,7 @@ export async function GET() {
 
   try {
     const sb = supabaseAdmin();
-    const data = await loadKidHistory(sb, kidId, 30);
+    const data = await loadKidHistory(sb, kidId, 500);
     return NextResponse.json({ ok: true, transactions: data });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 });

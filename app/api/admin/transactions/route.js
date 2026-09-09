@@ -16,7 +16,7 @@ export async function GET(req) {
     // 합쳐서 보여줍니다. 오늘 하루 전체 학생 요약(출석 현황 등 통계용)은 기존처럼
     // transactions만 봅니다 — 코인 지급 통계에 주식/상점 구매가 섞이면 안 되기 때문입니다.
     if (kidId && !date) {
-      const data = await loadKidHistory(sb, kidId, 100);
+      const data = await loadKidHistory(sb, kidId, 500);
       return NextResponse.json({ ok: true, transactions: data });
     }
 
