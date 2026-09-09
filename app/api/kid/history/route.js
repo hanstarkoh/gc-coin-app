@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getKidId } from '@/lib/session';
+import { loadKidHistory } from '@/lib/history';
 
 export async function GET() {
   const kidId = getKidId();
@@ -8,13 +9,7 @@ export async function GET() {
 
   try {
     const sb = supabaseAdmin();
-    const { data, error } = await sb
-      .from('transactions')
-      .select('id, type, amount, reason, tx_date, created_at, quantity, fulfilled, ready_at, pickup_location')
-      .eq('kid_id', kidId)
-      .order('created_at', { ascending: false })
-      .limit(30);
-    if (error) throw error;
+    const data = await loadKidHistory(sb, kidId, 30);
     return NextResponse.json({ ok: true, transactions: data });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
