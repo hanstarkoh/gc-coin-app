@@ -200,6 +200,24 @@ create index if not exists idx_goal_donations_goal on group_goal_donations(goal_
 -- 누적 기부액. '나눔이'/'기부왕' 뱃지 조건에 사용.
 alter table kids add column if not exists total_donated int not null default 0;
 
+-- 주문 수량 + 2단계 수령 흐름(대기 -> 준비완료(장소 안내) -> 수령완료(fulfilled)).
+alter table transactions add column if not exists quantity int not null default 1;
+alter table transactions add column if not exists ready_at timestamptz;
+alter table transactions add column if not exists pickup_location text;
+
+-- 확성기: 코인 내고 하루 동안 홈 화면 상단에 돌아가는 한마디를 올림.
+-- 부적절한 글은 관리자가 removed_at을 채워서 즉시 내릴 수 있습니다.
+create table if not exists announcements (
+  id uuid primary key default gen_random_uuid(),
+  kid_id uuid not null references kids(id) on delete cascade,
+  kid_name text not null,
+  message text not null,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  removed_at timestamptz
+);
+create index if not exists idx_announcements_active on announcements(expires_at);
+
 -- 이 앱은 Next.js 서버(API 라우트)에서 Supabase "service role" 키로만 접근합니다.
 -- 브라우저에서 테이블에 직접 접근하지 않으므로 Row Level Security 는 기본적으로 막아둡니다.
 alter table settings enable row level security;
@@ -217,4 +235,5 @@ alter table kid_equipped enable row level security;
 alter table kid_room_items enable row level security;
 alter table group_goals enable row level security;
 alter table group_goal_donations enable row level security;
+alter table announcements enable row level security;
 -- (정책을 추가하지 않으면 anon 키로는 아무것도 읽고 쓸 수 없고, service role 키는 항상 통과합니다.)

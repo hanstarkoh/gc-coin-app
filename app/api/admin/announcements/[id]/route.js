@@ -2,17 +2,14 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { isAdmin } from '@/lib/session';
 
-export async function PATCH(req, { params }) {
+export async function DELETE(_req, { params }) {
   if (!isAdmin()) return NextResponse.json({ ok: false, error: '관리자 로그인이 필요해요.' }, { status: 401 });
   try {
-    const body = await req.json();
-    const update = {};
-    if ('fulfilled' in body) update.fulfilled = !!body.fulfilled;
-    if ('readyAt' in body) update.ready_at = body.readyAt;
-    if ('pickupLocation' in body) update.pickup_location = body.pickupLocation;
-
     const sb = supabaseAdmin();
-    const { error } = await sb.from('transactions').update(update).eq('id', params.id);
+    const { error } = await sb
+      .from('announcements')
+      .update({ removed_at: new Date().toISOString() })
+      .eq('id', params.id);
     if (error) throw error;
     return NextResponse.json({ ok: true });
   } catch (e) {

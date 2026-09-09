@@ -7,8 +7,11 @@ export async function POST(req) {
   if (!kidId) return NextResponse.json({ ok: false, error: '로그인이 필요해요.' }, { status: 401 });
 
   try {
-    const { itemId } = await req.json();
-    if (!itemId) return NextResponse.json({ ok: false, error: '잘못된 요청이에요.' }, { status: 400 });
+    const { itemId, quantity } = await req.json();
+    const qty = Number(quantity) || 1;
+    if (!itemId || !Number.isInteger(qty) || qty <= 0) {
+      return NextResponse.json({ ok: false, error: '잘못된 요청이에요.' }, { status: 400 });
+    }
 
     const sb = supabaseAdmin();
     const today = new Date().toISOString().slice(0, 10);
@@ -27,8 +30,8 @@ export async function POST(req) {
     if (itemErr || !item) {
       return NextResponse.json({ ok: false, error: '판매하지 않는 메뉴예요.' }, { status: 400 });
     }
-    if (item.stock !== null && item.stock <= 0) {
-      return NextResponse.json({ ok: false, error: '품절된 메뉴예요.' }, { status: 400 });
+    if (item.stock !== null && item.stock < qty) {
+      return NextResponse.json({ ok: false, error: '재고보다 많이 주문할 수 없어요.' }, { status: 400 });
     }
 
     const { data: kid, error: kidErr } = await sb
@@ -38,23 +41,24 @@ export async function POST(req) {
       .single();
     if (kidErr || !kid) return NextResponse.json({ ok: false, error: '학생 정보를 찾을 수 없어요.' }, { status: 404 });
 
-    if (kid.balance < item.price) {
+    const total = item.price * qty;
+    if (kid.balance < total) {
       return NextResponse.json({ ok: false, error: '코인이 부족해요.' }, { status: 400 });
     }
 
-    const newBalance = kid.balance - item.price;
+    const newBalance = kid.balance - total;
     const { error: updErr } = await sb
       .from('kids')
       .update({
         balance: newBalance,
-        total_spent: kid.total_spent + item.price,
+        total_spent: kid.total_spent + total,
         purchase_count: kid.purchase_count + 1,
       })
       .eq('id', kidId);
     if (updErr) throw updErr;
 
     if (item.stock !== null) {
-      const { error: stockErr } = await sb.from('menu_items').update({ stock: item.stock - 1 }).eq('id', item.id);
+      const { error: stockErr } = await sb.from('menu_items').update({ stock: item.stock - qty }).eq('id', item.id);
       if (stockErr) throw stockErr;
     }
 
@@ -62,7 +66,8 @@ export async function POST(req) {
       kid_id: kidId,
       kid_name: kid.name,
       type: 'spend',
-      amount: item.price,
+      amount: total,
+      quantity: qty,
       reason: item.name,
       tx_date: today,
       fulfilled: false,

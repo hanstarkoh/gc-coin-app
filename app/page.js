@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import TopBar from '@/components/TopBar';
 import Sparkline from '@/components/Sparkline';
+import AnnouncementTicker from '@/components/AnnouncementTicker';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { unstable_noStore as noStore } from 'next/cache';
 import { maybeUpdateStockPrices } from '@/lib/stocks';
@@ -84,6 +85,20 @@ async function getActiveGoal() {
   return data;
 }
 
+async function getActiveAnnouncements() {
+  noStore();
+  const sb = supabaseAdmin();
+  const { data, error } = await sb
+    .from('announcements')
+    .select('id, kid_name, message, created_at')
+    .is('removed_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .order('created_at', { ascending: true })
+    .limit(10);
+  if (error) return [];
+  return data;
+}
+
 async function getDonationRanking() {
   noStore();
   const sb = supabaseAdmin();
@@ -111,7 +126,7 @@ async function getProfitRanking() {
 }
 
 export default async function Home() {
-  const [menu, events, stocks, ordersOpen, goal, donationRanking, profitRanking] = await Promise.all([
+  const [menu, events, stocks, ordersOpen, goal, donationRanking, profitRanking, announcements] = await Promise.all([
     getMenu(),
     getActiveEvents(),
     getActiveStocks(),
@@ -119,6 +134,7 @@ export default async function Home() {
     getActiveGoal(),
     getDonationRanking(),
     getProfitRanking(),
+    getActiveAnnouncements(),
   ]);
 
   return (
@@ -137,6 +153,8 @@ export default async function Home() {
         }
       />
       <div className="flex-1 max-w-[480px] w-full mx-auto px-4 py-8 space-y-4">
+        <AnnouncementTicker items={announcements} />
+
         <div className="text-center px-4 mb-1">
           <div className="icon-badge icon-badge-gold w-16 h-16 rounded-full text-3xl mx-auto mb-3 animate-popIn">🪙</div>
           <div className="font-display text-3xl text-navy">오늘도 코인을 모아볼까요?</div>

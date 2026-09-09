@@ -9,6 +9,7 @@ import Celebration from '@/components/Celebration';
 import Sparkline from '@/components/Sparkline';
 import { ToastProvider, useToast } from '@/components/Toast';
 import { TRADE_FEE_RATE } from '@/lib/stocks';
+import { MEGAPHONE_PRICE, MESSAGE_MAX_LENGTH } from '@/lib/announcements';
 
 function fmtDate(d) {
   return d.replaceAll('-', '.');
@@ -60,6 +61,10 @@ function DashboardInner() {
   const [goals, setGoals] = useState(null);
   const [donateAmount, setDonateAmount] = useState('');
   const [donating, setDonating] = useState(false);
+  const [orderItemId, setOrderItemId] = useState(null);
+  const [orderQty, setOrderQty] = useState('1');
+  const [announceText, setAnnounceText] = useState('');
+  const [announcing, setAnnouncing] = useState(false);
 
   const loadMe = useCallback(async () => {
     const res = await fetch('/api/kid/me');
@@ -143,19 +148,31 @@ function DashboardInner() {
 
   const closeCelebration = () => setCelebration(null);
 
+  const openOrder = (item) => {
+    setOrderItemId(item.id);
+    setOrderQty('1');
+  };
+
+  const cancelOrder = () => {
+    setOrderItemId(null);
+    setOrderQty('1');
+  };
+
   const handleOrder = async (item) => {
-    if (!me || me.kid.balance < item.price) return;
-    if (!confirm(`${item.name} (${item.price} GC)를 주문할까요?`)) return;
+    const qty = Math.max(1, parseInt(orderQty, 10) || 0);
+    if (!qty) return showToast('수량을 확인해주세요.');
+    if (!confirm(`${item.name} ${qty}개 (${item.price * qty} GC)를 주문할까요?`)) return;
     setOrdering(item.id);
     try {
       const res = await fetch('/api/kid/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemId: item.id }),
+        body: JSON.stringify({ itemId: item.id, quantity: qty }),
       });
       const data = await res.json();
       if (data.ok) {
-        showToast(`${item.name} 주문 완료!`);
+        showToast(`${item.name} ${qty}개 주문 완료!`);
+        cancelOrder();
         const meData = await loadMe();
         await loadHistory();
         if (meData?.ok) {
@@ -169,6 +186,37 @@ function DashboardInner() {
       showToast('네트워크 오류가 발생했어요.');
     } finally {
       setOrdering(null);
+    }
+  };
+
+  const handleAnnounce = async () => {
+    const text = announceText.trim();
+    if (!text) return showToast('메시지를 입력해주세요.');
+    if (
+      !confirm(
+        '부적절한 글은 선생님에게 제재를 받을 수 있어요. 오늘 하루 동안 메인 화면에 표시되는데, 계속할까요?'
+      )
+    )
+      return;
+    setAnnouncing(true);
+    try {
+      const res = await fetch('/api/kid/announcements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('확성기로 소식을 전했어요!');
+        setAnnounceText('');
+        await loadMe();
+      } else {
+        showToast(data.error || '전송에 실패했어요.');
+      }
+    } catch (e) {
+      showToast('네트워크 오류가 발생했어요.');
+    } finally {
+      setAnnouncing(false);
     }
   };
 
@@ -533,6 +581,32 @@ function DashboardInner() {
           })}
         </Collapsible>
 
+        <Collapsible icon="📢" badgeColor="gold" title="확성기로 소식 전하기" defaultOpen={false}>
+          <p className="text-xs text-gray-500 mb-2">
+            {MEGAPHONE_PRICE} GC를 내면 오늘 하루 동안 홈 화면 위쪽에 내 한마디가 돌아가며 나와요. 부적절한 글은
+            선생님에게 제재를 받을 수 있어요.
+          </p>
+          <textarea
+            value={announceText}
+            onChange={(e) => setAnnounceText(e.target.value.slice(0, MESSAGE_MAX_LENGTH))}
+            placeholder="예: 오늘 급식 미역국 대박!"
+            rows={2}
+            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm resize-none"
+          />
+          <div className="flex items-center justify-between mt-1.5">
+            <span className="text-[10.5px] text-gray-400">
+              {announceText.length} / {MESSAGE_MAX_LENGTH}자
+            </span>
+            <button
+              disabled={announcing || !announceText.trim()}
+              onClick={handleAnnounce}
+              className="btn-3d btn-3d-gold text-xs bg-gold text-navy-deep font-display rounded-lg px-4 py-2 disabled:opacity-40"
+            >
+              {announcing ? '전송 중...' : `전하기 (${MEGAPHONE_PRICE} GC)`}
+            </button>
+          </div>
+        </Collapsible>
+
         <Collapsible icon="🎯" badgeColor="grape" title="진행 중인 이벤트" defaultOpen={true}>
           {events === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
           {events && events.length === 0 && (
@@ -594,27 +668,53 @@ function DashboardInner() {
           {menu?.map((item) => {
             const soldOut = item.stock !== null && item.stock <= 0;
             const canAfford = ordersOpen && !soldOut && kid.balance >= item.price;
+            const isOrdering = orderItemId === item.id;
+            const qty = Math.max(1, parseInt(orderQty, 10) || 0);
+            const maxQty = item.stock !== null ? item.stock : null;
             return (
-              <div key={item.id} className="flex items-center justify-between py-3 border-b border-dashed border-gray-200 last:border-0">
-                <div>
-                  <div className="font-bold text-sm">{item.name}</div>
-                  <div className="text-xs text-gold-deep font-bold">{item.price} GC</div>
-                  {item.stock !== null && !soldOut && (
-                    <div className="text-[11px] text-gray-400">재고 {item.stock}개</div>
+              <div key={item.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-sm">{item.name}</div>
+                    <div className="text-xs text-gold-deep font-bold">{item.price} GC</div>
+                    {item.stock !== null && !soldOut && (
+                      <div className="text-[11px] text-gray-400">재고 {item.stock}개</div>
+                    )}
+                  </div>
+                  {soldOut ? (
+                    <span className="text-xs font-bold px-3.5 py-2 rounded-lg bg-gray-100 text-gray-400">품절</span>
+                  ) : (
+                    <button
+                      disabled={!canAfford || ordering === item.id}
+                      onClick={() => (isOrdering ? cancelOrder() : openOrder(item))}
+                      className={`text-xs font-display px-3.5 py-2 rounded-lg ${
+                        canAfford ? 'btn-3d btn-3d-gold bg-gold text-navy-deep' : 'border-2 border-gray-200 text-gray-300'
+                      }`}
+                    >
+                      {isOrdering ? '주문 취소' : '주문하기'}
+                    </button>
                   )}
                 </div>
-                {soldOut ? (
-                  <span className="text-xs font-bold px-3.5 py-2 rounded-lg bg-gray-100 text-gray-400">품절</span>
-                ) : (
-                  <button
-                    disabled={!canAfford || ordering === item.id}
-                    onClick={() => handleOrder(item)}
-                    className={`text-xs font-display px-3.5 py-2 rounded-lg ${
-                      canAfford ? 'btn-3d btn-3d-gold bg-gold text-navy-deep' : 'border-2 border-gray-200 text-gray-300'
-                    }`}
-                  >
-                    {ordering === item.id ? '주문 중...' : '주문하기'}
-                  </button>
+                {isOrdering && (
+                  <div className="flex items-center gap-1.5 mt-2 bg-paper rounded-lg p-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max={maxQty || undefined}
+                      value={orderQty}
+                      onChange={(e) => setOrderQty(e.target.value)}
+                      placeholder="수량"
+                      className="flex-1 min-w-0 border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+                    />
+                    <span className="text-xs text-gray-500 shrink-0">{item.price * qty} GC</span>
+                    <button
+                      disabled={ordering === item.id || (maxQty !== null && qty > maxQty) || item.price * qty > kid.balance}
+                      onClick={() => handleOrder(item)}
+                      className="btn-3d btn-3d-gold shrink-0 text-xs bg-gold text-navy-deep rounded-lg px-3 py-1.5 disabled:opacity-40"
+                    >
+                      {ordering === item.id ? '주문 중...' : '확인'}
+                    </button>
+                  </div>
                 )}
               </div>
             );
@@ -625,17 +725,27 @@ function DashboardInner() {
           {history === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
           {history && history.length === 0 && <p className="text-xs text-gray-400 py-4 text-center">아직 내역이 없어요.</p>}
           {history?.map((t) => (
-            <div key={t.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0 text-sm">
-              <div>
-                <div className="font-medium">{t.reason || (t.type === 'spend' ? '구매' : '지급')}</div>
-                <div className="text-[11px] text-gray-400">
-                  {fmtDate(t.tx_date)} {fmtTime(t.created_at)}
+            <div key={t.id} className="py-2 border-b border-gray-100 last:border-0 text-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">
+                    {t.reason || (t.type === 'spend' ? '구매' : '지급')}
+                    {t.type === 'spend' && t.quantity > 1 ? ` × ${t.quantity}` : ''}
+                  </div>
+                  <div className="text-[11px] text-gray-400">
+                    {fmtDate(t.tx_date)} {fmtTime(t.created_at)}
+                  </div>
+                </div>
+                <div className={`font-bold ${t.type === 'spend' ? 'text-coral-deep' : 'text-mint-deep'}`}>
+                  {t.type === 'spend' ? '-' : '+'}
+                  {t.amount} GC
                 </div>
               </div>
-              <div className={`font-bold ${t.type === 'spend' ? 'text-coral-deep' : 'text-mint-deep'}`}>
-                {t.type === 'spend' ? '-' : '+'}
-                {t.amount} GC
-              </div>
+              {t.type === 'spend' && !t.fulfilled && (
+                <p className={`text-[11px] mt-1 font-bold ${t.ready_at ? 'text-gold-deep' : 'text-gray-400'}`}>
+                  {t.ready_at ? `🔔 ${t.pickup_location || '사무실'}로 받으러 오세요!` : '준비 중이에요'}
+                </p>
+              )}
             </div>
           ))}
         </Collapsible>

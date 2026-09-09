@@ -11,6 +11,7 @@ const TABS = [
   { key: 'events', label: '이벤트' },
   { key: 'stocks', label: '종목 관리' },
   { key: 'goals', label: '기부함' },
+  { key: 'announcements', label: '확성기' },
   { key: 'kids', label: '청소년 관리' },
   { key: 'history', label: '전체 현황' },
   { key: 'settings', label: '설정' },
@@ -146,6 +147,7 @@ function DashboardInner() {
         )}
         {tab === 'stocks' && <StocksTab showToast={showToast} />}
         {tab === 'goals' && <GoalsTab showToast={showToast} onReadyCountChange={setReadyGoalCount} />}
+        {tab === 'announcements' && <AnnouncementsTab showToast={showToast} />}
         {tab === 'kids' && (
           <KidsTab kids={kids} reload={loadKids} showToast={showToast} />
         )}
@@ -555,13 +557,13 @@ function OrdersTab({ orders, onRefresh, showToast }) {
     }
   };
 
-  const setFulfilled = async (order, fulfilled) => {
+  const patch = async (order, body) => {
     setUpdating(order.id);
     try {
       const res = await fetch(`/api/admin/transactions/${order.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fulfilled }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (data.ok) {
@@ -574,14 +576,25 @@ function OrdersTab({ orders, onRefresh, showToast }) {
     }
   };
 
-  const pending = orders.filter((o) => !o.fulfilled);
+  const markReady = (order) => {
+    const location = prompt('받으러 오라고 안내할 장소를 입력하세요.', '사무실');
+    if (location === null) return;
+    patch(order, { readyAt: new Date().toISOString(), pickupLocation: location.trim() || '사무실' });
+  };
+
+  const markDone = (order) => patch(order, { fulfilled: true });
+  const revertToReady = (order) => patch(order, { fulfilled: false });
+
+  const pending = orders.filter((o) => !o.fulfilled && !o.ready_at);
+  const ready = orders.filter((o) => !o.fulfilled && o.ready_at);
   const done = orders.filter((o) => o.fulfilled);
 
   return (
     <>
-      <Card title={`지급 대기 중 (${pending.length}건)`}>
+      <Card title={`주문 접수 (${pending.length}건)`}>
         <p className="text-xs text-gray-500 -mt-2 mb-2.5">
-          청소년이 메뉴를 주문하면 여기 쌓여요. 간식을 전달했으면 완료 처리해주세요. 15초마다 자동 새로고침돼요.
+          청소년이 메뉴를 주문하면 여기 쌓여요. 준비되면 &apos;준비 완료&apos;를 눌러 받으러 올 장소를
+          안내해주세요. 15초마다 자동 새로고침돼요.
         </p>
         <button
           onClick={refresh}
@@ -590,12 +603,13 @@ function OrdersTab({ orders, onRefresh, showToast }) {
         >
           {refreshing ? '새로고침 중...' : '지금 새로고침'}
         </button>
-        {pending.length === 0 && <p className="text-xs text-gray-400 text-center py-6">지급 대기 중인 주문이 없어요.</p>}
+        {pending.length === 0 && <p className="text-xs text-gray-400 text-center py-6">접수된 주문이 없어요.</p>}
         {pending.map((o) => (
           <div key={o.id} className="flex items-center justify-between gap-2 py-2.5 border-b border-dashed border-gray-200 last:border-0">
             <div>
               <div className="font-bold text-sm">
                 {o.kid_name} · {o.reason || '구매'}
+                {o.quantity > 1 ? ` × ${o.quantity}` : ''}
               </div>
               <div className="text-[11px] text-gray-400">
                 {fmtTime(o.created_at)} · <span className="text-coral-deep font-bold">-{o.amount} GC</span>
@@ -603,10 +617,35 @@ function OrdersTab({ orders, onRefresh, showToast }) {
             </div>
             <button
               disabled={updating === o.id}
-              onClick={() => setFulfilled(o, true)}
+              onClick={() => markReady(o)}
+              className="btn-3d btn-3d-gold shrink-0 text-xs bg-gold text-navy-deep rounded-lg px-3 py-1.5 disabled:opacity-40"
+            >
+              준비 완료
+            </button>
+          </div>
+        ))}
+      </Card>
+
+      <Card title={`수령 대기 (${ready.length}건)`}>
+        <p className="text-xs text-gray-500 -mt-2 mb-2.5">청소년이 안내받은 장소로 와서 실제로 받아가면 완료 처리해주세요.</p>
+        {ready.length === 0 && <p className="text-xs text-gray-400 text-center py-6">수령 대기 중인 주문이 없어요.</p>}
+        {ready.map((o) => (
+          <div key={o.id} className="flex items-center justify-between gap-2 py-2.5 border-b border-dashed border-gray-200 last:border-0">
+            <div>
+              <div className="font-bold text-sm">
+                {o.kid_name} · {o.reason || '구매'}
+                {o.quantity > 1 ? ` × ${o.quantity}` : ''}
+              </div>
+              <div className="text-[11px] text-gray-400">
+                📍 {o.pickup_location || '사무실'} · <span className="text-coral-deep font-bold">-{o.amount} GC</span>
+              </div>
+            </div>
+            <button
+              disabled={updating === o.id}
+              onClick={() => markDone(o)}
               className="btn-3d btn-3d-mint shrink-0 text-xs bg-mint text-white rounded-lg px-3 py-1.5 disabled:opacity-40"
             >
-              지급 완료
+              수령 완료
             </button>
           </div>
         ))}
@@ -619,12 +658,13 @@ function OrdersTab({ orders, onRefresh, showToast }) {
               <div>
                 <div className="text-sm text-gray-400 line-through">
                   {o.kid_name} · {o.reason || '구매'}
+                  {o.quantity > 1 ? ` × ${o.quantity}` : ''}
                 </div>
                 <div className="text-[11px] text-gray-300">{fmtTime(o.created_at)}</div>
               </div>
               <button
                 disabled={updating === o.id}
-                onClick={() => setFulfilled(o, false)}
+                onClick={() => revertToReady(o)}
                 className="shrink-0 text-xs text-gray-400 underline disabled:opacity-40"
               >
                 되돌리기
@@ -830,6 +870,87 @@ function EventsTab({ showToast, onPendingCountChange }) {
           이벤트 등록
         </button>
       </Card>
+    </>
+  );
+}
+
+/* ---------------- ANNOUNCEMENTS(확성기) TAB ---------------- */
+function AnnouncementsTab({ showToast }) {
+  const [items, setItems] = useState(null);
+  const [removingId, setRemovingId] = useState(null);
+
+  const load = useCallback(async () => {
+    const res = await fetch('/api/admin/announcements');
+    const data = await res.json();
+    if (data.ok) setItems(data.announcements);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const remove = async (item) => {
+    if (!confirm(`"${item.message}" 글을 지금 내릴까요?`)) return;
+    setRemovingId(item.id);
+    try {
+      const res = await fetch(`/api/admin/announcements/${item.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('글을 내렸어요.');
+        await load();
+      } else {
+        showToast(data.error || '처리에 실패했어요.');
+      }
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  const now = Date.now();
+  const active = items?.filter((a) => !a.removed_at && new Date(a.expires_at).getTime() > now) || [];
+  const past = items?.filter((a) => a.removed_at || new Date(a.expires_at).getTime() <= now) || [];
+
+  return (
+    <>
+      <Card title={`지금 홈 화면에 노출 중 (${active.length}건)`}>
+        <p className="text-xs text-gray-500 -mt-2 mb-2.5">
+          부적절한 글이 있으면 바로 내릴 수 있어요.
+        </p>
+        {items === null && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
+        {items && active.length === 0 && (
+          <p className="text-xs text-gray-400 text-center py-4">노출 중인 글이 없어요.</p>
+        )}
+        {active.map((a) => (
+          <div key={a.id} className="flex items-center justify-between gap-2 py-2.5 border-b border-dashed border-gray-200 last:border-0">
+            <div>
+              <div className="font-bold text-sm">{a.message}</div>
+              <div className="text-[11px] text-gray-400">
+                {a.kid_name} · {fmtTime(a.created_at)}
+              </div>
+            </div>
+            <button
+              disabled={removingId === a.id}
+              onClick={() => remove(a)}
+              className="btn-3d btn-3d-coral shrink-0 text-xs bg-coral text-white rounded-lg px-3 py-1.5 disabled:opacity-40"
+            >
+              내리기
+            </button>
+          </div>
+        ))}
+      </Card>
+
+      {past.length > 0 && (
+        <Card title="지난 글">
+          {past.map((a) => (
+            <div key={a.id} className="py-2 border-b border-gray-100 last:border-0 text-sm">
+              <div className={a.removed_at ? 'text-coral-deep line-through' : 'text-gray-500'}>{a.message}</div>
+              <div className="text-[11px] text-gray-400">
+                {a.kid_name} · {fmtTime(a.created_at)} {a.removed_at && '· 관리자가 내림'}
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
     </>
   );
 }

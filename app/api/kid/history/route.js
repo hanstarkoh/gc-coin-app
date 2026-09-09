@@ -10,7 +10,7 @@ export async function GET() {
     const sb = supabaseAdmin();
     const { data, error } = await sb
       .from('transactions')
-      .select('id, type, amount, reason, tx_date, created_at')
+      .select('id, type, amount, reason, tx_date, created_at, quantity, fulfilled, ready_at, pickup_location')
       .eq('kid_id', kidId)
       .order('created_at', { ascending: false })
       .limit(30);
