@@ -48,7 +48,7 @@ export default function FriendRoomPage() {
       <div className="flex-1 max-w-[480px] w-full mx-auto px-4 py-5 space-y-4">
         <div className="bg-white border-2 border-gray-100 rounded-3xl p-4 text-center">
           <div className="font-display text-lg text-navy">
-            {room.avatarEmoji || '🙂'} {room.title ? `${room.title.icon} ${room.title.name} ` : ''}
+            {room.avatarEmoji || '👤'} {room.title ? `${room.title.icon} ${room.title.name} ` : ''}
             {room.name}
             {room.stickerEmoji ? ` ${room.stickerEmoji}` : ''}
           </div>

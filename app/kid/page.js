@@ -5,19 +5,9 @@ import TopBar from '@/components/TopBar';
 import PinPad from '@/components/PinPad';
 import { ToastProvider, useToast } from '@/components/Toast';
 
-const AVATAR_EMOJIS = ['🦁', '🐯', '🐰', '🐻', '🐼', '🦊', '🐸', '🐵', '🐨', '🐷', '🐹', '🐔'];
-const AVATAR_COLORS = ['gold', 'mint', 'navy', 'grape'];
-
-function hashCode(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-
-function avatarFor(kidId) {
-  const h = hashCode(kidId);
-  return { emoji: AVATAR_EMOJIS[h % AVATAR_EMOJIS.length], color: AVATAR_COLORS[h % AVATAR_COLORS.length] };
-}
+// 아바타를 아직 안 산 청소년은 전부 이 흰색 실루엣으로 통일해서 보여줍니다.
+// (동물 아바타는 상점에서 사서 착용하는 것이므로, 안 산 상태가 "기본값"처럼 예뻐 보이면 안 돼요.)
+const DEFAULT_AVATAR = { emoji: '👤', color: 'gray' };
 
 function KidLoginInner() {
   const router = useRouter();
@@ -79,7 +69,7 @@ function KidLoginInner() {
           )}
           <div className="grid grid-cols-3 gap-3">
             {kids?.map((k) => {
-              const fallback = avatarFor(k.id);
+              const fallback = DEFAULT_AVATAR;
               const emoji = k.avatarEmoji || fallback.emoji;
               return (
                 <button

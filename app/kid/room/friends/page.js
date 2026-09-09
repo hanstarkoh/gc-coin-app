@@ -3,19 +3,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import TopBar from '@/components/TopBar';
 
-const AVATAR_EMOJIS = ['🦁', '🐯', '🐰', '🐻', '🐼', '🦊', '🐸', '🐵', '🐨', '🐷', '🐹', '🐔'];
-const AVATAR_COLORS = ['gold', 'mint', 'navy', 'grape'];
-
-function hashCode(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-
-function avatarFor(kidId) {
-  const h = hashCode(kidId);
-  return { emoji: AVATAR_EMOJIS[h % AVATAR_EMOJIS.length], color: AVATAR_COLORS[h % AVATAR_COLORS.length] };
-}
+// 아바타를 아직 안 산 청소년은 전부 이 흰색 실루엣으로 통일해서 보여줍니다.
+const DEFAULT_AVATAR = { emoji: '👤', color: 'gray' };
 
 export default function FriendsRoomListPage() {
   const router = useRouter();
@@ -35,7 +24,7 @@ export default function FriendsRoomListPage() {
         {kids === null && <p className="text-center text-gray-400 text-sm mt-10">불러오는 중...</p>}
         <div className="grid grid-cols-3 gap-3">
           {kids?.map((k) => {
-            const fallback = avatarFor(k.id);
+            const fallback = DEFAULT_AVATAR;
             const emoji = k.avatarEmoji || fallback.emoji;
             return (
               <button
