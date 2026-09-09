@@ -9,9 +9,18 @@ export async function GET() {
 
   try {
     const sb = supabaseAdmin();
-    const { data: inv, error: invErr } = await sb.from('kid_inventory').select('item_key').eq('kid_id', kidId);
+    const { data: inv, error: invErr } = await sb
+      .from('kid_inventory')
+      .select('item_key, expires_at')
+      .eq('kid_id', kidId);
     if (invErr) throw invErr;
-    const ownedSet = new Set(inv.map((i) => i.item_key));
+    const now = new Date();
+    // expires_at이 null이면 영구 보유, 지났으면 만료된 것으로 간주해 다시 구매 가능하게 둡니다.
+    const activeMap = new Map();
+    for (const i of inv) {
+      const active = i.expires_at === null || new Date(i.expires_at) > now;
+      if (active) activeMap.set(i.item_key, i.expires_at);
+    }
 
     const { data: equippedRow, error: eqErr } = await sb
       .from('kid_equipped')
@@ -23,7 +32,11 @@ export async function GET() {
     const categories = Object.fromEntries(
       Object.entries(SHOP_CATEGORIES).map(([cat, items]) => [
         cat,
-        items.map((it) => ({ ...it, owned: ownedSet.has(it.key) })),
+        items.map((it) => ({
+          ...it,
+          owned: activeMap.has(it.key),
+          expiresAt: activeMap.get(it.key) || null,
+        })),
       ])
     );
 
@@ -36,7 +49,6 @@ export async function GET() {
         sticker: equippedRow?.sticker_key || null,
         theme: equippedRow?.theme_key || null,
       },
-      hasNameGlow: ownedSet.has('name_glow'),
     });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 });

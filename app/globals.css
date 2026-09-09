@@ -116,7 +116,7 @@ html, body {
   }
 }
 
-/* ---- 상점 특별효과: 아바타 반짝이는 링 ---- */
+/* ---- 상점 특별효과: 아바타 반짝이는 링(골드) ---- */
 .avatar-ring {
   animation: ringPulse 1.6s ease-in-out infinite;
 }
@@ -128,6 +128,84 @@ html, body {
   50% {
     box-shadow: 0 0 0 4px #ffefc0, 0 0 16px 4px rgba(242, 172, 30, 0.85);
   }
+}
+
+/* ---- 상점 특별효과: 아바타 링(무지개) ---- */
+.avatar-ring-rainbow {
+  animation: ringRainbow 2.4s linear infinite;
+}
+@keyframes ringRainbow {
+  0% { box-shadow: 0 0 0 3px #ff5c5c, 0 0 10px 2px rgba(255, 92, 92, 0.6); }
+  16% { box-shadow: 0 0 0 3px #f2ac1e, 0 0 10px 2px rgba(242, 172, 30, 0.6); }
+  33% { box-shadow: 0 0 0 3px #3fb68b, 0 0 10px 2px rgba(63, 182, 139, 0.6); }
+  50% { box-shadow: 0 0 0 3px #4ea1f2, 0 0 10px 2px rgba(78, 161, 242, 0.6); }
+  66% { box-shadow: 0 0 0 3px #7c5cbf, 0 0 10px 2px rgba(124, 92, 191, 0.6); }
+  83% { box-shadow: 0 0 0 3px #e2574c, 0 0 10px 2px rgba(226, 87, 76, 0.6); }
+  100% { box-shadow: 0 0 0 3px #ff5c5c, 0 0 10px 2px rgba(255, 92, 92, 0.6); }
+}
+
+/* ---- 상점 특별효과: 아바타 링(불꽃) ---- */
+.avatar-ring-fire {
+  animation: ringFire 1s ease-in-out infinite;
+}
+@keyframes ringFire {
+  0%, 100% { box-shadow: 0 0 0 3px #ff8a3d, 0 0 10px 3px rgba(226, 87, 76, 0.6); }
+  50% { box-shadow: 0 0 0 4px #ffd23d, 0 0 18px 5px rgba(255, 138, 61, 0.9); }
+}
+
+/* ---- 상점 특별효과: 아바타 주변 별가루 ---- */
+.avatar-star-trail {
+  position: relative;
+}
+.avatar-star-trail::before,
+.avatar-star-trail::after {
+  content: '✨';
+  position: absolute;
+  font-size: 10px;
+  animation: starTwinkle 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+.avatar-star-trail::before { top: -4px; left: -4px; animation-delay: 0s; }
+.avatar-star-trail::after { bottom: -4px; right: -4px; animation-delay: 0.8s; }
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.7); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* ---- 상점 특별효과: 네온 이름 ---- */
+.name-neon {
+  color: #0ea5e9;
+  text-shadow: 0 0 4px #38bdf8, 0 0 10px #0ea5e9, 0 0 16px #0284c7;
+  animation: neonPulse 1.8s ease-in-out infinite;
+}
+@keyframes neonPulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
+/* ---- 상점 특별효과: 흔들리는 이름 ---- */
+.name-shake {
+  display: inline-block;
+  animation: nameShake 0.6s ease-in-out infinite;
+}
+@keyframes nameShake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-4deg); }
+  75% { transform: rotate(4deg); }
+}
+
+/* ---- 상점 특별효과: VIP 마크 ---- */
+.vip-badge-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 8px;
+  font-weight: 900;
+  color: #16324f;
+  background: linear-gradient(160deg, #ffdd8c, #f2ac1e);
+  padding: 1px 4px;
+  border-radius: 4px;
+  line-height: 1.3;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
 }
 
 /* ---- 마이룸: 벽지 + 나무 바닥이 있는 방처럼 보이는 배경 ---- */

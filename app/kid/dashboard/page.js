@@ -883,6 +883,11 @@ function ShopCard({ kidBalance, onChange, showToast }) {
                   )}
                   <div className="text-[10px] font-medium text-navy leading-tight">{item.name}</div>
                   {!item.owned && <div className="text-[10px] text-gold-deep font-bold">{item.price} GC</div>}
+                  {sec.key === 'special' && item.owned && item.expiresAt && (
+                    <div className="text-[9px] text-gray-400">
+                      {Math.max(1, Math.ceil((new Date(item.expiresAt) - Date.now()) / 86400000))}일 남음
+                    </div>
+                  )}
                   {!item.owned ? (
                     <button
                       disabled={isBusy || kidBalance < item.price}

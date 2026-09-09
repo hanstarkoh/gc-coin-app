@@ -143,9 +143,13 @@ create table if not exists kid_inventory (
   category text not null,
   item_key text not null,
   purchased_at timestamptz not null default now(),
+  expires_at timestamptz,
   unique (kid_id, item_key)
 );
 create index if not exists idx_kid_inventory_kid on kid_inventory(kid_id);
+-- expires_at이 null이면 영구 보유(아바타/액세서리/스티커/테마/가구), 값이 있으면 그 시점에 만료되는
+-- 기간제 아이템(특별효과)입니다. 이 컬럼을 나중에 추가했기 때문에 기존 행은 전부 null(영구)로
+-- 남아 있고, 새로 산 특별효과부터 기간제로 적용됩니다.
 
 create table if not exists kid_equipped (
   kid_id uuid primary key references kids(id) on delete cascade,

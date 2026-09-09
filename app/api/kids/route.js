@@ -9,9 +9,14 @@ import { calcLevel } from '@/lib/level';
 // 실패해도 기본 목록 응답 자체는 막지 않도록 별도로 조회합니다.
 async function loadCustomization(sb) {
   try {
+    const nowIso = new Date().toISOString();
     const [{ data: equippedRows, error: eqErr }, { data: specialRows, error: specErr }] = await Promise.all([
       sb.from('kid_equipped').select('kid_id, avatar_key, accessory_key, sticker_key'),
-      sb.from('kid_inventory').select('kid_id, item_key').eq('category', 'special'),
+      sb
+        .from('kid_inventory')
+        .select('kid_id, item_key')
+        .eq('category', 'special')
+        .or(`expires_at.is.null,expires_at.gt.${nowIso}`),
     ]);
     if (eqErr || specErr) throw eqErr || specErr;
 
@@ -72,7 +77,13 @@ export async function GET() {
         stickerEmoji: stickerItem?.emoji || null,
         nameGlow: specials.has('name_glow'),
         rainbowName: specials.has('rainbow_name'),
+        neonName: specials.has('neon_name'),
+        shakeName: specials.has('shake_name'),
         avatarRing: specials.has('avatar_ring'),
+        avatarRingRainbow: specials.has('avatar_ring_rainbow'),
+        avatarRingFire: specials.has('avatar_ring_fire'),
+        starTrail: specials.has('star_trail'),
+        vipBadge: specials.has('vip_badge'),
       };
     });
     return NextResponse.json({ ok: true, kids });

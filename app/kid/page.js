@@ -90,8 +90,14 @@ function KidLoginInner() {
                   <div className="relative">
                     <div
                       className={`icon-badge icon-badge-${fallback.color} w-12 h-12 rounded-full text-2xl ${
-                        k.avatarRing ? 'avatar-ring' : ''
-                      }`}
+                        k.avatarRingFire
+                          ? 'avatar-ring-fire'
+                          : k.avatarRingRainbow
+                          ? 'avatar-ring-rainbow'
+                          : k.avatarRing
+                          ? 'avatar-ring'
+                          : ''
+                      } ${k.starTrail ? 'avatar-star-trail' : ''}`}
                     >
                       {emoji}
                     </div>
@@ -109,12 +115,19 @@ function KidLoginInner() {
                   )}
                   <span
                     className={`text-sm font-medium flex items-center gap-0.5 ${
-                      k.rainbowName ? 'name-rainbow font-bold' : k.nameGlow ? 'text-gold-deep font-bold' : 'text-navy'
-                    }`}
+                      k.rainbowName
+                        ? 'name-rainbow font-bold'
+                        : k.neonName
+                        ? 'name-neon font-bold'
+                        : k.nameGlow
+                        ? 'text-gold-deep font-bold'
+                        : 'text-navy'
+                    } ${k.shakeName ? 'name-shake' : ''}`}
                   >
                     {k.stickerEmoji && <span className="text-xs">{k.stickerEmoji}</span>}
                     {k.name}
-                    {(k.nameGlow || k.rainbowName) && <span className="text-xs">✨</span>}
+                    {(k.nameGlow || k.rainbowName || k.neonName) && <span className="text-xs">✨</span>}
+                    {k.vipBadge && <span className="vip-badge-tag ml-0.5">VIP</span>}
                   </span>
                 </button>
               );
