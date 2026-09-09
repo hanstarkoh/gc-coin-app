@@ -59,6 +59,7 @@ html, body {
 .icon-badge-mint { --badge-from: #82E4BE; --badge-to: #3FB68B; }
 .icon-badge-navy { --badge-from: #2E5680; --badge-to: #16324F; }
 .icon-badge-grape { --badge-from: #A78EE0; --badge-to: #7C5CBF; }
+.icon-badge-coral { --badge-from: #FF9C8A; --badge-to: #E2574C; }
 .icon-badge-gray {
   --badge-from: #F2F2F2;
   --badge-to: #E2E2E2;

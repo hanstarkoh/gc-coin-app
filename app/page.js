@@ -70,12 +70,27 @@ async function getActiveStocks() {
   );
 }
 
+async function getActiveGoal() {
+  noStore();
+  const sb = supabaseAdmin();
+  const { data, error } = await sb
+    .from('group_goals')
+    .select('id, title, description, target, current, achieved_at')
+    .eq('is_active', true)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) return null;
+  return data;
+}
+
 export default async function Home() {
-  const [menu, events, stocks, ordersOpen] = await Promise.all([
+  const [menu, events, stocks, ordersOpen, goal] = await Promise.all([
     getMenu(),
     getActiveEvents(),
     getActiveStocks(),
     getOrdersOpen(),
+    getActiveGoal(),
   ]);
 
   return (
@@ -106,6 +121,32 @@ export default async function Home() {
         >
           🙋 청소년으로 시작하기
         </Link>
+
+        {goal && (
+          <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="icon-badge icon-badge-coral w-7 h-7 rounded-lg text-sm">🎉</div>
+              <div className="font-display text-base text-navy">기부함 · {goal.title}</div>
+            </div>
+            {goal.description && <p className="text-xs text-gray-500 mb-2">{goal.description}</p>}
+            <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-coral to-coral-deep rounded-full transition-all duration-700"
+                style={{ width: `${Math.min(100, Math.round((goal.current / goal.target) * 100))}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-xs mt-1.5">
+              <span className="text-gray-500">
+                {goal.current} / {goal.target} GC
+              </span>
+              {goal.achieved_at ? (
+                <span className="font-bold text-mint-deep">🎉 목표 달성!</span>
+              ) : (
+                <span className="text-gray-400">로그인하고 기부해보세요</span>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
           <div className="flex items-center justify-between mb-2">

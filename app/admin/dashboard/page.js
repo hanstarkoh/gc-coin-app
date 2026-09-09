@@ -10,6 +10,7 @@ const TABS = [
   { key: 'orders', label: '주문 현황' },
   { key: 'events', label: '이벤트' },
   { key: 'stocks', label: '종목 관리' },
+  { key: 'goals', label: '기부함' },
   { key: 'kids', label: '청소년 관리' },
   { key: 'history', label: '전체 현황' },
   { key: 'settings', label: '설정' },
@@ -36,6 +37,7 @@ function DashboardInner() {
   const [kids, setKids] = useState([]);
   const [todayTx, setTodayTx] = useState([]);
   const [pendingEventCount, setPendingEventCount] = useState(0);
+  const [readyGoalCount, setReadyGoalCount] = useState(0);
 
   const checkAuth = useCallback(async () => {
     const res = await fetch('/api/admin/me');
@@ -120,6 +122,8 @@ function DashboardInner() {
                 ? `${t.label} (${pendingEventCount})`
                 : t.key === 'orders' && unfulfilledOrderCount > 0
                 ? `${t.label} (${unfulfilledOrderCount})`
+                : t.key === 'goals' && readyGoalCount > 0
+                ? `${t.label} (${readyGoalCount})`
                 : t.label}
             </button>
           ))}
@@ -141,6 +145,7 @@ function DashboardInner() {
           <EventsTab showToast={showToast} onPendingCountChange={setPendingEventCount} />
         )}
         {tab === 'stocks' && <StocksTab showToast={showToast} />}
+        {tab === 'goals' && <GoalsTab showToast={showToast} onReadyCountChange={setReadyGoalCount} />}
         {tab === 'kids' && (
           <KidsTab kids={kids} reload={loadKids} showToast={showToast} />
         )}
@@ -825,6 +830,198 @@ function EventsTab({ showToast, onPendingCountChange }) {
           이벤트 등록
         </button>
       </Card>
+    </>
+  );
+}
+
+/* ---------------- GOALS(기부함) TAB ---------------- */
+function GoalsTab({ showToast, onReadyCountChange }) {
+  const [goals, setGoals] = useState(null);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [target, setTarget] = useState('');
+  const [busyId, setBusyId] = useState(null);
+
+  const load = useCallback(async () => {
+    const res = await fetch('/api/admin/goals');
+    const data = await res.json();
+    if (data.ok) {
+      setGoals(data.goals);
+      const ready = data.goals.filter((g) => g.achieved_at && !g.completed_at).length;
+      onReadyCountChange(ready);
+    }
+  }, [onReadyCountChange]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const add = async () => {
+    const t = parseInt(target, 10);
+    if (!title.trim() || !t || t <= 0) return showToast('목표 이름과 목표 금액을 확인해주세요.');
+    const res = await fetch('/api/admin/goals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, description, target: t }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('목표를 등록했어요.');
+      setTitle('');
+      setDescription('');
+      setTarget('');
+      await load();
+    } else {
+      showToast(data.error || '등록에 실패했어요.');
+    }
+  };
+
+  const toggleActive = async (goal) => {
+    const res = await fetch(`/api/admin/goals/${goal.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: !goal.is_active }),
+    });
+    const data = await res.json();
+    if (data.ok) await load();
+  };
+
+  const complete = async (goal) => {
+    if (!confirm(`"${goal.title}"을(를) 완료 처리할까요? (실제로 진행한 뒤 눌러주세요)`)) return;
+    setBusyId(goal.id);
+    try {
+      const res = await fetch(`/api/admin/goals/${goal.id}/complete`, { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('완료 처리했어요.');
+        await load();
+      } else {
+        showToast(data.error || '처리에 실패했어요.');
+      }
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const del = async (goal) => {
+    if (!confirm(`"${goal.title}" 목표를 정말 삭제할까요? 기부 내역도 함께 사라져요.`)) return;
+    const res = await fetch(`/api/admin/goals/${goal.id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('목표를 삭제했어요.');
+      await load();
+    }
+  };
+
+  const active = goals?.filter((g) => !g.completed_at) || [];
+  const completed = goals?.filter((g) => g.completed_at) || [];
+
+  return (
+    <>
+      <Card title="진행 중인 목표">
+        {goals === null && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
+        {goals && active.length === 0 && (
+          <p className="text-xs text-gray-400 text-center py-4">등록된 목표가 없어요. 아래에서 추가해주세요.</p>
+        )}
+        {active.map((g) => {
+          const pct = Math.min(100, Math.round((g.current / g.target) * 100));
+          return (
+            <div key={g.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-bold text-sm">
+                  {g.title} {!g.is_active && <span className="text-gray-400 text-xs">(비활성)</span>}
+                </div>
+                <span className="text-xs text-gray-500">
+                  {g.current} / {g.target} GC
+                </span>
+              </div>
+              {g.description && <p className="text-xs text-gray-500 mt-0.5">{g.description}</p>}
+              <div className="h-3 rounded-full bg-gray-100 overflow-hidden mt-2">
+                <div
+                  className="h-full bg-gradient-to-r from-coral to-coral-deep rounded-full"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              {g.topDonors.length > 0 && (
+                <div className="mt-2 text-xs text-gray-500">
+                  🏆 1등: <span className="font-bold text-gold-deep">{g.topDonors[0].kidName}</span> (
+                  {g.topDonors[0].amount} GC) - 메뉴 선정권
+                </div>
+              )}
+              {g.achieved_at && <p className="text-xs font-bold text-mint-deep mt-1">🎉 목표 달성!</p>}
+              <div className="flex gap-1.5 mt-2.5">
+                <button
+                  disabled={busyId === g.id}
+                  onClick={() => complete(g)}
+                  className="btn-3d btn-3d-mint text-xs bg-mint text-white rounded-lg px-3 py-1.5 disabled:opacity-40"
+                >
+                  완료 처리
+                </button>
+                <button
+                  onClick={() => toggleActive(g)}
+                  className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1.5"
+                >
+                  {g.is_active ? '비활성화' : '활성화'}
+                </button>
+                <button onClick={() => del(g)} className="btn-3d btn-3d-coral text-xs bg-coral text-white rounded-lg px-2.5 py-1.5">
+                  삭제
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </Card>
+
+      <Card title="목표 등록">
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">목표 이름</label>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="예: 피자데이"
+            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+          />
+        </div>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">설명 (선택)</label>
+          <input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="예: 다같이 목표를 모으면 피자를 시켜먹어요"
+            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+          />
+        </div>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">목표 금액 (GC)</label>
+          <input
+            type="number"
+            min="1"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            placeholder="예: 300"
+            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+          />
+        </div>
+        <button onClick={add} className="btn-3d btn-3d-coral w-full bg-coral text-white font-display rounded-xl py-3 text-sm">
+          목표 등록
+        </button>
+      </Card>
+
+      {completed.length > 0 && (
+        <Card title="지난 목표">
+          {completed.map((g) => (
+            <div key={g.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0 text-sm">
+              <div>
+                <div className="font-medium">{g.title}</div>
+                <div className="text-[11px] text-gray-400">{g.target} GC 달성</div>
+              </div>
+              {g.topDonors[0] && (
+                <div className="text-xs text-gold-deep font-bold">🏆 {g.topDonors[0].kidName}</div>
+              )}
+            </div>
+          ))}
+        </Card>
+      )}
     </>
   );
 }

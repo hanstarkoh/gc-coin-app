@@ -57,6 +57,9 @@ function DashboardInner() {
   const [trading, setTrading] = useState(false);
   const [agreeChecked, setAgreeChecked] = useState(false);
   const [agreeing, setAgreeing] = useState(false);
+  const [goals, setGoals] = useState(null);
+  const [donateAmount, setDonateAmount] = useState('');
+  const [donating, setDonating] = useState(false);
 
   const loadMe = useCallback(async () => {
     const res = await fetch('/api/kid/me');
@@ -68,6 +71,12 @@ function DashboardInner() {
     if (data.ok) setMe(data);
     return data;
   }, [router]);
+
+  const loadGoals = useCallback(async () => {
+    const res = await fetch('/api/kid/goals');
+    const data = await res.json();
+    if (data.ok) setGoals(data);
+  }, []);
 
   const loadMenu = useCallback(async () => {
     const res = await fetch('/api/kid/menu');
@@ -103,6 +112,7 @@ function DashboardInner() {
       await loadMenu();
       await loadEvents();
       await loadStocks();
+      await loadGoals();
       const tx = await loadHistory();
       if (meData?.ok) checkCelebrations(meData, tx);
     })();
@@ -178,6 +188,32 @@ function DashboardInner() {
       showToast('네트워크 오류가 발생했어요.');
     } finally {
       setCompleting(null);
+    }
+  };
+
+  const handleDonate = async (goal) => {
+    const amt = parseInt(donateAmount, 10);
+    if (!amt || amt <= 0) return showToast('기부할 코인 수를 입력해주세요.');
+    if (!confirm(`"${goal.title}"에 ${amt} GC를 기부할까요?`)) return;
+    setDonating(true);
+    try {
+      const res = await fetch(`/api/kid/goals/${goal.id}/donate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amt }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast(data.achieved ? '🎉 목표를 달성했어요!' : '기부 완료! 고마워요.');
+        setDonateAmount('');
+        await Promise.all([loadGoals(), loadMe()]);
+      } else {
+        showToast(data.error || '기부에 실패했어요.');
+      }
+    } catch (e) {
+      showToast('네트워크 오류가 발생했어요.');
+    } finally {
+      setDonating(false);
     }
   };
 
@@ -433,6 +469,70 @@ function DashboardInner() {
               })}
             </>
           )}
+        </Collapsible>
+
+        <Collapsible icon="🎉" badgeColor="coral" title="기부함" defaultOpen={true}>
+          {goals === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
+          {goals && goals.goals.length === 0 && (
+            <p className="text-xs text-gray-400 py-4 text-center">지금 진행 중인 공동 목표가 없어요.</p>
+          )}
+          {goals?.goals.map((g) => {
+            const pct = Math.min(100, Math.round((g.current / g.target) * 100));
+            return (
+              <div key={g.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-sm">{g.title}</div>
+                  <span className="text-xs text-gray-500">
+                    {g.current} / {g.target} GC
+                  </span>
+                </div>
+                {g.description && <p className="text-xs text-gray-500 mt-0.5">{g.description}</p>}
+                <div className="h-3 rounded-full bg-gray-100 overflow-hidden mt-2">
+                  <div
+                    className="h-full bg-gradient-to-r from-coral to-coral-deep rounded-full transition-all duration-700"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                {g.achieved_at && (
+                  <p className="text-xs font-bold text-mint-deep mt-1.5">🎉 목표 달성! 관리자가 곧 진행해줄 거예요.</p>
+                )}
+
+                {g.topDonors.length > 0 && (
+                  <div className="mt-2.5">
+                    <div className="text-[11px] font-bold text-gray-500 mb-1">
+                      🏆 기부 랭킹 (1등은 메뉴 선정권!)
+                    </div>
+                    {g.topDonors.map((d, i) => (
+                      <div key={d.kidId} className="flex items-center justify-between text-xs py-0.5">
+                        <span className={i === 0 ? 'font-bold text-gold-deep' : 'text-gray-600'}>
+                          {i + 1}. {d.kidName}
+                        </span>
+                        <span className={i === 0 ? 'font-bold text-gold-deep' : 'text-gray-500'}>{d.amount} GC</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-1.5 mt-2.5">
+                  <input
+                    type="number"
+                    min="1"
+                    value={donateAmount}
+                    onChange={(e) => setDonateAmount(e.target.value)}
+                    placeholder="기부할 GC"
+                    className="flex-1 min-w-0 border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+                  />
+                  <button
+                    disabled={donating}
+                    onClick={() => handleDonate(g)}
+                    className="btn-3d btn-3d-coral shrink-0 text-xs bg-coral text-white rounded-lg px-3 py-1.5 disabled:opacity-40"
+                  >
+                    기부하기
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </Collapsible>
 
         <Collapsible icon="🎯" badgeColor="grape" title="진행 중인 이벤트" defaultOpen={true}>

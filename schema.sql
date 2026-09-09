@@ -172,6 +172,34 @@ create index if not exists idx_kid_room_items_kid on kid_room_items(kid_id);
 -- 마이룸에서 잔액을 친구들에게 공개할지 (기본은 비공개)
 alter table kids add column if not exists room_balance_public boolean not null default false;
 
+-- 기부함(공동 목표): 관리자가 "피자데이" 같은 목표를 정하면 청소년들이 코인을 기부해서
+-- 채우고, 달성되면 관리자가 실제로 진행한 뒤 완료 처리합니다. 목표별 기부 순위 1등에게
+-- 메뉴 선정권을 주는 식으로 씁니다(순위는 group_goal_donations를 집계해서 그때그때 계산).
+create table if not exists group_goals (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  target int not null,
+  current int not null default 0,
+  is_active boolean not null default true,
+  achieved_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists group_goal_donations (
+  id uuid primary key default gen_random_uuid(),
+  goal_id uuid not null references group_goals(id) on delete cascade,
+  kid_id uuid not null references kids(id) on delete cascade,
+  kid_name text not null,
+  amount int not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_goal_donations_goal on group_goal_donations(goal_id);
+
+-- 누적 기부액. '나눔이'/'기부왕' 뱃지 조건에 사용.
+alter table kids add column if not exists total_donated int not null default 0;
+
 -- 이 앱은 Next.js 서버(API 라우트)에서 Supabase "service role" 키로만 접근합니다.
 -- 브라우저에서 테이블에 직접 접근하지 않으므로 Row Level Security 는 기본적으로 막아둡니다.
 alter table settings enable row level security;
@@ -187,4 +215,6 @@ alter table stock_orders enable row level security;
 alter table kid_inventory enable row level security;
 alter table kid_equipped enable row level security;
 alter table kid_room_items enable row level security;
+alter table group_goals enable row level security;
+alter table group_goal_donations enable row level security;
 -- (정책을 추가하지 않으면 anon 키로는 아무것도 읽고 쓸 수 없고, service role 키는 항상 통과합니다.)
