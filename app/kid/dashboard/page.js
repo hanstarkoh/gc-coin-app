@@ -332,11 +332,24 @@ function DashboardInner() {
   const heroStyle = theme
     ? { background: `linear-gradient(165deg, ${theme.from} 0%, ${theme.mid} 55%, ${theme.to} 100%)` }
     : undefined;
+  const readyOrders = (history || []).filter((t) => t.type === 'spend' && !t.fulfilled && t.ready_at);
 
   return (
     <div className="min-h-screen flex flex-col">
       <TopBar title="금정코인" sub={`${nameLabel}님`} onExit={handleLogout} />
       <div className="flex-1 max-w-[480px] w-full mx-auto px-4 py-5 space-y-4">
+        {readyOrders.length > 0 && (
+          <div className="bg-gold border-2 border-gold-deep rounded-2xl p-4 animate-popIn">
+            <div className="font-display text-base text-navy-deep mb-1.5">🔔 픽업 준비 완료!</div>
+            {readyOrders.map((o) => (
+              <div key={o.id} className="text-sm text-navy-deep font-medium">
+                {o.reason}
+                {o.quantity > 1 ? ` × ${o.quantity}` : ''} — <span className="font-bold">{o.pickup_location || '사무실'}</span>로 받으러 오세요!
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="hero-coin-card text-white rounded-3xl p-6 text-center" style={heroStyle}>
           <div className="icon-badge icon-badge-gold w-14 h-14 rounded-full text-2xl mx-auto mb-2">🪙</div>
           <div className="text-xs text-white/60">현재 보유 코인</div>
@@ -646,7 +659,7 @@ function DashboardInner() {
         <Collapsible
           icon="🍪"
           badgeColor="mint"
-          title="간식 메뉴"
+          title="금청수 상점"
           defaultOpen={true}
           right={
             <span

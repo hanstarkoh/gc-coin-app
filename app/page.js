@@ -198,7 +198,7 @@ export default async function Home() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <div className="icon-badge icon-badge-mint w-7 h-7 rounded-lg text-sm">🍪</div>
-              <div className="font-display text-base text-navy">간식 메뉴</div>
+              <div className="font-display text-base text-navy">금청수 상점</div>
             </div>
             <span
               className={`text-[11px] font-bold px-2 py-1 rounded-full ${
