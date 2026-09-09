@@ -84,13 +84,41 @@ async function getActiveGoal() {
   return data;
 }
 
+async function getDonationRanking() {
+  noStore();
+  const sb = supabaseAdmin();
+  const { data, error } = await sb
+    .from('kids')
+    .select('name, total_donated')
+    .gt('total_donated', 0)
+    .order('total_donated', { ascending: false })
+    .limit(5);
+  if (error) return [];
+  return data;
+}
+
+async function getProfitRanking() {
+  noStore();
+  const sb = supabaseAdmin();
+  const { data, error } = await sb
+    .from('kids')
+    .select('name, invest_realized_profit')
+    .gt('invest_realized_profit', 0)
+    .order('invest_realized_profit', { ascending: false })
+    .limit(5);
+  if (error) return [];
+  return data;
+}
+
 export default async function Home() {
-  const [menu, events, stocks, ordersOpen, goal] = await Promise.all([
+  const [menu, events, stocks, ordersOpen, goal, donationRanking, profitRanking] = await Promise.all([
     getMenu(),
     getActiveEvents(),
     getActiveStocks(),
     getOrdersOpen(),
     getActiveGoal(),
+    getDonationRanking(),
+    getProfitRanking(),
   ]);
 
   return (
@@ -234,6 +262,41 @@ export default async function Home() {
               );
             })}
             <p className="text-xs text-gray-400 mt-2">로그인하고 코인으로 종목을 사고팔 수 있어요.</p>
+          </div>
+        )}
+
+        {(donationRanking.length > 0 || profitRanking.length > 0) && (
+          <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="icon-badge icon-badge-gold w-7 h-7 rounded-lg text-sm">🏆</div>
+              <div className="font-display text-base text-navy">명예의 전당</div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="text-xs font-bold text-coral-deep mb-1.5">🎁 기부 랭킹</div>
+                {donationRanking.length === 0 && <p className="text-[11px] text-gray-400">아직 없어요</p>}
+                {donationRanking.map((k, i) => (
+                  <div key={k.name + i} className="flex items-center justify-between text-xs py-0.5">
+                    <span className={i === 0 ? 'font-bold text-navy' : 'text-gray-600'}>
+                      {i + 1}. {k.name}
+                    </span>
+                    <span className="text-gray-500">{k.total_donated}</span>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <div className="text-xs font-bold text-mint-deep mb-1.5">📈 수익 랭킹</div>
+                {profitRanking.length === 0 && <p className="text-[11px] text-gray-400">아직 없어요</p>}
+                {profitRanking.map((k, i) => (
+                  <div key={k.name + i} className="flex items-center justify-between text-xs py-0.5">
+                    <span className={i === 0 ? 'font-bold text-navy' : 'text-gray-600'}>
+                      {i + 1}. {k.name}
+                    </span>
+                    <span className="text-gray-500">+{k.invest_realized_profit}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -945,7 +945,7 @@ function GoalsTab({ showToast, onReadyCountChange }) {
               {g.topDonors.length > 0 && (
                 <div className="mt-2 text-xs text-gray-500">
                   🏆 1등: <span className="font-bold text-gold-deep">{g.topDonors[0].kidName}</span> (
-                  {g.topDonors[0].amount} GC) - 메뉴 선정권
+                  {g.topDonors[0].amount} GC)
                 </div>
               )}
               {g.achieved_at && <p className="text-xs font-bold text-mint-deep mt-1">🎉 목표 달성!</p>}

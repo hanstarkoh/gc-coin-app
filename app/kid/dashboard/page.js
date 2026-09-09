@@ -499,9 +499,7 @@ function DashboardInner() {
 
                 {g.topDonors.length > 0 && (
                   <div className="mt-2.5">
-                    <div className="text-[11px] font-bold text-gray-500 mb-1">
-                      🏆 기부 랭킹 (1등은 메뉴 선정권!)
-                    </div>
+                    <div className="text-[11px] font-bold text-gray-500 mb-1">🏆 기부 랭킹</div>
                     {g.topDonors.map((d, i) => (
                       <div key={d.kidId} className="flex items-center justify-between text-xs py-0.5">
                         <span className={i === 0 ? 'font-bold text-gold-deep' : 'text-gray-600'}>
