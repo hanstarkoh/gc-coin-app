@@ -101,6 +101,35 @@ html, body {
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
 
+/* ---- 상점 특별효과: 무지개 이름 ---- */
+.name-rainbow {
+  background: linear-gradient(90deg, #FF5C5C, #F2AC1E, #3FB68B, #4EA1F2, #7C5CBF, #E2574C);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: rainbowShift 3s linear infinite;
+}
+@keyframes rainbowShift {
+  to {
+    background-position: 200% center;
+  }
+}
+
+/* ---- 상점 특별효과: 아바타 반짝이는 링 ---- */
+.avatar-ring {
+  animation: ringPulse 1.6s ease-in-out infinite;
+}
+@keyframes ringPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px #ffd873, 0 0 10px 2px rgba(242, 172, 30, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 4px #ffefc0, 0 0 16px 4px rgba(242, 172, 30, 0.85);
+  }
+}
+
 /* ---- 마이룸: 벽지 + 나무 바닥이 있는 방처럼 보이는 배경 ---- */
 .room-scene {
   position: relative;

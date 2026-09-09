@@ -88,7 +88,11 @@ function KidLoginInner() {
                   className="btn-3d btn-3d-white bg-white border-[1.5px] border-gray-200 rounded-2xl py-3.5 px-1 flex flex-col items-center gap-1.5 hover:border-gold transition"
                 >
                   <div className="relative">
-                    <div className={`icon-badge icon-badge-${fallback.color} w-12 h-12 rounded-full text-2xl`}>
+                    <div
+                      className={`icon-badge icon-badge-${fallback.color} w-12 h-12 rounded-full text-2xl ${
+                        k.avatarRing ? 'avatar-ring' : ''
+                      }`}
+                    >
                       {emoji}
                     </div>
                     {k.accessoryEmoji && (
@@ -105,12 +109,12 @@ function KidLoginInner() {
                   )}
                   <span
                     className={`text-sm font-medium flex items-center gap-0.5 ${
-                      k.nameGlow ? 'text-gold-deep font-bold' : 'text-navy'
+                      k.rainbowName ? 'name-rainbow font-bold' : k.nameGlow ? 'text-gold-deep font-bold' : 'text-navy'
                     }`}
                   >
                     {k.stickerEmoji && <span className="text-xs">{k.stickerEmoji}</span>}
                     {k.name}
-                    {k.nameGlow && <span className="text-xs">✨</span>}
+                    {(k.nameGlow || k.rainbowName) && <span className="text-xs">✨</span>}
                   </span>
                 </button>
               );

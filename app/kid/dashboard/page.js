@@ -777,17 +777,18 @@ function DashboardInner() {
 }
 
 const SHOP_SECTIONS = [
-  { key: 'avatar', label: '아바타', equippable: true },
-  { key: 'accessory', label: '액세서리', equippable: true },
-  { key: 'sticker', label: '이름 스티커', equippable: true },
-  { key: 'theme', label: '카드 테마', equippable: true },
-  { key: 'furniture', label: '가구 (마이룸에 배치)', equippable: false },
-  { key: 'special', label: '특별 효과', equippable: false },
+  { key: 'avatar', label: '아바타', icon: '🐻', equippable: true },
+  { key: 'accessory', label: '액세서리', icon: '🎩', equippable: true },
+  { key: 'sticker', label: '이름 스티커', icon: '⭐', equippable: true },
+  { key: 'theme', label: '카드 테마', icon: '🎨', equippable: true },
+  { key: 'furniture', label: '가구', icon: '🛋️', equippable: false },
+  { key: 'special', label: '특별 효과', icon: '✨', equippable: false },
 ];
 
 function ShopCard({ kidBalance, onChange, showToast }) {
   const [data, setData] = useState(null);
   const [busyKey, setBusyKey] = useState(null);
+  const [activeCat, setActiveCat] = useState('avatar');
 
   const load = useCallback(async () => {
     const res = await fetch('/api/kid/shop');
@@ -840,63 +841,77 @@ function ShopCard({ kidBalance, onChange, showToast }) {
     }
   };
 
+  const sec = SHOP_SECTIONS.find((s) => s.key === activeCat) || SHOP_SECTIONS[0];
+
   return (
     <Collapsible icon="🛍️" badgeColor="gold" title="상점" defaultOpen={false}>
       {data === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
-      {data?.categories &&
-        SHOP_SECTIONS.map((sec) => (
-          <div key={sec.key} className="mb-4 last:mb-0">
-            <div className="text-xs font-bold text-gray-500 mb-2">{sec.label}</div>
-            <div className="grid grid-cols-4 gap-2">
-              {data.categories[sec.key].map((item) => {
-                const isEquipped = sec.equippable && data.equipped[sec.key] === item.key;
-                const isBusy = busyKey === item.key;
-                return (
-                  <div
-                    key={item.key}
-                    className={`rounded-xl border-2 p-2 text-center ${
-                      isEquipped ? 'border-gold bg-gold/10' : 'border-gray-100'
-                    }`}
-                  >
-                    {sec.key === 'theme' ? (
-                      <div
-                        className="w-8 h-8 rounded-full mx-auto mb-1"
-                        style={{ background: `linear-gradient(135deg, ${item.from}, ${item.to})` }}
-                      />
-                    ) : (
-                      <div className="text-xl mb-1">{item.emoji}</div>
-                    )}
-                    <div className="text-[10px] font-medium text-navy leading-tight">{item.name}</div>
-                    {!item.owned && <div className="text-[10px] text-gold-deep font-bold">{item.price} GC</div>}
-                    {!item.owned ? (
-                      <button
-                        disabled={isBusy || kidBalance < item.price}
-                        onClick={() => buy(sec.key, item.key)}
-                        className="btn-3d btn-3d-gold mt-1 w-full text-[10px] bg-gold text-navy-deep rounded-lg py-1 disabled:opacity-40"
-                      >
-                        구매
-                      </button>
-                    ) : sec.equippable ? (
-                      <button
-                        disabled={isBusy}
-                        onClick={() => equip(sec.key, isEquipped ? null : item.key)}
-                        className={`mt-1 w-full text-[10px] rounded-lg py-1 ${
-                          isEquipped
-                            ? 'bg-gold text-navy-deep font-bold'
-                            : 'btn-3d btn-3d-outline border-2 border-navy text-navy'
-                        }`}
-                      >
-                        {isEquipped ? '착용 중' : '착용'}
-                      </button>
-                    ) : (
-                      <div className="mt-1 text-[10px] text-mint-deep font-bold">보유 중</div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+      {data?.categories && (
+        <>
+          <div className="flex gap-1.5 overflow-x-auto pb-1 mb-3 -mx-1 px-1">
+            {SHOP_SECTIONS.map((s) => (
+              <button
+                key={s.key}
+                onClick={() => setActiveCat(s.key)}
+                className={`whitespace-nowrap text-xs px-3 py-1.5 rounded-full border-[1.5px] flex items-center gap-1 ${
+                  activeCat === s.key ? 'bg-navy border-navy text-white' : 'border-gray-200 text-gray-500'
+                }`}
+              >
+                <span>{s.icon}</span>
+                {s.label}
+              </button>
+            ))}
           </div>
-        ))}
+          <div className="grid grid-cols-4 gap-2">
+            {data.categories[sec.key].map((item) => {
+              const isEquipped = sec.equippable && data.equipped[sec.key] === item.key;
+              const isBusy = busyKey === item.key;
+              return (
+                <div
+                  key={item.key}
+                  className={`rounded-xl border-2 p-2 text-center ${
+                    isEquipped ? 'border-gold bg-gold/10' : 'border-gray-100'
+                  }`}
+                >
+                  {sec.key === 'theme' ? (
+                    <div
+                      className="w-8 h-8 rounded-full mx-auto mb-1"
+                      style={{ background: `linear-gradient(135deg, ${item.from}, ${item.to})` }}
+                    />
+                  ) : (
+                    <div className="text-xl mb-1">{item.emoji}</div>
+                  )}
+                  <div className="text-[10px] font-medium text-navy leading-tight">{item.name}</div>
+                  {!item.owned && <div className="text-[10px] text-gold-deep font-bold">{item.price} GC</div>}
+                  {!item.owned ? (
+                    <button
+                      disabled={isBusy || kidBalance < item.price}
+                      onClick={() => buy(sec.key, item.key)}
+                      className="btn-3d btn-3d-gold mt-1 w-full text-[10px] bg-gold text-navy-deep rounded-lg py-1 disabled:opacity-40"
+                    >
+                      구매
+                    </button>
+                  ) : sec.equippable ? (
+                    <button
+                      disabled={isBusy}
+                      onClick={() => equip(sec.key, isEquipped ? null : item.key)}
+                      className={`mt-1 w-full text-[10px] rounded-lg py-1 ${
+                        isEquipped
+                          ? 'bg-gold text-navy-deep font-bold'
+                          : 'btn-3d btn-3d-outline border-2 border-navy text-navy'
+                      }`}
+                    >
+                      {isEquipped ? '착용 중' : '착용'}
+                    </button>
+                  ) : (
+                    <div className="mt-1 text-[10px] text-mint-deep font-bold">보유 중</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </Collapsible>
   );
 }

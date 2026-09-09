@@ -9,17 +9,23 @@ import { calcLevel } from '@/lib/level';
 // 실패해도 기본 목록 응답 자체는 막지 않도록 별도로 조회합니다.
 async function loadCustomization(sb) {
   try {
-    const [{ data: equippedRows, error: eqErr }, { data: glowRows, error: glowErr }] = await Promise.all([
+    const [{ data: equippedRows, error: eqErr }, { data: specialRows, error: specErr }] = await Promise.all([
       sb.from('kid_equipped').select('kid_id, avatar_key, accessory_key, sticker_key'),
-      sb.from('kid_inventory').select('kid_id').eq('item_key', 'name_glow'),
+      sb.from('kid_inventory').select('kid_id, item_key').eq('category', 'special'),
     ]);
-    if (eqErr || glowErr) throw eqErr || glowErr;
+    if (eqErr || specErr) throw eqErr || specErr;
+
+    const specialMap = new Map();
+    for (const r of specialRows) {
+      if (!specialMap.has(r.kid_id)) specialMap.set(r.kid_id, new Set());
+      specialMap.get(r.kid_id).add(r.item_key);
+    }
     return {
       equippedMap: new Map(equippedRows.map((e) => [e.kid_id, e])),
-      glowSet: new Set(glowRows.map((r) => r.kid_id)),
+      specialMap,
     };
   } catch (e) {
-    return { equippedMap: new Map(), glowSet: new Set() };
+    return { equippedMap: new Map(), specialMap: new Map() };
   }
 }
 
@@ -47,13 +53,14 @@ export async function GET() {
       return NextResponse.json({ ok: true, kids });
     }
 
-    const { equippedMap, glowSet } = await loadCustomization(sb);
+    const { equippedMap, specialMap } = await loadCustomization(sb);
 
     const kids = data.map((k) => {
       const eq = equippedMap.get(k.id);
       const avatarItem = eq ? findShopItem('avatar', eq.avatar_key) : null;
       const accessoryItem = eq ? findShopItem('accessory', eq.accessory_key) : null;
       const stickerItem = eq ? findShopItem('sticker', eq.sticker_key) : null;
+      const specials = specialMap.get(k.id) || new Set();
       return {
         id: k.id,
         name: k.name,
@@ -63,7 +70,9 @@ export async function GET() {
         avatarEmoji: avatarItem?.emoji || null,
         accessoryEmoji: accessoryItem?.emoji || null,
         stickerEmoji: stickerItem?.emoji || null,
-        nameGlow: glowSet.has(k.id),
+        nameGlow: specials.has('name_glow'),
+        rainbowName: specials.has('rainbow_name'),
+        avatarRing: specials.has('avatar_ring'),
       };
     });
     return NextResponse.json({ ok: true, kids });
