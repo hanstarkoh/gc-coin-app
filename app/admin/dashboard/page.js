@@ -358,6 +358,7 @@ function MenuTab({ showToast }) {
   const [toggling, setToggling] = useState(false);
   const [restockDrafts, setRestockDrafts] = useState({});
   const [descDrafts, setDescDrafts] = useState({});
+  const [listCat, setListCat] = useState('snack');
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/menu');
@@ -508,7 +509,26 @@ function MenuTab({ showToast }) {
         {items && items.length === 0 && (
           <p className="text-xs text-gray-400 text-center py-4">등록된 메뉴가 없어요. 아래에서 추가해주세요.</p>
         )}
-        {items?.map((it) => {
+        {items && items.length > 0 && (
+          <div className="flex gap-1.5 overflow-x-auto pb-1 mb-2 -mx-1 px-1">
+            {MENU_CATEGORIES.map((c) => (
+              <button
+                key={c.key}
+                onClick={() => setListCat(c.key)}
+                className={`whitespace-nowrap text-xs px-3 py-1.5 rounded-full border-[1.5px] flex items-center gap-1 ${
+                  listCat === c.key ? 'bg-navy border-navy text-white' : 'border-gray-200 text-gray-500'
+                }`}
+              >
+                <span>{c.icon}</span>
+                {c.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {items && items.length > 0 && items.filter((it) => (it.category || 'snack') === listCat).length === 0 && (
+          <p className="text-xs text-gray-400 text-center py-4">이 소분류엔 메뉴가 없어요.</p>
+        )}
+        {items?.filter((it) => (it.category || 'snack') === listCat).map((it) => {
           const soldOut = it.stock !== null && it.stock <= 0;
           const draft = restockDrafts[it.id];
           const draftValue = draft !== undefined ? draft : it.stock === null ? '' : String(it.stock);
