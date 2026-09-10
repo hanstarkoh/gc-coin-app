@@ -359,6 +359,7 @@ function MenuTab({ showToast }) {
   const [restockDrafts, setRestockDrafts] = useState({});
   const [descDrafts, setDescDrafts] = useState({});
   const [listCat, setListCat] = useState('snack');
+  const [listPage, setListPage] = useState(1);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/menu');
@@ -514,7 +515,10 @@ function MenuTab({ showToast }) {
             {MENU_CATEGORIES.map((c) => (
               <button
                 key={c.key}
-                onClick={() => setListCat(c.key)}
+                onClick={() => {
+                  setListCat(c.key);
+                  setListPage(1);
+                }}
                 className={`whitespace-nowrap text-xs px-3 py-1.5 rounded-full border-[1.5px] flex items-center gap-1 ${
                   listCat === c.key ? 'bg-navy border-navy text-white' : 'border-gray-200 text-gray-500'
                 }`}
@@ -525,10 +529,21 @@ function MenuTab({ showToast }) {
             ))}
           </div>
         )}
-        {items && items.length > 0 && items.filter((it) => (it.category || 'snack') === listCat).length === 0 && (
-          <p className="text-xs text-gray-400 text-center py-4">이 소분류엔 메뉴가 없어요.</p>
-        )}
-        {items?.filter((it) => (it.category || 'snack') === listCat).map((it) => {
+        {(() => {
+          const MENU_LIST_PAGE_SIZE = 10;
+          const listItems = (items || []).filter((it) => (it.category || 'snack') === listCat);
+          if (items && items.length > 0 && listItems.length === 0) {
+            return <p className="text-xs text-gray-400 text-center py-4">이 소분류엔 메뉴가 없어요.</p>;
+          }
+          const totalPages = Math.max(1, Math.ceil(listItems.length / MENU_LIST_PAGE_SIZE));
+          const pageClamped = Math.min(listPage, totalPages);
+          const pageItems = listItems.slice(
+            (pageClamped - 1) * MENU_LIST_PAGE_SIZE,
+            pageClamped * MENU_LIST_PAGE_SIZE
+          );
+          return (
+            <>
+              {pageItems.map((it) => {
           const soldOut = it.stock !== null && it.stock <= 0;
           const draft = restockDrafts[it.id];
           const draftValue = draft !== undefined ? draft : it.stock === null ? '' : String(it.stock);
@@ -591,8 +606,32 @@ function MenuTab({ showToast }) {
                 </button>
               </div>
             </div>
+                );
+              })}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-3 mt-2">
+                  <button
+                    disabled={pageClamped <= 1}
+                    onClick={() => setListPage(pageClamped - 1)}
+                    className="text-xs w-7 h-7 rounded-full border-2 border-gray-200 text-gray-500 disabled:opacity-30"
+                  >
+                    ‹
+                  </button>
+                  <span className="text-xs text-gray-400">
+                    {pageClamped} / {totalPages}
+                  </span>
+                  <button
+                    disabled={pageClamped >= totalPages}
+                    onClick={() => setListPage(pageClamped + 1)}
+                    className="text-xs w-7 h-7 rounded-full border-2 border-gray-200 text-gray-500 disabled:opacity-30"
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
+            </>
           );
-        })}
+        })()}
       </Card>
       <Card title="메뉴 추가">
         <div className="flex gap-2 mb-3">

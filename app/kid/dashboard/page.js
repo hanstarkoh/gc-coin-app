@@ -68,6 +68,7 @@ function DashboardInner() {
   const [donating, setDonating] = useState(false);
   const [orderItemId, setOrderItemId] = useState(null);
   const [menuCat, setMenuCat] = useState('snack');
+  const [menuPage, setMenuPage] = useState(1);
   const [orderQty, setOrderQty] = useState('1');
   const [announceText, setAnnounceText] = useState('');
   const [announcing, setAnnouncing] = useState(false);
@@ -716,7 +717,10 @@ function DashboardInner() {
               {MENU_CATEGORIES.map((cat) => (
                 <button
                   key={cat.key}
-                  onClick={() => setMenuCat(cat.key)}
+                  onClick={() => {
+                    setMenuCat(cat.key);
+                    setMenuPage(1);
+                  }}
                   className={`whitespace-nowrap text-xs px-3 py-1.5 rounded-full border-[1.5px] flex items-center gap-1 ${
                     menuCat === cat.key ? 'bg-navy border-navy text-white' : 'border-gray-200 text-gray-500'
                   }`}
@@ -728,11 +732,15 @@ function DashboardInner() {
             </div>
           )}
           {(() => {
-            const items = (menu || []).filter((item) => (item.category || 'snack') === menuCat);
-            if (menu && menu.length > 0 && items.length === 0) {
+            const MENU_PAGE_SIZE = 10;
+            const allItems = (menu || []).filter((item) => (item.category || 'snack') === menuCat);
+            if (menu && menu.length > 0 && allItems.length === 0) {
               return <p className="text-xs text-gray-400 py-4 text-center">이 소분류엔 메뉴가 없어요.</p>;
             }
-            return items.map((item) => {
+            const totalPages = Math.max(1, Math.ceil(allItems.length / MENU_PAGE_SIZE));
+            const pageClamped = Math.min(menuPage, totalPages);
+            const items = allItems.slice((pageClamped - 1) * MENU_PAGE_SIZE, pageClamped * MENU_PAGE_SIZE);
+            const rows = items.map((item) => {
                   const soldOut = item.stock !== null && item.stock <= 0;
                   const canAfford = ordersOpen && !soldOut && kid.balance >= item.price;
                   const isOrdering = orderItemId === item.id;
@@ -793,6 +801,32 @@ function DashboardInner() {
                     </div>
                   );
             });
+            return (
+              <>
+                {rows}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-3 mt-2">
+                    <button
+                      disabled={pageClamped <= 1}
+                      onClick={() => setMenuPage(pageClamped - 1)}
+                      className="text-xs w-7 h-7 rounded-full border-2 border-gray-200 text-gray-500 disabled:opacity-30"
+                    >
+                      ‹
+                    </button>
+                    <span className="text-xs text-gray-400">
+                      {pageClamped} / {totalPages}
+                    </span>
+                    <button
+                      disabled={pageClamped >= totalPages}
+                      onClick={() => setMenuPage(pageClamped + 1)}
+                      className="text-xs w-7 h-7 rounded-full border-2 border-gray-200 text-gray-500 disabled:opacity-30"
+                    >
+                      ›
+                    </button>
+                  </div>
+                )}
+              </>
+            );
           })()}
         </Collapsible>
 

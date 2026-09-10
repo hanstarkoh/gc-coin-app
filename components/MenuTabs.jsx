@@ -2,9 +2,20 @@
 import { useState } from 'react';
 import { MENU_CATEGORIES } from '@/lib/menuCategories';
 
+const PAGE_SIZE = 10;
+
 export default function MenuTabs({ items, ordersOpen }) {
   const [cat, setCat] = useState('snack');
+  const [page, setPage] = useState(1);
   const filtered = items.filter((item) => (item.category || 'snack') === cat);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageClamped = Math.min(page, totalPages);
+  const paged = filtered.slice((pageClamped - 1) * PAGE_SIZE, pageClamped * PAGE_SIZE);
+
+  const changeCat = (key) => {
+    setCat(key);
+    setPage(1);
+  };
 
   return (
     <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
@@ -30,7 +41,7 @@ export default function MenuTabs({ items, ordersOpen }) {
             {MENU_CATEGORIES.map((c) => (
               <button
                 key={c.key}
-                onClick={() => setCat(c.key)}
+                onClick={() => changeCat(c.key)}
                 className={`whitespace-nowrap text-xs px-3 py-1.5 rounded-full border-[1.5px] flex items-center gap-1 ${
                   cat === c.key ? 'bg-navy border-navy text-white' : 'border-gray-200 text-gray-500'
                 }`}
@@ -44,7 +55,7 @@ export default function MenuTabs({ items, ordersOpen }) {
           {filtered.length === 0 ? (
             <p className="text-xs text-gray-400 py-4 text-center">이 소분류엔 메뉴가 없어요.</p>
           ) : (
-            filtered.map((item) => {
+            paged.map((item) => {
               const soldOut = item.stock !== null && item.stock <= 0;
               return (
                 <div
@@ -66,6 +77,28 @@ export default function MenuTabs({ items, ordersOpen }) {
                 </div>
               );
             })
+          )}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-2">
+              <button
+                disabled={pageClamped <= 1}
+                onClick={() => setPage(pageClamped - 1)}
+                className="text-xs w-7 h-7 rounded-full border-2 border-gray-200 text-gray-500 disabled:opacity-30"
+              >
+                ‹
+              </button>
+              <span className="text-xs text-gray-400">
+                {pageClamped} / {totalPages}
+              </span>
+              <button
+                disabled={pageClamped >= totalPages}
+                onClick={() => setPage(pageClamped + 1)}
+                className="text-xs w-7 h-7 rounded-full border-2 border-gray-200 text-gray-500 disabled:opacity-30"
+              >
+                ›
+              </button>
+            </div>
           )}
 
           <p className="text-xs text-gray-400 mt-2">
