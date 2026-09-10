@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import TopBar from '@/components/TopBar';
 import { ToastProvider, useToast } from '@/components/Toast';
+import { MENU_CATEGORIES, DEFAULT_MENU_CATEGORY } from '@/lib/menuCategories';
 
 const TABS = [
   { key: 'attendance', label: '출석 · 코인 지급' },
@@ -351,6 +352,7 @@ function MenuTab({ showToast }) {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
+  const [category, setCategory] = useState(DEFAULT_MENU_CATEGORY);
   const [ordersOpen, setOrdersOpen] = useState(null);
   const [toggling, setToggling] = useState(false);
   const [restockDrafts, setRestockDrafts] = useState({});
@@ -398,7 +400,7 @@ function MenuTab({ showToast }) {
     const res = await fetch('/api/admin/menu', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, price: p, stock: stock === '' ? null : parseInt(stock, 10) }),
+      body: JSON.stringify({ name, price: p, stock: stock === '' ? null : parseInt(stock, 10), category }),
     });
     const data = await res.json();
     if (data.ok) {
@@ -406,10 +408,22 @@ function MenuTab({ showToast }) {
       setName('');
       setPrice('');
       setStock('');
+      setCategory(DEFAULT_MENU_CATEGORY);
       await load();
     } else {
       showToast(data.error || '추가에 실패했어요.');
     }
+  };
+
+  const saveCategory = async (item, value) => {
+    const res = await fetch(`/api/admin/menu/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: value }),
+    });
+    const data = await res.json();
+    if (data.ok) await load();
+    else showToast(data.error || '변경에 실패했어요.');
   };
 
   const del = async (id) => {
@@ -481,6 +495,17 @@ function MenuTab({ showToast }) {
                 </button>
               </div>
               <div className="flex items-center gap-1.5 mt-1.5">
+                <select
+                  value={it.category || 'snack'}
+                  onChange={(e) => saveCategory(it, e.target.value)}
+                  className="border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-xs"
+                >
+                  {MENU_CATEGORIES.map((c) => (
+                    <option key={c.key} value={c.key}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
                 <input
                   type="number"
                   min="0"
@@ -497,8 +522,8 @@ function MenuTab({ showToast }) {
                 >
                   재고 저장
                 </button>
-                <span className="text-[10.5px] text-gray-400">비워두면 무제한</span>
               </div>
+              <p className="text-[10.5px] text-gray-400 mt-1">재고는 비워두면 무제한</p>
             </div>
           );
         })}
@@ -526,16 +551,32 @@ function MenuTab({ showToast }) {
             />
           </div>
         </div>
-        <div className="mb-3">
-          <label className="block text-xs text-gray-500 mb-1">수량 (선택, 비워두면 무제한)</label>
-          <input
-            type="number"
-            min="0"
-            value={stock}
-            onChange={(e) => setStock(e.target.value)}
-            placeholder="예: 10"
-            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
-          />
+        <div className="flex gap-2 mb-3">
+          <div className="flex-1">
+            <label className="block text-xs text-gray-500 mb-1">소분류</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+            >
+              {MENU_CATEGORIES.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs text-gray-500 mb-1">수량 (선택, 비워두면 무제한)</label>
+            <input
+              type="number"
+              min="0"
+              value={stock}
+              onChange={(e) => setStock(e.target.value)}
+              placeholder="예: 10"
+              className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+            />
+          </div>
         </div>
         <button onClick={add} className="btn-3d btn-3d-gold w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm">
           메뉴에 추가

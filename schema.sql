@@ -44,6 +44,11 @@ create table if not exists menu_items (
 );
 create index if not exists idx_menu_date on menu_items(item_date);
 
+-- 금청수 상점 메뉴 소분류(간식/음료/완구/기타). 이름은 lib/menuCategories.js에서 관리합니다.
+alter table menu_items add column if not exists category text not null default 'snack';
+alter table menu_items drop constraint if exists menu_items_category_check;
+alter table menu_items add constraint menu_items_category_check check (category in ('snack', 'drink', 'toy', 'etc'));
+
 create table if not exists events (
   id uuid primary key default gen_random_uuid(),
   title text not null,

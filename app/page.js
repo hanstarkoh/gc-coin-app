@@ -5,6 +5,7 @@ import AnnouncementTicker from '@/components/AnnouncementTicker';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { unstable_noStore as noStore } from 'next/cache';
 import { maybeUpdateStockPrices } from '@/lib/stocks';
+import { MENU_CATEGORIES } from '@/lib/menuCategories';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,7 @@ async function getMenu() {
   const sb = supabaseAdmin();
   const { data, error } = await sb
     .from('menu_items')
-    .select('id, name, price, stock')
+    .select('id, name, price, stock, category')
     .order('created_at', { ascending: true });
   if (error) return [];
   return data;
@@ -209,22 +210,33 @@ export default async function Home() {
             </span>
           </div>
           {menu.length === 0 && <p className="text-xs text-gray-400 py-4 text-center">등록된 메뉴가 없어요.</p>}
-          {menu.map((item) => {
-            const soldOut = item.stock !== null && item.stock <= 0;
+          {MENU_CATEGORIES.map((cat) => {
+            const items = menu.filter((item) => (item.category || 'snack') === cat.key);
+            if (items.length === 0) return null;
             return (
-              <div
-                key={item.id}
-                className={`flex items-center justify-between py-3 border-b border-dashed border-gray-200 last:border-0 ${soldOut ? 'opacity-40' : ''}`}
-              >
-                <div>
-                  <div className="font-bold text-sm">{item.name}</div>
-                  {item.stock !== null && !soldOut && <div className="text-[11px] text-gray-400">재고 {item.stock}개</div>}
-                </div>
-                {soldOut ? (
-                  <span className="text-[11px] font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-400">품절</span>
-                ) : (
-                  <div className="text-xs text-gold-deep font-bold">{item.price} GC</div>
-                )}
+              <div key={cat.key} className="pt-3 first:pt-0">
+                <div className="text-[11px] font-bold text-gray-400 mb-1">{cat.label}</div>
+                {items.map((item) => {
+                  const soldOut = item.stock !== null && item.stock <= 0;
+                  return (
+                    <div
+                      key={item.id}
+                      className={`flex items-center justify-between py-2.5 border-b border-dashed border-gray-200 last:border-0 ${soldOut ? 'opacity-40' : ''}`}
+                    >
+                      <div>
+                        <div className="font-bold text-sm">{item.name}</div>
+                        {item.stock !== null && !soldOut && (
+                          <div className="text-[11px] text-gray-400">재고 {item.stock}개</div>
+                        )}
+                      </div>
+                      {soldOut ? (
+                        <span className="text-[11px] font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-400">품절</span>
+                      ) : (
+                        <div className="text-xs text-gold-deep font-bold">{item.price} GC</div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             );
           })}

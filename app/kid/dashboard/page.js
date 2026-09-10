@@ -11,6 +11,7 @@ import { ToastProvider, useToast } from '@/components/Toast';
 import { TRADE_FEE_RATE } from '@/lib/stocks';
 import { calcPayout } from '@/lib/deposits';
 import { MEGAPHONE_PRICE, MESSAGE_MAX_LENGTH } from '@/lib/announcements';
+import { MENU_CATEGORIES } from '@/lib/menuCategories';
 
 function fmtDate(d) {
   return d.replaceAll('-', '.');
@@ -709,57 +710,70 @@ function DashboardInner() {
           {!ordersOpen && menu && menu.length > 0 && (
             <p className="text-xs text-gray-400 py-2 text-center">지금은 주문을 받지 않고 있어요.</p>
           )}
-          {menu?.map((item) => {
-            const soldOut = item.stock !== null && item.stock <= 0;
-            const canAfford = ordersOpen && !soldOut && kid.balance >= item.price;
-            const isOrdering = orderItemId === item.id;
-            const qty = Math.max(1, parseInt(orderQty, 10) || 0);
-            const maxQty = item.stock !== null ? item.stock : null;
+          {MENU_CATEGORIES.map((cat) => {
+            const items = (menu || []).filter((item) => (item.category || 'snack') === cat.key);
+            if (items.length === 0) return null;
             return (
-              <div key={item.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-sm">{item.name}</div>
-                    <div className="text-xs text-gold-deep font-bold">{item.price} GC</div>
-                    {item.stock !== null && !soldOut && (
-                      <div className="text-[11px] text-gray-400">재고 {item.stock}개</div>
-                    )}
-                  </div>
-                  {soldOut ? (
-                    <span className="text-xs font-bold px-3.5 py-2 rounded-lg bg-gray-100 text-gray-400">품절</span>
-                  ) : (
-                    <button
-                      disabled={!canAfford || ordering === item.id}
-                      onClick={() => (isOrdering ? cancelOrder() : openOrder(item))}
-                      className={`text-xs font-display px-3.5 py-2 rounded-lg ${
-                        canAfford ? 'btn-3d btn-3d-gold bg-gold text-navy-deep' : 'border-2 border-gray-200 text-gray-300'
-                      }`}
-                    >
-                      {isOrdering ? '주문 취소' : '주문하기'}
-                    </button>
-                  )}
-                </div>
-                {isOrdering && (
-                  <div className="flex items-center gap-1.5 mt-2 bg-paper rounded-lg p-2">
-                    <input
-                      type="number"
-                      min="1"
-                      max={maxQty || undefined}
-                      value={orderQty}
-                      onChange={(e) => setOrderQty(e.target.value)}
-                      placeholder="수량"
-                      className="flex-1 min-w-0 border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-sm"
-                    />
-                    <span className="text-xs text-gray-500 shrink-0">{item.price * qty} GC</span>
-                    <button
-                      disabled={ordering === item.id || (maxQty !== null && qty > maxQty) || item.price * qty > kid.balance}
-                      onClick={() => handleOrder(item)}
-                      className="btn-3d btn-3d-gold shrink-0 text-xs bg-gold text-navy-deep rounded-lg px-3 py-1.5 disabled:opacity-40"
-                    >
-                      {ordering === item.id ? '주문 중...' : '확인'}
-                    </button>
-                  </div>
-                )}
+              <div key={cat.key} className="pt-3 first:pt-0">
+                <div className="text-[11px] font-bold text-gray-400 mb-0.5">{cat.label}</div>
+                {items.map((item) => {
+                  const soldOut = item.stock !== null && item.stock <= 0;
+                  const canAfford = ordersOpen && !soldOut && kid.balance >= item.price;
+                  const isOrdering = orderItemId === item.id;
+                  const qty = Math.max(1, parseInt(orderQty, 10) || 0);
+                  const maxQty = item.stock !== null ? item.stock : null;
+                  return (
+                    <div key={item.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-bold text-sm">{item.name}</div>
+                          <div className="text-xs text-gold-deep font-bold">{item.price} GC</div>
+                          {item.stock !== null && !soldOut && (
+                            <div className="text-[11px] text-gray-400">재고 {item.stock}개</div>
+                          )}
+                        </div>
+                        {soldOut ? (
+                          <span className="text-xs font-bold px-3.5 py-2 rounded-lg bg-gray-100 text-gray-400">품절</span>
+                        ) : (
+                          <button
+                            disabled={!canAfford || ordering === item.id}
+                            onClick={() => (isOrdering ? cancelOrder() : openOrder(item))}
+                            className={`text-xs font-display px-3.5 py-2 rounded-lg ${
+                              canAfford
+                                ? 'btn-3d btn-3d-gold bg-gold text-navy-deep'
+                                : 'border-2 border-gray-200 text-gray-300'
+                            }`}
+                          >
+                            {isOrdering ? '주문 취소' : '주문하기'}
+                          </button>
+                        )}
+                      </div>
+                      {isOrdering && (
+                        <div className="flex items-center gap-1.5 mt-2 bg-paper rounded-lg p-2">
+                          <input
+                            type="number"
+                            min="1"
+                            max={maxQty || undefined}
+                            value={orderQty}
+                            onChange={(e) => setOrderQty(e.target.value)}
+                            placeholder="수량"
+                            className="flex-1 min-w-0 border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+                          />
+                          <span className="text-xs text-gray-500 shrink-0">{item.price * qty} GC</span>
+                          <button
+                            disabled={
+                              ordering === item.id || (maxQty !== null && qty > maxQty) || item.price * qty > kid.balance
+                            }
+                            onClick={() => handleOrder(item)}
+                            className="btn-3d btn-3d-gold shrink-0 text-xs bg-gold text-navy-deep rounded-lg px-3 py-1.5 disabled:opacity-40"
+                          >
+                            {ordering === item.id ? '주문 중...' : '확인'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
