@@ -172,7 +172,7 @@ function RoomInner() {
           <div className="font-display text-base text-navy mb-2">보유 가구</div>
           {room.furniture.length === 0 && (
             <p className="text-xs text-gray-400 py-3 text-center">
-              아직 가구가 없어요. 대시보드 &apos;상점&apos;에서 가구를 사보세요!
+              아직 가구가 없어요. 대시보드 &apos;꾸미기 상점&apos;에서 가구를 사보세요!
             </p>
           )}
           <div className="grid grid-cols-4 gap-2">

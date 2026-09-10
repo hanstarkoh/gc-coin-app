@@ -67,6 +67,7 @@ function DashboardInner() {
   const [donateAmount, setDonateAmount] = useState('');
   const [donating, setDonating] = useState(false);
   const [orderItemId, setOrderItemId] = useState(null);
+  const [menuCat, setMenuCat] = useState('snack');
   const [orderQty, setOrderQty] = useState('1');
   const [announceText, setAnnounceText] = useState('');
   const [announcing, setAnnouncing] = useState(false);
@@ -710,13 +711,28 @@ function DashboardInner() {
           {!ordersOpen && menu && menu.length > 0 && (
             <p className="text-xs text-gray-400 py-2 text-center">지금은 주문을 받지 않고 있어요.</p>
           )}
-          {MENU_CATEGORIES.map((cat) => {
-            const items = (menu || []).filter((item) => (item.category || 'snack') === cat.key);
-            if (items.length === 0) return null;
-            return (
-              <div key={cat.key} className="pt-3 first:pt-0">
-                <div className="text-[11px] font-bold text-gray-400 mb-0.5">{cat.label}</div>
-                {items.map((item) => {
+          {menu && menu.length > 0 && (
+            <div className="flex gap-1.5 overflow-x-auto pb-1 mb-1 -mx-1 px-1">
+              {MENU_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.key}
+                  onClick={() => setMenuCat(cat.key)}
+                  className={`whitespace-nowrap text-xs px-3 py-1.5 rounded-full border-[1.5px] flex items-center gap-1 ${
+                    menuCat === cat.key ? 'bg-navy border-navy text-white' : 'border-gray-200 text-gray-500'
+                  }`}
+                >
+                  <span>{cat.icon}</span>
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {(() => {
+            const items = (menu || []).filter((item) => (item.category || 'snack') === menuCat);
+            if (menu && menu.length > 0 && items.length === 0) {
+              return <p className="text-xs text-gray-400 py-4 text-center">이 소분류엔 메뉴가 없어요.</p>;
+            }
+            return items.map((item) => {
                   const soldOut = item.stock !== null && item.stock <= 0;
                   const canAfford = ordersOpen && !soldOut && kid.balance >= item.price;
                   const isOrdering = orderItemId === item.id;
@@ -776,10 +792,8 @@ function DashboardInner() {
                       )}
                     </div>
                   );
-                })}
-              </div>
-            );
-          })}
+            });
+          })()}
         </Collapsible>
 
         <Collapsible
@@ -954,7 +968,7 @@ function ShopCard({ kidBalance, onChange, showToast }) {
   const sec = SHOP_SECTIONS.find((s) => s.key === activeCat) || SHOP_SECTIONS[0];
 
   return (
-    <Collapsible icon="🛍️" badgeColor="gold" title="상점" defaultOpen={false}>
+    <Collapsible icon="🛍️" badgeColor="gold" title="꾸미기 상점" defaultOpen={false}>
       {data === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
       {data?.categories && (
         <>
