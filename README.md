@@ -4,14 +4,14 @@
 청소년은 출석/보너스로 코인을 받아 오늘의 메뉴(간식)를 주문하고, 레벨업과 뱃지로 재미를 느낄 수 있어요.
 관리자는 출석 코인 지급, 보너스 지급, 메뉴 등록, 청소년 관리, 전체 현황을 볼 수 있어요.
 
-기술 스택은 BY NEWS와 동일합니다: **Next.js + Supabase + Vercel**.
+기술 스택은 **Next.js + Supabase + Vercel**.
 데이터는 전부 여러분의 Supabase 프로젝트(=여러분 소유)에 저장되고, 클로드 구독 여부와 전혀 무관하게 계속 작동해요.
 
 ---
 
 ## 1. Supabase 프로젝트 만들기
 
-1. https://supabase.com 에서 새 프로젝트를 만드세요. (BY NEWS와 같은 계정 써도 되고, 완전히 새 계정이어도 됩니다 — 이번엔 별도 프로젝트로 만드는 걸 추천해요.)
+1. https://supabase.com 에서 새 프로젝트를 만드세요. (완전히 새 계정이어도 됩니다 — 이번엔 별도 프로젝트로 만드는 걸 추천해요.)
 2. 프로젝트가 만들어지면 왼쪽 메뉴 **SQL Editor**로 들어가서, 이 프로젝트에 들어있는 `schema.sql` 파일 내용을 그대로 붙여넣고 실행(Run)하세요. 테이블 4개(`settings`, `kids`, `transactions`, `menu_items`)가 만들어집니다.
 3. 왼쪽 메뉴 **Project Settings → API**로 들어가서 아래 두 값을 복사해두세요.
    - `Project URL` → `.env.local`의 `SUPABASE_URL`
@@ -56,7 +56,7 @@ git push -u origin main
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `SESSION_SECRET` (임의의 긴 문자열. 터미널에서 `openssl rand -hex 32` 실행하면 바로 만들 수 있어요)
 3. Deploy 버튼 클릭 → 몇 분 뒤 `xxx.vercel.app` 주소가 생겨요.
-4. (선택) 가비아 등에서 산 도메인이 있다면 Vercel의 Domains 설정에서 연결할 수 있어요. BY NEWS 때처럼요.
+4. (선택) 가비아 등에서 산 도메인이 있다면 Vercel의 Domains 설정에서 연결할 수 있어요.
 
 배포가 끝나면 그 주소를 청소년들 폰 브라우저에 "홈 화면에 추가" 하도록 안내해주시면 앱처럼 쓸 수 있어요.
 
@@ -82,7 +82,7 @@ git push -u origin main
 
 ## 나중에 기능을 더 넣고 싶다면
 
-VS Code에서 이 프로젝트를 열고, 지금까지 BY NEWS에서 하셨던 것처럼 AI(Claude Code, Gemini 등)에게 "이 파일들을 참고해서 ○○ 기능 추가해줘"라고 요청하시면 됩니다. 예를 들면:
+VS Code에서 이 프로젝트를 열고,  AI(Claude Code, Gemini 등)에게 "이 파일들을 참고해서 ○○ 기능 추가해줘"라고 요청하시면 됩니다. 예를 들면:
 - 출석 코인 5GC를 요일별로 다르게 주기
 - 청소년별 순위(리더보드) 화면 추가
 - 관리자에게 카카오톡 알림 보내기
