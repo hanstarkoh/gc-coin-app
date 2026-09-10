@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { isAdmin } from '@/lib/session';
-import { isValidMenuCategory } from '@/lib/menuCategories';
+import { isValidMenuCategory, MENU_DESCRIPTION_MAX_LENGTH } from '@/lib/menuCategories';
 
 export async function PATCH(req, { params }) {
   if (!isAdmin()) return NextResponse.json({ ok: false, error: '관리자 로그인이 필요해요.' }, { status: 401 });
@@ -23,6 +23,11 @@ export async function PATCH(req, { params }) {
         return NextResponse.json({ ok: false, error: '소분류를 확인해주세요.' }, { status: 400 });
       }
       update.category = body.category;
+    }
+
+    if ('description' in body) {
+      const trimmed = (body.description || '').trim().slice(0, MENU_DESCRIPTION_MAX_LENGTH);
+      update.description = trimmed || null;
     }
 
     const sb = supabaseAdmin();

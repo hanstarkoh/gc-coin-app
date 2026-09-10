@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { isAdmin } from '@/lib/session';
-import { DEFAULT_MENU_CATEGORY, isValidMenuCategory } from '@/lib/menuCategories';
+import { DEFAULT_MENU_CATEGORY, isValidMenuCategory, MENU_DESCRIPTION_MAX_LENGTH } from '@/lib/menuCategories';
 
 export async function GET() {
   if (!isAdmin()) return NextResponse.json({ ok: false, error: '관리자 로그인이 필요해요.' }, { status: 401 });
@@ -9,7 +9,7 @@ export async function GET() {
     const sb = supabaseAdmin();
     const { data, error } = await sb
       .from('menu_items')
-      .select('id, name, price, stock, category')
+      .select('id, name, price, stock, category, description')
       .order('created_at', { ascending: true });
     if (error) throw error;
     return NextResponse.json({ ok: true, items: data });
@@ -21,7 +21,7 @@ export async function GET() {
 export async function POST(req) {
   if (!isAdmin()) return NextResponse.json({ ok: false, error: '관리자 로그인이 필요해요.' }, { status: 401 });
   try {
-    const { name, price, stock, category } = await req.json();
+    const { name, price, stock, category, description } = await req.json();
     const trimmed = (name || '').trim();
     const p = Number(price);
     if (!trimmed || !p || p <= 0) {
@@ -33,12 +33,13 @@ export async function POST(req) {
       return NextResponse.json({ ok: false, error: '수량을 확인해주세요.' }, { status: 400 });
     }
     const categoryValue = isValidMenuCategory(category) ? category : DEFAULT_MENU_CATEGORY;
+    const descriptionValue = (description || '').trim().slice(0, MENU_DESCRIPTION_MAX_LENGTH) || null;
 
     const sb = supabaseAdmin();
     const { data, error } = await sb
       .from('menu_items')
-      .insert({ name: trimmed, price: p, stock: stockValue, category: categoryValue })
-      .select('id, name, price, stock, category')
+      .insert({ name: trimmed, price: p, stock: stockValue, category: categoryValue, description: descriptionValue })
+      .select('id, name, price, stock, category, description')
       .single();
     if (error) throw error;
     return NextResponse.json({ ok: true, item: data });

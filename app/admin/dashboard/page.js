@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import TopBar from '@/components/TopBar';
 import { ToastProvider, useToast } from '@/components/Toast';
-import { MENU_CATEGORIES, DEFAULT_MENU_CATEGORY } from '@/lib/menuCategories';
+import { MENU_CATEGORIES, DEFAULT_MENU_CATEGORY, MENU_DESCRIPTION_MAX_LENGTH } from '@/lib/menuCategories';
 
 const TABS = [
   { key: 'attendance', label: '출석 · 코인 지급' },
@@ -353,9 +353,11 @@ function MenuTab({ showToast }) {
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
   const [category, setCategory] = useState(DEFAULT_MENU_CATEGORY);
+  const [description, setDescription] = useState('');
   const [ordersOpen, setOrdersOpen] = useState(null);
   const [toggling, setToggling] = useState(false);
   const [restockDrafts, setRestockDrafts] = useState({});
+  const [descDrafts, setDescDrafts] = useState({});
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/menu');
@@ -400,7 +402,13 @@ function MenuTab({ showToast }) {
     const res = await fetch('/api/admin/menu', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, price: p, stock: stock === '' ? null : parseInt(stock, 10), category }),
+      body: JSON.stringify({
+        name,
+        price: p,
+        stock: stock === '' ? null : parseInt(stock, 10),
+        category,
+        description,
+      }),
     });
     const data = await res.json();
     if (data.ok) {
@@ -409,6 +417,7 @@ function MenuTab({ showToast }) {
       setPrice('');
       setStock('');
       setCategory(DEFAULT_MENU_CATEGORY);
+      setDescription('');
       await load();
     } else {
       showToast(data.error || '추가에 실패했어요.');
@@ -424,6 +433,28 @@ function MenuTab({ showToast }) {
     const data = await res.json();
     if (data.ok) await load();
     else showToast(data.error || '변경에 실패했어요.');
+  };
+
+  const saveDescription = async (item) => {
+    const draft = descDrafts[item.id];
+    const value = draft === undefined ? item.description || '' : draft;
+    const res = await fetch(`/api/admin/menu/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: value }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('설명을 저장했어요.');
+      setDescDrafts((prev) => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
+      await load();
+    } else {
+      showToast(data.error || '저장에 실패했어요.');
+    }
   };
 
   const del = async (id) => {
@@ -524,6 +555,21 @@ function MenuTab({ showToast }) {
                 </button>
               </div>
               <p className="text-[10.5px] text-gray-400 mt-1">재고는 비워두면 무제한</p>
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <input
+                  value={descDrafts[it.id] !== undefined ? descDrafts[it.id] : it.description || ''}
+                  onChange={(e) => setDescDrafts((prev) => ({ ...prev, [it.id]: e.target.value }))}
+                  maxLength={MENU_DESCRIPTION_MAX_LENGTH}
+                  placeholder="짧은 설명 (예: 달콤한 딸기맛)"
+                  className="flex-1 min-w-0 border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-xs"
+                />
+                <button
+                  onClick={() => saveDescription(it)}
+                  className="btn-3d btn-3d-outline shrink-0 text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1.5"
+                >
+                  설명 저장
+                </button>
+              </div>
             </div>
           );
         })}
@@ -577,6 +623,16 @@ function MenuTab({ showToast }) {
               className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
             />
           </div>
+        </div>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">짧은 설명 (선택, 사진 대신 한 줄 소개)</label>
+          <input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={MENU_DESCRIPTION_MAX_LENGTH}
+            placeholder="예: 달콤한 딸기맛"
+            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+          />
         </div>
         <button onClick={add} className="btn-3d btn-3d-gold w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm">
           메뉴에 추가

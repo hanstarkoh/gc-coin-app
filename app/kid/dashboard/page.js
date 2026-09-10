@@ -728,6 +728,9 @@ function DashboardInner() {
                         <div>
                           <div className="font-bold text-sm">{item.name}</div>
                           <div className="text-xs text-gold-deep font-bold">{item.price} GC</div>
+                          {item.description && (
+                            <div className="text-[11px] text-gray-400">{item.description}</div>
+                          )}
                           {item.stock !== null && !soldOut && (
                             <div className="text-[11px] text-gray-400">재고 {item.stock}개</div>
                           )}

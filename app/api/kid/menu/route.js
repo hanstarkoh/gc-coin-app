@@ -13,7 +13,7 @@ export async function GET() {
 
     const { data, error } = await sb
       .from('menu_items')
-      .select('id, name, price, stock, category')
+      .select('id, name, price, stock, category, description')
       .order('created_at', { ascending: true });
     if (error) throw error;
     return NextResponse.json({ ok: true, items: data, ordersOpen: settings.orders_open });

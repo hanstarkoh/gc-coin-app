@@ -49,6 +49,9 @@ alter table menu_items add column if not exists category text not null default '
 alter table menu_items drop constraint if exists menu_items_category_check;
 alter table menu_items add constraint menu_items_category_check check (category in ('snack', 'drink', 'toy', 'etc'));
 
+-- 상품 사진 대신 짧은 한 줄 설명(용량 부담 없이 상품을 소개하는 용도)
+alter table menu_items add column if not exists description text;
+
 create table if not exists events (
   id uuid primary key default gen_random_uuid(),
   title text not null,
