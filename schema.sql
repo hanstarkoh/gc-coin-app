@@ -1,4 +1,4 @@
--- 금정코인(GC) 앱 데이터베이스 스키마
+-- 금청코인(GC) 앱 데이터베이스 스키마
 -- Supabase 프로젝트의 SQL Editor 에서 이 파일 내용을 그대로 실행하세요.
 
 create table if not exists settings (

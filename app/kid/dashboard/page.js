@@ -366,7 +366,7 @@ function DashboardInner() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <TopBar title="금정코인" sub={`${nameLabel}님`} onExit={handleLogout} />
+      <TopBar title="금청코인" sub={`${nameLabel}님`} onExit={handleLogout} />
       <div className="flex-1 max-w-[480px] w-full mx-auto px-4 py-5 space-y-4">
         {readyOrders.length > 0 && (
           <div className="bg-gold border-2 border-gold-deep rounded-2xl p-4 animate-popIn">

@@ -141,7 +141,7 @@ export default async function Home() {
   return (
     <div className="min-h-screen flex flex-col">
       <TopBar
-        title="금정코인"
+        title="금청코인"
         sub="금정청소년수련관 · 주말 방과후 아카데미"
         right={
           <Link

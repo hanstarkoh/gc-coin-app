@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: '금정코인',
+  title: '금청코인',
   description: '금정청소년수련관 주말 방과후 아카데미 코인 앱',
 };
 

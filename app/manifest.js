@@ -1,7 +1,7 @@
 export default function manifest() {
   return {
-    name: '금정코인',
-    short_name: '금정코인',
+    name: '금청코인',
+    short_name: '금청코인',
     description: '금정청소년수련관 주말 방과후 아카데미 코인 앱',
     start_url: '/',
     display: 'standalone',
