@@ -16,6 +16,7 @@ const TABS = [
   { key: 'announcements', label: '확성기' },
   { key: 'kids', label: '청소년 관리' },
   { key: 'history', label: '전체 현황' },
+  { key: 'stats', label: '통계' },
   { key: 'settings', label: '설정' },
 ];
 
@@ -155,6 +156,7 @@ function DashboardInner() {
           <KidsTab kids={kids} reload={loadKids} showToast={showToast} />
         )}
         {tab === 'history' && <HistoryTab kids={kids} showToast={showToast} />}
+        {tab === 'stats' && <StatsTab kids={kids} showToast={showToast} />}
         {tab === 'settings' && <SettingsTab showToast={showToast} />}
       </div>
     </div>
@@ -1840,23 +1842,40 @@ function PredictionsTab({ showToast }) {
 function KidsTab({ kids, reload, showToast }) {
   const [name, setName] = useState('');
   const [startBalance, setStartBalance] = useState('');
+  const [gender, setGender] = useState('');
 
   const add = async () => {
     if (!name.trim()) return showToast('이름을 입력해주세요.');
     const res = await fetch('/api/admin/kids', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, startBalance: startBalance ? parseInt(startBalance, 10) : 0 }),
+      body: JSON.stringify({
+        name,
+        startBalance: startBalance ? parseInt(startBalance, 10) : 0,
+        gender: gender || null,
+      }),
     });
     const data = await res.json();
     if (data.ok) {
       showToast(`${name} 청소년을 추가했어요.`);
       setName('');
       setStartBalance('');
+      setGender('');
       await reload();
     } else {
       showToast(data.error || '추가에 실패했어요.');
     }
+  };
+
+  const setKidGender = async (k, value) => {
+    const res = await fetch(`/api/admin/kids/${k.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gender: value || null }),
+    });
+    const data = await res.json();
+    if (data.ok) await reload();
+    else showToast(data.error || '실패했어요.');
   };
 
   const del = async (k) => {
@@ -1903,6 +1922,18 @@ function KidsTab({ kids, reload, showToast }) {
             />
           </div>
         </div>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">성별 (선택, 통계 탭에서 씀)</label>
+          <select
+            value={gender}
+            onChange={(e) => setGender(e.target.value)}
+            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+          >
+            <option value="">미설정</option>
+            <option value="male">남자</option>
+            <option value="female">여자</option>
+          </select>
+        </div>
         <button onClick={add} className="btn-3d btn-3d-gold w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm">
           청소년 추가
         </button>
@@ -1916,6 +1947,7 @@ function KidsTab({ kids, reload, showToast }) {
                 <th className="py-1.5">이름</th>
                 <th className="py-1.5">코인</th>
                 <th className="py-1.5">PIN</th>
+                <th className="py-1.5">성별</th>
                 <th className="py-1.5"></th>
               </tr>
             </thead>
@@ -1925,6 +1957,17 @@ function KidsTab({ kids, reload, showToast }) {
                   <td className="py-2">{k.name}</td>
                   <td className="py-2">{k.balance} GC</td>
                   <td className="py-2">{k.hasPin ? '설정됨' : '미설정'}</td>
+                  <td className="py-2">
+                    <select
+                      value={k.gender || ''}
+                      onChange={(e) => setKidGender(k, e.target.value)}
+                      className="border-[1.5px] border-gray-200 rounded-lg px-1.5 py-1 text-xs"
+                    >
+                      <option value="">미설정</option>
+                      <option value="male">남자</option>
+                      <option value="female">여자</option>
+                    </select>
+                  </td>
                   <td className="py-2 text-right space-x-1.5 whitespace-nowrap">
                     {k.hasPin && (
                       <button onClick={() => resetPin(k)} className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1">
@@ -2003,6 +2046,239 @@ function HistoryTab({ kids, showToast }) {
           </div>
         );
       })}
+    </>
+  );
+}
+
+/* ---------------- STATS TAB ---------------- */
+function StatBar({ pct, barClassName = 'bg-navy' }) {
+  return (
+    <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+      <div className={`h-full ${barClassName}`} style={{ width: `${Math.min(100, pct)}%` }} />
+    </div>
+  );
+}
+
+function StatsTab({ kids, showToast }) {
+  const [scope, setScope] = useState('all'); // 'all' | 'male' | 'female' | 'kid'
+  const [kidId, setKidId] = useState('');
+  const [stats, setStats] = useState(null);
+
+  const load = useCallback(
+    async (currentScope, currentKidId) => {
+      setStats(null);
+      const qs = currentScope === 'kid' && currentKidId ? `kidId=${currentKidId}` : `scope=${currentScope}`;
+      const res = await fetch(`/api/admin/stats?${qs}`);
+      const data = await res.json();
+      if (data.ok) setStats(data);
+      else showToast(data.error || '통계를 불러오지 못했어요.');
+    },
+    [showToast]
+  );
+
+  useEffect(() => {
+    if (scope === 'kid' && !kidId) return;
+    load(scope, kidId);
+  }, [scope, kidId, load]);
+
+  const participationRows = [
+    ['출석', 'attendance'],
+    ['금청수 상점(간식)', 'snack'],
+    ['꾸미기 상점', 'shop'],
+    ['예금', 'deposit'],
+    ['주식', 'stock'],
+    ['예측 시장', 'prediction'],
+    ['기부', 'donation'],
+    ['확성기', 'megaphone'],
+  ];
+
+  const spendRows = [
+    ['간식 소비', 'snack'],
+    ['꾸미기 상점', 'shop'],
+    ['마이룸 확장', 'roomExpand'],
+    ['기부', 'donation'],
+    ['예금(원금)', 'deposit'],
+    ['주식 매수', 'stockBuy'],
+    ['예측 베팅', 'predictionBet'],
+  ];
+  const spendTotal = stats?.spendBreakdown
+    ? spendRows.reduce((s, [, key]) => s + (stats.spendBreakdown[key] || 0), 0)
+    : 0;
+
+  return (
+    <>
+      <Card title="보기 범위">
+        <div className="flex gap-1.5 flex-wrap mb-2">
+          {[
+            ['all', '전체'],
+            ['male', '남자'],
+            ['female', '여자'],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => {
+                setScope(key);
+                setKidId('');
+              }}
+              className={`text-xs px-3.5 py-2 rounded-full border-[1.5px] ${
+                scope === key ? 'bg-navy border-navy text-white' : 'border-gray-200 text-gray-500'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <select
+          value={scope === 'kid' ? kidId : ''}
+          onChange={(e) => {
+            if (e.target.value) {
+              setScope('kid');
+              setKidId(e.target.value);
+            }
+          }}
+          className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+        >
+          <option value="">개인 선택...</option>
+          {kids.map((k) => (
+            <option key={k.id} value={k.id}>
+              {k.name}
+            </option>
+          ))}
+        </select>
+      </Card>
+
+      {!stats && (
+        <Card>
+          <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>
+        </Card>
+      )}
+
+      {stats && stats.kidCount === 0 && (
+        <Card>
+          <p className="text-xs text-gray-400 text-center py-4">해당 범위에 학생이 없어요.</p>
+        </Card>
+      )}
+
+      {stats && stats.kidCount > 0 && (
+        <>
+          <Card title={`대상: ${stats.kidCount}명`}>
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <div className="bg-paper rounded-xl py-2.5">
+                <div className="text-[11px] text-gray-500">잔액 합계</div>
+                <div className="font-display text-lg text-navy">{stats.balance.sum} GC</div>
+              </div>
+              <div className="bg-paper rounded-xl py-2.5">
+                <div className="text-[11px] text-gray-500">평균 잔액</div>
+                <div className="font-display text-lg text-navy">{stats.balance.avg} GC</div>
+              </div>
+              <div className="bg-paper rounded-xl py-2.5">
+                <div className="text-[11px] text-gray-500">중앙값</div>
+                <div className="font-display text-lg text-navy">{stats.balance.median} GC</div>
+              </div>
+              <div className="bg-paper rounded-xl py-2.5">
+                <div className="text-[11px] text-gray-500">최소~최대</div>
+                <div className="font-display text-sm text-navy">
+                  {stats.balance.min}~{stats.balance.max}
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card title="기능별 참여율">
+            {participationRows.map(([label, key]) => {
+              const pct = Math.round((stats.participation[key] / stats.kidCount) * 100);
+              return (
+                <div key={key} className="mb-2.5 last:mb-0">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>{label}</span>
+                    <span className="text-gray-500">
+                      {stats.participation[key]}/{stats.kidCount}명 ({pct}%)
+                    </span>
+                  </div>
+                  <StatBar pct={pct} barClassName="bg-navy" />
+                </div>
+              );
+            })}
+          </Card>
+
+          <Card title="코인 배분 (어디에 썼나)">
+            {spendTotal === 0 && <p className="text-xs text-gray-400 text-center py-2">아직 소비 데이터가 없어요.</p>}
+            {spendRows.map(([label, key]) => {
+              const amount = stats.spendBreakdown[key] || 0;
+              if (amount === 0) return null;
+              const pct = spendTotal > 0 ? Math.round((amount / spendTotal) * 100) : 0;
+              return (
+                <div key={key} className="mb-2.5 last:mb-0">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>{label}</span>
+                    <span className="text-gray-500">
+                      {amount} GC ({pct}%)
+                    </span>
+                  </div>
+                  <StatBar pct={pct} barClassName="bg-gold" />
+                </div>
+              );
+            })}
+          </Card>
+
+          <Card title="투자(주식) 행동">
+            <div className="grid grid-cols-2 gap-y-2 text-xs">
+              <div>
+                매수 <b>{stats.investing.buyCount}</b>건
+              </div>
+              <div>
+                매도 <b>{stats.investing.sellCount}</b>건
+              </div>
+              <div>
+                인당 평균 매매 <b>{stats.investing.avgTradeCount}</b>회
+              </div>
+              <div>
+                추격매수 비율 <b>{stats.investing.chaseBuyPct}%</b>
+              </div>
+              <div className="col-span-2">
+                평균 실현손익{' '}
+                <b className={stats.investing.avgRealizedProfit >= 0 ? 'text-mint-deep' : 'text-coral-deep'}>
+                  {stats.investing.avgRealizedProfit >= 0 ? '+' : ''}
+                  {stats.investing.avgRealizedProfit} GC
+                </b>
+                {' '}(합계 {stats.investing.totalRealizedProfit} GC)
+              </div>
+            </div>
+          </Card>
+
+          <Card title="예금">
+            <div className="grid grid-cols-2 gap-y-2 text-xs">
+              <div>
+                가입 <b>{stats.deposits.count}</b>건
+              </div>
+              <div>
+                만기 수령 <b>{stats.deposits.claimedCount}</b>건
+              </div>
+              <div>
+                평균 가입 기간 <b>{stats.deposits.avgTermDays}</b>일
+              </div>
+              <div>
+                총 원금 <b>{stats.deposits.totalPrincipal}</b> GC
+              </div>
+            </div>
+          </Card>
+
+          <Card title="예측 시장">
+            <div className="grid grid-cols-2 gap-y-2 text-xs">
+              <div>
+                총 베팅 <b>{stats.predictions.totalBets}</b>건
+              </div>
+              <div>
+                평균 베팅액 <b>{stats.predictions.avgBetAmount}</b> GC
+              </div>
+              <div className="col-span-2">
+                승률 <b>{stats.predictions.winRatePct}%</b> ({stats.predictions.winCount}/
+                {stats.predictions.resolvedCount}건 정산됨)
+              </div>
+            </div>
+          </Card>
+        </>
+      )}
     </>
   );
 }

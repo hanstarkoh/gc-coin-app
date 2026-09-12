@@ -298,6 +298,10 @@ create table if not exists stock_news (
 create index if not exists idx_stock_news_created on stock_news(created_at desc);
 alter table stock_news enable row level security;
 
+-- 관리자 통계 대시보드에서 성별로 나눠 볼 수 있도록. 기존 학생은 미설정(null) 상태로
+-- 남아있고, 관리자가 청소년 관리 탭에서 나중에 채워줘야 합니다.
+alter table kids add column if not exists gender text check (gender in ('male', 'female'));
+
 -- 이 앱은 Next.js 서버(API 라우트)에서 Supabase "service role" 키로만 접근합니다.
 -- 브라우저에서 테이블에 직접 접근하지 않으므로 Row Level Security 는 기본적으로 막아둡니다.
 alter table settings enable row level security;
