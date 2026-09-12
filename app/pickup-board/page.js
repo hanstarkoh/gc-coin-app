@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import TopBar from '@/components/TopBar';
 
 const POLL_MS = 4000;
@@ -27,6 +28,7 @@ function beep(audioCtx) {
 }
 
 export default function PickupBoardPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState(null);
   const [soundOn, setSoundOn] = useState(false);
   const audioCtxRef = useRef(null);
@@ -73,7 +75,7 @@ export default function PickupBoardPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <TopBar title="🔔 픽업 현황판" sub="준비된 주문을 가져가세요" />
+      <TopBar title="🔔 픽업 현황판" sub="준비된 주문을 가져가세요" onExit={() => router.push('/')} />
 
       {!soundOn && (
         <button

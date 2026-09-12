@@ -5,7 +5,7 @@ import AnnouncementTicker from '@/components/AnnouncementTicker';
 import MenuTabs from '@/components/MenuTabs';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { unstable_noStore as noStore } from 'next/cache';
-import { maybeUpdateStockPrices } from '@/lib/stocks';
+import { maybeUpdateStockPrices, getLiveSentiments } from '@/lib/stocks';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +53,8 @@ async function getActiveStocks() {
     .order('created_at', { ascending: true });
   if (error || stocks.length === 0) return [];
 
+  const sentiments = await getLiveSentiments(sb, stocks.map((s) => s.id));
+
   return Promise.all(
     stocks.map(async (s) => {
       const { data: history } = await sb
@@ -67,6 +69,7 @@ async function getActiveStocks() {
         ...s,
         history: prices,
         changePct: prevClose ? Math.round(((s.price - prevClose) / prevClose) * 1000) / 10 : 0,
+        sentiment: sentiments[s.id] || null,
       };
     })
   );
@@ -245,6 +248,11 @@ export default async function Home() {
                     <div className={`text-xs font-bold ${up ? 'text-mint-deep' : 'text-coral-deep'}`}>
                       {s.price} GC ({up ? '+' : ''}{s.changePct}%)
                     </div>
+                    {s.sentiment && (
+                      <div className={`text-[10.5px] font-bold ${s.sentiment === 'buy' ? 'text-mint-deep' : 'text-coral-deep'}`}>
+                        {s.sentiment === 'buy' ? '📈 매수가 많아지고 있어요!' : '📉 매도가 많아지고 있어요!'}
+                      </div>
+                    )}
                   </div>
                   <Sparkline values={s.history} color={up ? '#3FB68B' : '#E2574C'} />
                 </div>

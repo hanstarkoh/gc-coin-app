@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getKidId } from '@/lib/session';
-import { maybeUpdateStockPrices } from '@/lib/stocks';
+import { maybeUpdateStockPrices, getLiveSentiments } from '@/lib/stocks';
 
 const HISTORY_POINTS = 14;
 
@@ -25,6 +25,7 @@ export async function GET() {
       .eq('kid_id', kidId);
     if (holdingsErr) throw holdingsErr;
     const holdingsMap = new Map(holdings.map((h) => [h.stock_id, h]));
+    const sentiments = await getLiveSentiments(sb, stocks.map((s) => s.id));
 
     const items = await Promise.all(
       stocks.map(async (s) => {
@@ -48,6 +49,7 @@ export async function GET() {
           avgPrice,
           plPct: avgPrice > 0 ? Math.round(((s.price - avgPrice) / avgPrice) * 1000) / 10 : 0,
           plAmount: avgPrice > 0 ? (s.price - avgPrice) * myShares : 0,
+          sentiment: sentiments[s.id] || null,
         };
       })
     );

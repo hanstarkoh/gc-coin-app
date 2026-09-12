@@ -472,6 +472,11 @@ function DashboardInner() {
                       {s.price} GC ({up ? '+' : ''}
                       {s.changePct}%)
                     </div>
+                    {s.sentiment && (
+                      <div className={`text-[10.5px] font-bold ${s.sentiment === 'buy' ? 'text-mint-deep' : 'text-coral-deep'}`}>
+                        {s.sentiment === 'buy' ? '📈 매수가 많아지고 있어요!' : '📉 매도가 많아지고 있어요!'}
+                      </div>
+                    )}
                     {s.myShares > 0 && (
                       <div className="text-[11px] text-gray-400 mt-0.5">
                         보유 {s.myShares}주 · 평가 {s.myShares * s.price} GC ·{' '}
