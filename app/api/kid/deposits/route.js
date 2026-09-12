@@ -22,12 +22,18 @@ async function claimMatured(sb, kidId) {
   let balance = kid.balance;
   for (const d of matured) {
     const payout = calcPayout(d.principal, d.rate_pct);
-    balance += payout;
-    const { error: updErr } = await sb
+    // claimed=false 조건을 걸어서, 동시에 두 요청이 같은 예금을 처리하려 해도
+    // 실제로 claimed를 뒤집는 건 하나뿐이게 함(둘 다 잔액을 더해서 코인이 복제되는 걸 방지).
+    const { data: updRows, error: updErr } = await sb
       .from('kid_deposits')
       .update({ claimed: true, payout })
-      .eq('id', d.id);
+      .eq('id', d.id)
+      .eq('claimed', false)
+      .select('id');
     if (updErr) throw updErr;
+    if (!updRows || updRows.length === 0) continue;
+
+    balance += payout;
     const { error: txErr } = await sb.from('transactions').insert({
       kid_id: kidId,
       kid_name: kid.name,

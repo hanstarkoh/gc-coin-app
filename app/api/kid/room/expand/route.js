@@ -25,11 +25,18 @@ export async function POST() {
     }
 
     const nextLevel = kid.room_expansions + 1;
-    const { error: updErr } = await sb
+    // room_expansions가 읽은 값 그대로일 때만 갱신해서, 두 요청이 동시에 들어와도
+    // (더블탭 등) 하나만 성공하게 함 — 안 그러면 둘 다 코인은 깎이는데 단계는 한 번만 올라가요.
+    const { data: updRows, error: updErr } = await sb
       .from('kids')
       .update({ balance: kid.balance - cost, room_expansions: nextLevel })
-      .eq('id', kidId);
+      .eq('id', kidId)
+      .eq('room_expansions', kid.room_expansions)
+      .select('id');
     if (updErr) throw updErr;
+    if (!updRows || updRows.length === 0) {
+      return NextResponse.json({ ok: false, error: '잠시 후 다시 시도해주세요.' }, { status: 409 });
+    }
 
     const { error: txErr } = await sb.from('transactions').insert({
       kid_id: kidId,

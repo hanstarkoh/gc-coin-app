@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { isAdmin } from '@/lib/session';
 import { findShopItem } from '@/lib/shop';
-import { TRADE_FEE_RATE } from '@/lib/stocks';
+import { TRADE_FEE_RATE, calcFee } from '@/lib/stocks';
 
 // transactions.reason에 카테고리별로 이모지 접두사를 붙여온 기존 관례를 이용해서
 // (🏦=예금, 🏠=마이룸 확장, 🎲=예측 시장) 어떤 소비인지 나눕니다.
@@ -134,7 +134,9 @@ export async function GET(req) {
       .filter((i) => i.item);
     const buyOrders = stockOrders.filter((o) => o.type === 'buy');
     const sellOrders = stockOrders.filter((o) => o.type === 'sell');
-    const chaseBuys = buyOrders.filter((o) => o.fee > Math.round(o.amount * TRADE_FEE_RATE));
+    // calcFee의 "최소 1GC" 바닥 처리 때문에 소액 거래는 기본 수수료여도 반올림값보다 커서
+    // 전부 추격매수로 오분류되던 문제가 있었음 — calcFee로 기준선을 다시 계산해서 비교.
+    const chaseBuys = buyOrders.filter((o) => o.fee > calcFee(o.amount, TRADE_FEE_RATE));
     const overBuys = buyOrders.filter((o) => o.valuation_at_trade === 'over');
     const underBuys = buyOrders.filter((o) => o.valuation_at_trade === 'under');
     const underSells = sellOrders.filter((o) => o.valuation_at_trade === 'under');

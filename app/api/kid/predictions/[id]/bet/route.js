@@ -41,9 +41,8 @@ export async function POST(req, { params }) {
       return NextResponse.json({ ok: false, error: '코인이 부족해요.' }, { status: 400 });
     }
 
-    const { error: updErr } = await sb.from('kids').update({ balance: kid.balance - betAmount }).eq('id', kidId);
-    if (updErr) throw updErr;
-
+    // 베팅 기록부터 먼저 넣습니다 — (prediction_id, kid_id) 유니크 제약이 있어서, 두 요청이
+    // 동시에 들어와도(더블탭 등) 하나만 성공하고 나머지는 여기서 걸러져 잔액이 중복 차감되지 않아요.
     const { error: betErr } = await sb.from('prediction_bets').insert({
       prediction_id: pred.id,
       kid_id: kidId,
@@ -51,7 +50,15 @@ export async function POST(req, { params }) {
       option,
       amount: betAmount,
     });
-    if (betErr) throw betErr;
+    if (betErr) {
+      if (betErr.code === '23505') {
+        return NextResponse.json({ ok: false, error: '이미 이 질문에 베팅했어요.' }, { status: 400 });
+      }
+      throw betErr;
+    }
+
+    const { error: updErr } = await sb.from('kids').update({ balance: kid.balance - betAmount }).eq('id', kidId);
+    if (updErr) throw updErr;
 
     const optionLabel = option === 'a' ? pred.option_a : pred.option_b;
     const { error: txErr } = await sb.from('transactions').insert({
