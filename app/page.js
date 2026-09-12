@@ -144,13 +144,22 @@ export default async function Home() {
         title="금청코인"
         sub="금정청소년수련관 · 주말 방과후 아카데미"
         right={
-          <Link
-            href="/admin"
-            aria-label="관리자"
-            className="w-8 h-8 rounded-full border border-white/40 flex items-center justify-center text-sm hover:border-white transition"
-          >
-            🗂️
-          </Link>
+          <div className="flex items-center gap-1.5">
+            <Link
+              href="/pickup-board"
+              aria-label="픽업 현황판"
+              className="w-8 h-8 rounded-full border border-white/40 flex items-center justify-center text-sm hover:border-white transition"
+            >
+              🔔
+            </Link>
+            <Link
+              href="/admin"
+              aria-label="관리자"
+              className="w-8 h-8 rounded-full border border-white/40 flex items-center justify-center text-sm hover:border-white transition"
+            >
+              🗂️
+            </Link>
+          </div>
         }
       />
       <div className="flex-1 max-w-[480px] w-full mx-auto px-4 py-8 space-y-4">
