@@ -1530,11 +1530,21 @@ function PredictionsTab({ showToast }) {
   };
 
   const del = async (p) => {
-    if (!confirm('이 질문을 삭제할까요?')) return;
+    const warning =
+      p.status === 'resolved'
+        ? '이 질문을 삭제할까요? (이미 정산이 끝나서 추가 환불은 없어요)'
+        : p.betCount > 0
+        ? `이 질문을 삭제할까요? 베팅한 ${p.betCount}명에게 걸었던 코인을 그대로 환불해요.`
+        : '이 질문을 삭제할까요?';
+    if (!confirm(warning)) return;
     const res = await fetch(`/api/admin/predictions/${p.id}`, { method: 'DELETE' });
     const data = await res.json();
-    if (data.ok) await load();
-    else showToast(data.error || '실패했어요.');
+    if (data.ok) {
+      showToast('삭제했어요.');
+      await load();
+    } else {
+      showToast(data.error || '실패했어요.');
+    }
   };
 
   return (
@@ -1646,16 +1656,11 @@ function PredictionsTab({ showToast }) {
                   >
                     &quot;{p.option_b}&quot; 정답 발표
                   </button>
-                  {p.betCount === 0 && (
-                    <button
-                      onClick={() => del(p)}
-                      className="text-xs text-gray-400 underline px-1.5 py-1.5"
-                    >
-                      삭제
-                    </button>
-                  )}
                 </div>
               )}
+              <button onClick={() => del(p)} className="text-xs text-gray-400 underline px-1.5 py-1.5 mt-1">
+                삭제
+              </button>
             </div>
           );
         })}
