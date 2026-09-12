@@ -9,6 +9,14 @@ export async function PATCH(req, { params }) {
     const body = await req.json();
     const update = {};
 
+    if ('price' in body) {
+      const p = Number(body.price);
+      if (!p || p <= 0) {
+        return NextResponse.json({ ok: false, error: '가격을 확인해주세요.' }, { status: 400 });
+      }
+      update.price = p;
+    }
+
     if ('stock' in body) {
       const hasStock = body.stock !== '' && body.stock !== null && body.stock !== undefined;
       const stockValue = hasStock ? Number(body.stock) : null;

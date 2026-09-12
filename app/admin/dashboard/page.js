@@ -358,6 +358,7 @@ function MenuTab({ showToast }) {
   const [toggling, setToggling] = useState(false);
   const [restockDrafts, setRestockDrafts] = useState({});
   const [descDrafts, setDescDrafts] = useState({});
+  const [priceDrafts, setPriceDrafts] = useState({});
   const [listCat, setListCat] = useState('snack');
   const [listPage, setListPage] = useState(1);
 
@@ -449,6 +450,29 @@ function MenuTab({ showToast }) {
     if (data.ok) {
       showToast('설명을 저장했어요.');
       setDescDrafts((prev) => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
+      await load();
+    } else {
+      showToast(data.error || '저장에 실패했어요.');
+    }
+  };
+
+  const savePrice = async (item) => {
+    const draft = priceDrafts[item.id];
+    const value = parseInt(draft, 10);
+    if (!value || value <= 0) return showToast('가격을 확인해주세요.');
+    const res = await fetch(`/api/admin/menu/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ price: value }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('가격을 저장했어요.');
+      setPriceDrafts((prev) => {
         const next = { ...prev };
         delete next[item.id];
         return next;
@@ -559,6 +583,23 @@ function MenuTab({ showToast }) {
                 <button onClick={() => del(it.id)} className="btn-3d btn-3d-coral shrink-0 text-xs bg-coral text-white rounded-lg px-3 py-1.5">
                   삭제
                 </button>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <input
+                  type="number"
+                  min="1"
+                  value={priceDrafts[it.id] !== undefined ? priceDrafts[it.id] : String(it.price)}
+                  onChange={(e) => setPriceDrafts((prev) => ({ ...prev, [it.id]: e.target.value }))}
+                  placeholder="가격"
+                  className="w-24 border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-xs"
+                />
+                <button
+                  onClick={() => savePrice(it)}
+                  className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1.5"
+                >
+                  가격 저장
+                </button>
+                <span className="text-[10.5px] text-gray-400">GC</span>
               </div>
               <div className="flex items-center gap-1.5 mt-1.5">
                 <select
