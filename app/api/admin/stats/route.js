@@ -28,12 +28,23 @@ function distinctKidIds(rows) {
   return new Set(rows.map((r) => r.kid_id));
 }
 
+// from/to가 있으면 그 기간(created_at 기준)으로만 좁힙니다. 잔액/실현손익처럼
+// kids 테이블에 누적으로만 저장된 값은 기간 필터링이 안 되고 항상 "현재 누적 기준"입니다.
+function applyPeriod(query, column, from, to) {
+  let q = query;
+  if (from) q = q.gte(column, from);
+  if (to) q = q.lt(column, to);
+  return q;
+}
+
 export async function GET(req) {
   if (!isAdmin()) return NextResponse.json({ ok: false, error: '관리자 로그인이 필요해요.' }, { status: 401 });
   try {
     const { searchParams } = new URL(req.url);
     const kidId = searchParams.get('kidId');
     const scope = searchParams.get('scope') || 'all';
+    const from = searchParams.get('from') || null;
+    const to = searchParams.get('to') || null;
 
     const sb = supabaseAdmin();
     const { data: allKids, error: kidsErr } = await sb
@@ -66,13 +77,48 @@ export async function GET(req) {
       { data: announcements, error: annErr },
       { data: inventory, error: invErr },
     ] = await Promise.all([
-      sb.from('transactions').select('kid_id, type, amount, reason').in('kid_id', scopeIds),
-      sb.from('stock_orders').select('kid_id, type, amount, fee').in('kid_id', scopeIds),
-      sb.from('kid_deposits').select('kid_id, principal, term_days, claimed').in('kid_id', scopeIds),
-      sb.from('prediction_bets').select('kid_id, amount, payout').in('kid_id', scopeIds),
-      sb.from('group_goal_donations').select('kid_id, amount').in('kid_id', scopeIds),
-      sb.from('announcements').select('kid_id').in('kid_id', scopeIds),
-      sb.from('kid_inventory').select('kid_id, category, item_key').in('kid_id', scopeIds),
+      applyPeriod(
+        sb.from('transactions').select('kid_id, type, amount, reason, created_at').in('kid_id', scopeIds),
+        'created_at',
+        from,
+        to
+      ),
+      applyPeriod(
+        sb.from('stock_orders').select('kid_id, type, amount, fee, valuation_at_trade, created_at').in('kid_id', scopeIds),
+        'created_at',
+        from,
+        to
+      ),
+      applyPeriod(
+        sb.from('kid_deposits').select('kid_id, principal, term_days, claimed, created_at').in('kid_id', scopeIds),
+        'created_at',
+        from,
+        to
+      ),
+      applyPeriod(
+        sb.from('prediction_bets').select('kid_id, amount, payout, created_at').in('kid_id', scopeIds),
+        'created_at',
+        from,
+        to
+      ),
+      applyPeriod(
+        sb.from('group_goal_donations').select('kid_id, amount, created_at').in('kid_id', scopeIds),
+        'created_at',
+        from,
+        to
+      ),
+      applyPeriod(
+        sb.from('announcements').select('kid_id, created_at').in('kid_id', scopeIds),
+        'created_at',
+        from,
+        to
+      ),
+      applyPeriod(
+        sb.from('kid_inventory').select('kid_id, category, item_key, purchased_at').in('kid_id', scopeIds),
+        'purchased_at',
+        from,
+        to
+      ),
     ]);
     if (txErr) throw txErr;
     if (soErr) throw soErr;
@@ -89,6 +135,9 @@ export async function GET(req) {
     const buyOrders = stockOrders.filter((o) => o.type === 'buy');
     const sellOrders = stockOrders.filter((o) => o.type === 'sell');
     const chaseBuys = buyOrders.filter((o) => o.fee > Math.round(o.amount * TRADE_FEE_RATE));
+    const overBuys = buyOrders.filter((o) => o.valuation_at_trade === 'over');
+    const underBuys = buyOrders.filter((o) => o.valuation_at_trade === 'under');
+    const underSells = sellOrders.filter((o) => o.valuation_at_trade === 'under');
 
     const spendBreakdown = {
       snack: snackTx.reduce((s, t) => s + t.amount, 0),
@@ -106,7 +155,6 @@ export async function GET(req) {
     const balances = scopeKids.map((k) => k.balance);
 
     const participation = {
-      attendance: distinctKidIds(txs.filter((t) => categorizeTx(t) === 'attendance')).size,
       snack: distinctKidIds(snackTx).size,
       shop: distinctKidIds(shopRows).size,
       deposit: distinctKidIds(deposits).size,
@@ -126,6 +174,9 @@ export async function GET(req) {
         sellCount: sellOrders.length,
         chaseBuyCount: chaseBuys.length,
         chaseBuyPct: buyOrders.length > 0 ? Math.round((chaseBuys.length / buyOrders.length) * 1000) / 10 : 0,
+        overBuyPct: buyOrders.length > 0 ? Math.round((overBuys.length / buyOrders.length) * 1000) / 10 : 0,
+        underBuyPct: buyOrders.length > 0 ? Math.round((underBuys.length / buyOrders.length) * 1000) / 10 : 0,
+        underSellPct: sellOrders.length > 0 ? Math.round((underSells.length / sellOrders.length) * 1000) / 10 : 0,
         totalRealizedProfit: scopeKids.reduce((s, k) => s + (k.invest_realized_profit || 0), 0),
         avgRealizedProfit: Math.round(
           scopeKids.reduce((s, k) => s + (k.invest_realized_profit || 0), 0) / kidCount

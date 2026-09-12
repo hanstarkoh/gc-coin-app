@@ -2059,16 +2059,40 @@ function StatBar({ pct, barClassName = 'bg-navy' }) {
   );
 }
 
+function periodRange(period) {
+  const now = new Date();
+  if (period === '7d') {
+    return { from: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(), to: null };
+  }
+  if (period === '30d') {
+    return { from: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString(), to: null };
+  }
+  if (period === 'thisQ' || period === 'lastQ') {
+    const offset = period === 'thisQ' ? 0 : -1;
+    const qStartMonth = Math.floor(now.getMonth() / 3) * 3;
+    const start = new Date(now.getFullYear(), qStartMonth + offset * 3, 1);
+    const end = new Date(now.getFullYear(), qStartMonth + offset * 3 + 3, 1);
+    return { from: start.toISOString(), to: end.toISOString() };
+  }
+  return { from: null, to: null };
+}
+
 function StatsTab({ kids, showToast }) {
   const [scope, setScope] = useState('all'); // 'all' | 'male' | 'female' | 'kid'
   const [kidId, setKidId] = useState('');
+  const [period, setPeriod] = useState('all');
   const [stats, setStats] = useState(null);
 
   const load = useCallback(
-    async (currentScope, currentKidId) => {
+    async (currentScope, currentKidId, currentPeriod) => {
       setStats(null);
-      const qs = currentScope === 'kid' && currentKidId ? `kidId=${currentKidId}` : `scope=${currentScope}`;
-      const res = await fetch(`/api/admin/stats?${qs}`);
+      const params = new URLSearchParams();
+      if (currentScope === 'kid' && currentKidId) params.set('kidId', currentKidId);
+      else params.set('scope', currentScope);
+      const { from, to } = periodRange(currentPeriod);
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
+      const res = await fetch(`/api/admin/stats?${params.toString()}`);
       const data = await res.json();
       if (data.ok) setStats(data);
       else showToast(data.error || '통계를 불러오지 못했어요.');
@@ -2078,11 +2102,10 @@ function StatsTab({ kids, showToast }) {
 
   useEffect(() => {
     if (scope === 'kid' && !kidId) return;
-    load(scope, kidId);
-  }, [scope, kidId, load]);
+    load(scope, kidId, period);
+  }, [scope, kidId, period, load]);
 
   const participationRows = [
-    ['출석', 'attendance'],
     ['금청수 상점(간식)', 'snack'],
     ['꾸미기 상점', 'shop'],
     ['예금', 'deposit'],
@@ -2145,6 +2168,32 @@ function StatsTab({ kids, showToast }) {
             </option>
           ))}
         </select>
+      </Card>
+
+      <Card title="기간">
+        <p className="text-xs text-gray-500 -mt-2 mb-2.5">
+          기능별 참여율·코인 배분·투자 행동 등은 이 기간 안의 활동만 집계돼요. (잔액·실현손익
+          합계처럼 현재 누적값인 항목은 기간과 무관하게 지금 기준으로 나와요)
+        </p>
+        <div className="flex gap-1.5 flex-wrap">
+          {[
+            ['all', '전체 기간'],
+            ['7d', '최근 7일'],
+            ['30d', '최근 30일'],
+            ['thisQ', '이번 분기'],
+            ['lastQ', '지난 분기'],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setPeriod(key)}
+              className={`text-xs px-3.5 py-2 rounded-full border-[1.5px] ${
+                period === key ? 'bg-gold border-gold text-navy-deep font-bold' : 'border-gray-200 text-gray-500'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </Card>
 
       {!stats && (
@@ -2235,6 +2284,15 @@ function StatsTab({ kids, showToast }) {
               <div>
                 추격매수 비율 <b>{stats.investing.chaseBuyPct}%</b>
               </div>
+              <div>
+                고평가 상태에 매수 <b className="text-coral-deep">{stats.investing.overBuyPct}%</b>
+              </div>
+              <div>
+                저평가 상태에 매수 <b className="text-mint-deep">{stats.investing.underBuyPct}%</b>
+              </div>
+              <div>
+                저평가 상태에 매도(손절?) <b className="text-coral-deep">{stats.investing.underSellPct}%</b>
+              </div>
               <div className="col-span-2">
                 평균 실현손익{' '}
                 <b className={stats.investing.avgRealizedProfit >= 0 ? 'text-mint-deep' : 'text-coral-deep'}>
@@ -2244,6 +2302,10 @@ function StatsTab({ kids, showToast }) {
                 {' '}(합계 {stats.investing.totalRealizedProfit} GC)
               </div>
             </div>
+            <p className="text-[10.5px] text-gray-400 mt-2">
+              "고평가 상태에 매수"가 낮을수록, "저평가 상태에 매도"가 낮을수록 &apos;쌀 때
+              사서 비쌀 때 판다&apos;를 잘 실천하고 있는 거예요.
+            </p>
           </Card>
 
           <Card title="예금">
