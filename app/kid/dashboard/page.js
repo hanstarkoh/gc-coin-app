@@ -7,6 +7,7 @@ import LevelBar from '@/components/LevelBar';
 import BadgeGrid from '@/components/BadgeGrid';
 import Celebration from '@/components/Celebration';
 import Sparkline from '@/components/Sparkline';
+import StockNewsTicker from '@/components/StockNewsTicker';
 import { ToastProvider, useToast } from '@/components/Toast';
 import { TRADE_FEE_RATE } from '@/lib/stocks';
 import { calcPayout } from '@/lib/deposits';
@@ -57,6 +58,7 @@ function DashboardInner() {
   const [completing, setCompleting] = useState(null);
   const [celebration, setCelebration] = useState(null);
   const [stocks, setStocks] = useState(null);
+  const [stockNews, setStockNews] = useState([]);
   const [tradeStockId, setTradeStockId] = useState(null);
   const [tradeMode, setTradeMode] = useState(null);
   const [tradeQty, setTradeQty] = useState('');
@@ -118,12 +120,19 @@ function DashboardInner() {
     if (data.ok) setStocks(data.stocks);
   }, []);
 
+  const loadStockNews = useCallback(async () => {
+    const res = await fetch('/api/kid/stock-news');
+    const data = await res.json();
+    if (data.ok) setStockNews(data.news);
+  }, []);
+
   useEffect(() => {
     (async () => {
       const meData = await loadMe();
       await loadMenu();
       await loadEvents();
       await loadStocks();
+      await loadStockNews();
       await loadGoals();
       const tx = await loadHistory();
       if (meData?.ok) checkCelebrations(meData, tx);
@@ -411,6 +420,11 @@ function DashboardInner() {
         <ShopCard kidBalance={kid.balance} onChange={loadMe} showToast={showToast} />
 
         <Collapsible icon="📈" badgeColor="navy" title="모의투자" defaultOpen={true}>
+          {stockNews.length > 0 && (
+            <div className="mb-2">
+              <StockNewsTicker items={stockNews} />
+            </div>
+          )}
           {kid.investAgreedAt && (
             <div className="flex items-center justify-between text-xs mb-2">
               <span className="text-gray-500">
@@ -477,6 +491,11 @@ function DashboardInner() {
                         {s.sentiment === 'buy' ? '📈 매수가 많아지고 있어요!' : '📉 매도가 많아지고 있어요!'}
                       </div>
                     )}
+                    {s.buyFeeRate > TRADE_FEE_RATE && (
+                      <div className="text-[10.5px] font-bold text-coral-deep">
+                        🔥 많이 올라서 추격매수 수수료 {Math.round(s.buyFeeRate * 1000) / 10}%
+                      </div>
+                    )}
                     {s.myShares > 0 && (
                       <div className="text-[11px] text-gray-400 mt-0.5">
                         보유 {s.myShares}주 · 평가 {s.myShares * s.price} GC ·{' '}
@@ -508,7 +527,8 @@ function DashboardInner() {
                 {isTrading && (() => {
                   const qty = Math.max(0, parseInt(tradeQty, 10) || 0);
                   const subtotal = s.price * qty;
-                  const fee = Math.round(subtotal * TRADE_FEE_RATE);
+                  const feeRate = tradeMode === 'buy' ? s.buyFeeRate : TRADE_FEE_RATE;
+                  const fee = subtotal > 0 ? Math.max(1, Math.round(subtotal * feeRate)) : 0;
                   const total = tradeMode === 'buy' ? subtotal + fee : subtotal - fee;
                   const overBalance = tradeMode === 'buy' && qty > 0 && total > kid.balance;
                   return (
@@ -534,7 +554,9 @@ function DashboardInner() {
                         </button>
                       </div>
                       {qty === 0 ? (
-                        <p className="text-[10.5px] text-gray-400 mt-1.5">수수료 {TRADE_FEE_RATE * 100}%가 붙어요</p>
+                        <p className="text-[10.5px] text-gray-400 mt-1.5">
+                          수수료 {Math.round(feeRate * 1000) / 10}%가 붙어요
+                        </p>
                       ) : (
                         <div className="text-[11px] text-gray-500 mt-1.5 space-y-0.5">
                           <div className="flex justify-between">
@@ -544,7 +566,7 @@ function DashboardInner() {
                             <span>{subtotal} GC</span>
                           </div>
                           <div className="flex justify-between">
-                            <span>수수료 ({TRADE_FEE_RATE * 100}%)</span>
+                            <span>수수료 ({Math.round(feeRate * 1000) / 10}%)</span>
                             <span>
                               {tradeMode === 'buy' ? '+' : '-'}
                               {fee} GC

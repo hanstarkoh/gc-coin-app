@@ -1353,16 +1353,32 @@ function StocksTab({ showToast }) {
   const [emoji, setEmoji] = useState('');
   const [price, setPrice] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [news, setNews] = useState(null);
+  const [newsStockId, setNewsStockId] = useState('');
+  const [newsHeadline, setNewsHeadline] = useState('');
+  const [newsPct, setNewsPct] = useState('');
+  const [publishing, setPublishing] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/stocks');
     const data = await res.json();
-    if (data.ok) setStocks(data.stocks);
+    if (data.ok) {
+      setStocks(data.stocks);
+      if (!newsStockId && data.stocks.length > 0) setNewsStockId(data.stocks[0].id);
+    }
+  }, [newsStockId]);
+
+  const loadNews = useCallback(async () => {
+    const res = await fetch('/api/admin/stocks/news');
+    const data = await res.json();
+    if (data.ok) setNews(data.news);
   }, []);
 
   useEffect(() => {
     load();
-  }, [load]);
+    loadNews();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const add = async () => {
     const p = parseInt(price, 10);
@@ -1420,6 +1436,40 @@ function StocksTab({ showToast }) {
     }
   };
 
+  const publishNews = async () => {
+    const p = parseInt(newsPct, 10);
+    if (!newsStockId) return showToast('종목을 선택해주세요.');
+    if (!newsHeadline.trim()) return showToast('헤드라인을 입력해주세요.');
+    if (!p || Math.abs(p) > 40) return showToast('등락률을 -40~40 사이 숫자로 입력해주세요.');
+    setPublishing(true);
+    try {
+      const res = await fetch(`/api/admin/stocks/${newsStockId}/news`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ headline: newsHeadline, pct: p }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('뉴스를 발표하고 시세에 반영했어요.');
+        setNewsHeadline('');
+        setNewsPct('');
+        await Promise.all([load(), loadNews()]);
+      } else {
+        showToast(data.error || '발표에 실패했어요.');
+      }
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const delNews = async (n) => {
+    if (!confirm('이 뉴스를 지울까요? (이미 반영된 시세는 되돌리지 않아요)')) return;
+    const res = await fetch(`/api/admin/stocks/news/${n.id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.ok) await loadNews();
+    else showToast(data.error || '실패했어요.');
+  };
+
   return (
     <>
       <Card title="시세 갱신">
@@ -1462,6 +1512,73 @@ function StocksTab({ showToast }) {
             </div>
           </div>
         ))}
+      </Card>
+
+      <Card title="뉴스 발표">
+        <p className="text-xs text-gray-500 -mt-2 mb-2.5">
+          "OO기업, 신제품 발표로 주가 급등!" 같은 헤드라인과 등락률을 정하면, 무작위 변동과
+          별개로 그 자리에서 바로 시세에 반영되고 홈 화면·대시보드에 뉴스로 떠요.
+        </p>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">종목</label>
+          <select
+            value={newsStockId}
+            onChange={(e) => setNewsStockId(e.target.value)}
+            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+          >
+            {stocks?.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.emoji} {s.name} ({s.price} GC)
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">헤드라인</label>
+          <input
+            value={newsHeadline}
+            onChange={(e) => setNewsHeadline(e.target.value)}
+            placeholder="예: 신제품 출시 발표에 주가 급등!"
+            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+          />
+        </div>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">등락률 (%) — 음수면 하락</label>
+          <input
+            type="number"
+            value={newsPct}
+            onChange={(e) => setNewsPct(e.target.value)}
+            placeholder="예: 15 또는 -10"
+            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+          />
+        </div>
+        <button
+          onClick={publishNews}
+          disabled={publishing}
+          className="btn-3d btn-3d-coral w-full bg-coral text-white font-display rounded-xl py-3 text-sm disabled:opacity-40"
+        >
+          {publishing ? '발표 중...' : '뉴스 발표하기'}
+        </button>
+
+        {news && news.length > 0 && (
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <div className="text-xs font-bold text-gray-500 mb-2">최근 뉴스</div>
+            {news.map((n) => (
+              <div key={n.id} className="flex items-center justify-between gap-2 py-1.5 text-xs">
+                <div className="min-w-0">
+                  <div className="truncate">{n.headline}</div>
+                  <div className="text-gray-400">
+                    {n.stock_name} · {n.pct > 0 ? '+' : ''}
+                    {n.pct}% ({n.old_price}→{n.new_price} GC)
+                  </div>
+                </div>
+                <button onClick={() => delNews(n)} className="text-gray-400 underline shrink-0">
+                  삭제
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       <Card title="종목 등록">

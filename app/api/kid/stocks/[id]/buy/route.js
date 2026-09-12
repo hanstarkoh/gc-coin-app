@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getKidId } from '@/lib/session';
-import { calcFee } from '@/lib/stocks';
+import { calcFee, buyFeeRate, momentumFromHistory, MOMENTUM_LOOKBACK } from '@/lib/stocks';
 
 export async function POST(req, { params }) {
   const kidId = getKidId();
@@ -31,8 +31,17 @@ export async function POST(req, { params }) {
       .single();
     if (kidErr || !kid) return NextResponse.json({ ok: false, error: '학생 정보를 찾을 수 없어요.' }, { status: 404 });
 
+    const { data: recentHistory, error: histErr } = await sb
+      .from('stock_price_history')
+      .select('price')
+      .eq('stock_id', stock.id)
+      .order('recorded_at', { ascending: false })
+      .limit(MOMENTUM_LOOKBACK + 1);
+    if (histErr) throw histErr;
+    const momentum = momentumFromHistory((recentHistory || []).map((h) => h.price).reverse());
+
     const amount = stock.price * qty;
-    const fee = calcFee(amount);
+    const fee = calcFee(amount, buyFeeRate(momentum));
     const totalDebit = amount + fee;
     if (kid.balance < totalDebit) {
       return NextResponse.json({ ok: false, error: '코인이 부족해요. (수수료 포함)' }, { status: 400 });

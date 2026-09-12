@@ -282,6 +282,22 @@ create index if not exists idx_prediction_bets_kid on prediction_bets(kid_id);
 alter table predictions enable row level security;
 alter table prediction_bets enable row level security;
 
+-- 모의투자 뉴스 이벤트: 관리자가 특정 종목에 "호재/악재" 헤드라인과 등락률을 발표하면
+-- 그 자리에서 바로 시세에 반영하고(무작위 변동과 별개), 홈 화면/청소년 대시보드에
+-- 실제 증권 뉴스 티커처럼 헤드라인이 흘러갑니다.
+create table if not exists stock_news (
+  id uuid primary key default gen_random_uuid(),
+  stock_id uuid not null references stocks(id) on delete cascade,
+  stock_name text not null,
+  headline text not null,
+  pct int not null,
+  old_price int not null,
+  new_price int not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_stock_news_created on stock_news(created_at desc);
+alter table stock_news enable row level security;
+
 -- 이 앱은 Next.js 서버(API 라우트)에서 Supabase "service role" 키로만 접근합니다.
 -- 브라우저에서 테이블에 직접 접근하지 않으므로 Row Level Security 는 기본적으로 막아둡니다.
 alter table settings enable row level security;

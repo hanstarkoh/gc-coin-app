@@ -2,10 +2,11 @@ import Link from 'next/link';
 import TopBar from '@/components/TopBar';
 import Sparkline from '@/components/Sparkline';
 import AnnouncementTicker from '@/components/AnnouncementTicker';
+import StockNewsTicker from '@/components/StockNewsTicker';
 import MenuTabs from '@/components/MenuTabs';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { unstable_noStore as noStore } from 'next/cache';
-import { maybeUpdateStockPrices, getLiveSentiments } from '@/lib/stocks';
+import { maybeUpdateStockPrices, getLiveSentiments, momentumFromHistory, buyFeeRate, TRADE_FEE_RATE } from '@/lib/stocks';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,6 +71,7 @@ async function getActiveStocks() {
         history: prices,
         changePct: prevClose ? Math.round(((s.price - prevClose) / prevClose) * 1000) / 10 : 0,
         sentiment: sentiments[s.id] || null,
+        buyFeeRate: buyFeeRate(momentumFromHistory(prices)),
       };
     })
   );
@@ -86,6 +88,18 @@ async function getActiveGoal() {
     .limit(1)
     .maybeSingle();
   if (error) return null;
+  return data;
+}
+
+async function getStockNews() {
+  noStore();
+  const sb = supabaseAdmin();
+  const { data, error } = await sb
+    .from('stock_news')
+    .select('id, stock_name, headline, pct, created_at')
+    .order('created_at', { ascending: false })
+    .limit(10);
+  if (error) return [];
   return data;
 }
 
@@ -130,16 +144,18 @@ async function getProfitRanking() {
 }
 
 export default async function Home() {
-  const [menu, events, stocks, ordersOpen, goal, donationRanking, profitRanking, announcements] = await Promise.all([
-    getMenu(),
-    getActiveEvents(),
-    getActiveStocks(),
-    getOrdersOpen(),
-    getActiveGoal(),
-    getDonationRanking(),
-    getProfitRanking(),
-    getActiveAnnouncements(),
-  ]);
+  const [menu, events, stocks, ordersOpen, goal, donationRanking, profitRanking, announcements, stockNews] =
+    await Promise.all([
+      getMenu(),
+      getActiveEvents(),
+      getActiveStocks(),
+      getOrdersOpen(),
+      getActiveGoal(),
+      getDonationRanking(),
+      getProfitRanking(),
+      getActiveAnnouncements(),
+      getStockNews(),
+    ]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -231,6 +247,8 @@ export default async function Home() {
           )}
         </div>
 
+        {stockNews.length > 0 && <StockNewsTicker items={stockNews} />}
+
         {stocks.length > 0 && (
           <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -251,6 +269,11 @@ export default async function Home() {
                     {s.sentiment && (
                       <div className={`text-[10.5px] font-bold ${s.sentiment === 'buy' ? 'text-mint-deep' : 'text-coral-deep'}`}>
                         {s.sentiment === 'buy' ? '📈 매수가 많아지고 있어요!' : '📉 매도가 많아지고 있어요!'}
+                      </div>
+                    )}
+                    {s.buyFeeRate > TRADE_FEE_RATE && (
+                      <div className="text-[10.5px] font-bold text-coral-deep">
+                        🔥 추격매수 수수료 {Math.round(s.buyFeeRate * 1000) / 10}%
                       </div>
                     )}
                   </div>
