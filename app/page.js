@@ -6,7 +6,15 @@ import StockNewsTicker from '@/components/StockNewsTicker';
 import MenuTabs from '@/components/MenuTabs';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { unstable_noStore as noStore } from 'next/cache';
-import { maybeUpdateStockPrices, getLiveSentiments, momentumFromHistory, buyFeeRate, TRADE_FEE_RATE } from '@/lib/stocks';
+import {
+  maybeUpdateStockPrices,
+  getLiveSentiments,
+  momentumFromHistory,
+  buyFeeRate,
+  TRADE_FEE_RATE,
+  movingAverage,
+  valuationStatus,
+} from '@/lib/stocks';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +80,7 @@ async function getActiveStocks() {
         changePct: prevClose ? Math.round(((s.price - prevClose) / prevClose) * 1000) / 10 : 0,
         sentiment: sentiments[s.id] || null,
         buyFeeRate: buyFeeRate(momentumFromHistory(prices)),
+        valuation: valuationStatus(s.price, movingAverage(prices)),
       };
     })
   );
@@ -274,6 +283,11 @@ export default async function Home() {
                     {s.buyFeeRate > TRADE_FEE_RATE && (
                       <div className="text-[10.5px] font-bold text-coral-deep">
                         🔥 추격매수 수수료 {Math.round(s.buyFeeRate * 1000) / 10}%
+                      </div>
+                    )}
+                    {s.valuation && (
+                      <div className={`text-[10.5px] font-bold ${s.valuation === 'over' ? 'text-coral-deep' : 'text-mint-deep'}`}>
+                        {s.valuation === 'over' ? '📊 고평가 상태' : '📉 저평가 상태'}
                       </div>
                     )}
                   </div>

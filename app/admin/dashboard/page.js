@@ -1356,7 +1356,7 @@ function StocksTab({ showToast }) {
   const [news, setNews] = useState(null);
   const [newsStockId, setNewsStockId] = useState('');
   const [newsHeadline, setNewsHeadline] = useState('');
-  const [newsPct, setNewsPct] = useState('');
+  const [newsDirection, setNewsDirection] = useState('up');
   const [publishing, setPublishing] = useState(false);
 
   const load = useCallback(async () => {
@@ -1437,22 +1437,19 @@ function StocksTab({ showToast }) {
   };
 
   const publishNews = async () => {
-    const p = parseInt(newsPct, 10);
     if (!newsStockId) return showToast('종목을 선택해주세요.');
     if (!newsHeadline.trim()) return showToast('헤드라인을 입력해주세요.');
-    if (!p || Math.abs(p) > 40) return showToast('등락률을 -40~40 사이 숫자로 입력해주세요.');
     setPublishing(true);
     try {
       const res = await fetch(`/api/admin/stocks/${newsStockId}/news`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ headline: newsHeadline, pct: p }),
+        body: JSON.stringify({ headline: newsHeadline, direction: newsDirection }),
       });
       const data = await res.json();
       if (data.ok) {
-        showToast('뉴스를 발표하고 시세에 반영했어요.');
+        showToast(`뉴스를 발표하고 시세에 반영했어요. (${data.pct > 0 ? '+' : ''}${data.pct}%)`);
         setNewsHeadline('');
-        setNewsPct('');
         await Promise.all([load(), loadNews()]);
       } else {
         showToast(data.error || '발표에 실패했어요.');
@@ -1516,8 +1513,9 @@ function StocksTab({ showToast }) {
 
       <Card title="뉴스 발표">
         <p className="text-xs text-gray-500 -mt-2 mb-2.5">
-          "OO기업, 신제품 발표로 주가 급등!" 같은 헤드라인과 등락률을 정하면, 무작위 변동과
-          별개로 그 자리에서 바로 시세에 반영되고 홈 화면·대시보드에 뉴스로 떠요.
+          "OO기업, 신제품 발표로 주가 급등!" 같은 헤드라인을 쓰고 호재/악재만 고르면 돼요.
+          등락폭(5~20%)은 실제 뉴스처럼 반응을 예측할 수 없게 무작위로 정해지고, 무작위
+          변동과 별개로 그 자리에서 바로 시세에 반영돼 홈 화면·대시보드에 뉴스로 떠요.
         </p>
         <div className="mb-3">
           <label className="block text-xs text-gray-500 mb-1">종목</label>
@@ -1543,14 +1541,25 @@ function StocksTab({ showToast }) {
           />
         </div>
         <div className="mb-3">
-          <label className="block text-xs text-gray-500 mb-1">등락률 (%) — 음수면 하락</label>
-          <input
-            type="number"
-            value={newsPct}
-            onChange={(e) => setNewsPct(e.target.value)}
-            placeholder="예: 15 또는 -10"
-            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
-          />
+          <label className="block text-xs text-gray-500 mb-1">방향 (등락폭은 5~20% 중 무작위)</label>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setNewsDirection('up')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-bold border-2 ${
+                newsDirection === 'up' ? 'bg-mint text-white border-mint' : 'border-gray-200 text-gray-500'
+              }`}
+            >
+              📈 호재 (상승)
+            </button>
+            <button
+              onClick={() => setNewsDirection('down')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-bold border-2 ${
+                newsDirection === 'down' ? 'bg-coral text-white border-coral' : 'border-gray-200 text-gray-500'
+              }`}
+            >
+              📉 악재 (하락)
+            </button>
+          </div>
         </div>
         <button
           onClick={publishNews}

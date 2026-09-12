@@ -496,6 +496,11 @@ function DashboardInner() {
                         🔥 많이 올라서 추격매수 수수료 {Math.round(s.buyFeeRate * 1000) / 10}%
                       </div>
                     )}
+                    {s.valuation && (
+                      <div className={`text-[10.5px] font-bold ${s.valuation === 'over' ? 'text-coral-deep' : 'text-mint-deep'}`}>
+                        {s.valuation === 'over' ? '📊 고평가 상태예요' : '📉 저평가 상태예요'}
+                      </div>
+                    )}
                     {s.myShares > 0 && (
                       <div className="text-[11px] text-gray-400 mt-0.5">
                         보유 {s.myShares}주 · 평가 {s.myShares * s.price} GC ·{' '}
