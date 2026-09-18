@@ -53,6 +53,29 @@ async function getActiveEvents() {
   return data;
 }
 
+async function getActiveJobs() {
+  noStore();
+  const sb = supabaseAdmin();
+  const { data: postings, error } = await sb
+    .from('job_postings')
+    .select('id, title, description, reward, headcount')
+    .eq('is_active', true)
+    .order('created_at', { ascending: true });
+  if (error) return [];
+
+  const postingIds = postings.map((p) => p.id);
+  let applications = [];
+  if (postingIds.length > 0) {
+    const { data } = await sb.from('job_applications').select('posting_id, status').in('posting_id', postingIds);
+    applications = data || [];
+  }
+
+  return postings.map((p) => ({
+    ...p,
+    hiredCount: applications.filter((a) => a.posting_id === p.id && (a.status === 'hired' || a.status === 'completed')).length,
+  }));
+}
+
 async function getActiveStocks() {
   noStore();
   const sb = supabaseAdmin();
@@ -174,10 +197,11 @@ async function getProfitRanking() {
 }
 
 export default async function Home() {
-  const [menu, events, stocks, ordersOpen, goal, donationRanking, profitRanking, announcements, stockNews] =
+  const [menu, events, jobs, stocks, ordersOpen, goal, donationRanking, profitRanking, announcements, stockNews] =
     await Promise.all([
       getMenu(),
       getActiveEvents(),
+      getActiveJobs(),
       getActiveStocks(),
       getOrdersOpen(),
       getActiveGoal(),
@@ -276,6 +300,27 @@ export default async function Home() {
             <p className="text-xs text-gray-400 mt-2">로그인하고 완료 표시를 하면 관리자 승인 후 코인을 받아요.</p>
           )}
         </div>
+
+        {jobs.length > 0 && (
+          <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="icon-badge icon-badge-gold w-7 h-7 rounded-lg text-sm">🙋</div>
+              <div className="font-display text-base text-navy">구인시장</div>
+            </div>
+            {jobs.map((j) => (
+              <div key={j.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-sm">{j.title}</div>
+                  <div className="text-xs text-gold-deep font-bold">
+                    +{j.reward} GC · {j.hiredCount}/{j.headcount}명
+                  </div>
+                </div>
+                {j.description && <p className="text-xs text-gray-500 mt-1">{j.description}</p>}
+              </div>
+            ))}
+            <p className="text-xs text-gray-400 mt-2">로그인하면 지원할 수 있어요.</p>
+          </div>
+        )}
 
         <StockNewsTicker items={stockNews} />
 
