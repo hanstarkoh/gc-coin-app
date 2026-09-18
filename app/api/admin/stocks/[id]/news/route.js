@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { isAdmin } from '@/lib/session';
-import { applyNewsPriceChange, randomNewsPct, pruneStockNews } from '@/lib/stocks';
+import { applyNewsPriceChange, randomNewsPct, pruneStockNews, pruneStockNewsGlobal } from '@/lib/stocks';
 
 export async function POST(req, { params }) {
   if (!isAdmin()) return NextResponse.json({ ok: false, error: '관리자 로그인이 필요해요.' }, { status: 401 });
@@ -35,6 +35,7 @@ export async function POST(req, { params }) {
     });
     if (newsErr) throw newsErr;
     await pruneStockNews(sb, stock.id);
+    await pruneStockNewsGlobal(sb);
 
     const { error: updErr } = await sb.from('stocks').update({ price: newPrice }).eq('id', stock.id);
     if (updErr) throw updErr;

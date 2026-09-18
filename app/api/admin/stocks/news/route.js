@@ -10,7 +10,7 @@ export async function GET() {
       .from('stock_news')
       .select('id, stock_id, stock_name, headline, pct, old_price, new_price, created_at, source')
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(10);
     if (error) {
       // source 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니 그때는 없이 조회합니다.
       const fallback = await sb
