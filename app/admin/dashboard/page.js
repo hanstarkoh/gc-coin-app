@@ -1362,6 +1362,7 @@ function StocksTab({ showToast }) {
   const [price, setPrice] = useState('');
   const [sector, setSector] = useState('');
   const [description, setDescription] = useState('');
+  const [newStockEarningsDate, setNewStockEarningsDate] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [profileDrafts, setProfileDrafts] = useState({});
   const [news, setNews] = useState(null);
@@ -1405,7 +1406,14 @@ function StocksTab({ showToast }) {
     const res = await fetch('/api/admin/stocks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, emoji, price: p, sector: sector || null, description }),
+      body: JSON.stringify({
+        name,
+        emoji,
+        price: p,
+        sector: sector || null,
+        description,
+        nextEarningsAt: newStockEarningsDate || null,
+      }),
     });
     const data = await res.json();
     if (data.ok) {
@@ -1415,7 +1423,8 @@ function StocksTab({ showToast }) {
       setPrice('');
       setSector('');
       setDescription('');
-      await load();
+      setNewStockEarningsDate('');
+      await Promise.all([load(), loadEarnings()]);
     } else {
       showToast(data.error || '등록에 실패했어요.');
     }
@@ -1426,10 +1435,12 @@ function StocksTab({ showToast }) {
     const sectorValue = draft.sector !== undefined ? draft.sector : stock.sector || '';
     const descriptionValue = draft.description !== undefined ? draft.description : stock.description || '';
     const fundamentalValue = draft.fundamental !== undefined ? draft.fundamental : stock.fundamental || '';
+    const body = { sector: sectorValue || null, description: descriptionValue, fundamental: fundamentalValue || null };
+    if (draft.nextEarningsAt) body.nextEarningsAt = draft.nextEarningsAt;
     const res = await fetch(`/api/admin/stocks/${stock.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sector: sectorValue || null, description: descriptionValue, fundamental: fundamentalValue || null }),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
     if (data.ok) {
@@ -1439,7 +1450,7 @@ function StocksTab({ showToast }) {
         delete next[stock.id];
         return next;
       });
-      await load();
+      await Promise.all([load(), loadEarnings()]);
     } else {
       showToast(data.error || '저장에 실패했어요.');
     }
@@ -1538,6 +1549,8 @@ function StocksTab({ showToast }) {
           const sectorValue = draft.sector !== undefined ? draft.sector : s.sector || '';
           const descriptionValue = draft.description !== undefined ? draft.description : s.description || '';
           const fundamentalValue = draft.fundamental !== undefined ? draft.fundamental : s.fundamental || '';
+          const earningsDateValue =
+            draft.nextEarningsAt !== undefined ? draft.nextEarningsAt : s.next_earnings_at ? s.next_earnings_at.slice(0, 10) : '';
           const dday = daysUntil(s.next_earnings_at);
           return (
             <div key={s.id} className="py-2.5 border-b border-dashed border-gray-200 last:border-0">
@@ -1590,6 +1603,13 @@ function StocksTab({ showToast }) {
                     </option>
                   ))}
                 </select>
+                <input
+                  type="date"
+                  value={earningsDateValue}
+                  onChange={(e) => setProfileDrafts((prev) => ({ ...prev, [s.id]: { ...draft, nextEarningsAt: e.target.value } }))}
+                  title="실적발표일 재설정"
+                  className="border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-xs"
+                />
               </div>
               <div className="flex items-center gap-1.5 mt-1.5">
                 <input
@@ -1700,6 +1720,8 @@ function StocksTab({ showToast }) {
           종목마다 다른 주기(약 한 달, ±나흘)로 자동으로 실적발표가 터져요. 일반 뉴스보다 등락폭이
           훨씬 크고(15~35%), 종목의 펀더멘털(위 목록에서 설정)에 따라 결과 확률이 유리/불리하게
           기울 뿐 결과가 확정되진 않아요 — 위기 상태여도 가끔 "어닝서프라이즈"가 날 수 있어요.
+          위 종목 목록의 날짜 입력으로 발표일을 직접 정해 날짜를 골고루 흩어놓을 수도 있어요
+          (한 달 안쪽 날짜로 정하면 그 전 발표 내역도 하나 자동으로 채워져요).
         </p>
         {(!earnings || earnings.length === 0) && (
           <p className="text-xs text-gray-400 text-center py-2">아직 발생한 실적발표가 없어요.</p>
@@ -1762,6 +1784,15 @@ function StocksTab({ showToast }) {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs text-gray-500 mb-1">실적발표일 (선택, 비우면 자동 배정)</label>
+            <input
+              type="date"
+              value={newStockEarningsDate}
+              onChange={(e) => setNewStockEarningsDate(e.target.value)}
+              className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+            />
           </div>
         </div>
         <div className="mb-3">
