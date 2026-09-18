@@ -8,6 +8,7 @@ import BadgeGrid from '@/components/BadgeGrid';
 import Celebration from '@/components/Celebration';
 import Sparkline from '@/components/Sparkline';
 import StockNewsTicker from '@/components/StockNewsTicker';
+import { sectorLabel } from '@/lib/stockNews';
 import { ToastProvider, useToast } from '@/components/Toast';
 import { TRADE_FEE_RATE } from '@/lib/stocks';
 import { calcPayout } from '@/lib/deposits';
@@ -481,7 +482,13 @@ function DashboardInner() {
                   <div className="min-w-0">
                     <div className="font-bold text-sm truncate">
                       {s.emoji} {s.name}
+                      {s.sector && (
+                        <span className="ml-1 text-[9.5px] font-normal text-gray-400 align-middle">
+                          {sectorLabel(s.sector)}
+                        </span>
+                      )}
                     </div>
+                    {s.description && <div className="text-[10.5px] text-gray-400 truncate">{s.description}</div>}
                     <div className={`text-xs font-bold ${up ? 'text-mint-deep' : 'text-coral-deep'}`}>
                       {s.price} GC ({up ? '+' : ''}
                       {s.changePct}%)

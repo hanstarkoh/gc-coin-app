@@ -15,6 +15,7 @@ import {
   movingAverage,
   valuationStatus,
 } from '@/lib/stocks';
+import { sectorLabel } from '@/lib/stockNews';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,11 +56,21 @@ async function getActiveStocks() {
   noStore();
   const sb = supabaseAdmin();
   await maybeUpdateStockPrices(sb);
-  const { data: stocks, error } = await sb
+  let { data: stocks, error } = await sb
     .from('stocks')
-    .select('id, name, emoji, price')
+    .select('id, name, emoji, price, sector, description')
     .eq('is_active', true)
     .order('created_at', { ascending: true });
+  if (error) {
+    // sector/description 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니 없이 재시도.
+    const fallback = await sb
+      .from('stocks')
+      .select('id, name, emoji, price')
+      .eq('is_active', true)
+      .order('created_at', { ascending: true });
+    stocks = fallback.error ? [] : fallback.data.map((s) => ({ ...s, sector: null, description: null }));
+    error = fallback.error;
+  }
   if (error || stocks.length === 0) return [];
 
   const sentiments = await getLiveSentiments(sb, stocks.map((s) => s.id));
@@ -271,7 +282,13 @@ export default async function Home() {
                   <div className="min-w-0">
                     <div className="font-bold text-sm truncate">
                       {s.emoji} {s.name}
+                      {s.sector && (
+                        <span className="ml-1 text-[9.5px] font-normal text-gray-400 align-middle">
+                          {sectorLabel(s.sector)}
+                        </span>
+                      )}
                     </div>
+                    {s.description && <div className="text-[10.5px] text-gray-400 truncate">{s.description}</div>}
                     <div className={`text-xs font-bold ${up ? 'text-mint-deep' : 'text-coral-deep'}`}>
                       {s.price} GC ({up ? '+' : ''}{s.changePct}%)
                     </div>

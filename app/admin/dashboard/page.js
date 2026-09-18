@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import TopBar from '@/components/TopBar';
 import { ToastProvider, useToast } from '@/components/Toast';
 import { MENU_CATEGORIES, DEFAULT_MENU_CATEGORY, MENU_DESCRIPTION_MAX_LENGTH } from '@/lib/menuCategories';
+import { SECTORS, sectorLabel } from '@/lib/stockNews';
 
 const TABS = [
   { key: 'attendance', label: '출석 · 코인 지급' },
@@ -1354,7 +1355,10 @@ function StocksTab({ showToast }) {
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState('');
   const [price, setPrice] = useState('');
+  const [sector, setSector] = useState('');
+  const [description, setDescription] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [profileDrafts, setProfileDrafts] = useState({});
   const [news, setNews] = useState(null);
   const [newsStockId, setNewsStockId] = useState('');
   const [newsHeadline, setNewsHeadline] = useState('');
@@ -1388,7 +1392,7 @@ function StocksTab({ showToast }) {
     const res = await fetch('/api/admin/stocks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, emoji, price: p }),
+      body: JSON.stringify({ name, emoji, price: p, sector: sector || null, description }),
     });
     const data = await res.json();
     if (data.ok) {
@@ -1396,9 +1400,34 @@ function StocksTab({ showToast }) {
       setName('');
       setEmoji('');
       setPrice('');
+      setSector('');
+      setDescription('');
       await load();
     } else {
       showToast(data.error || '등록에 실패했어요.');
+    }
+  };
+
+  const saveProfile = async (stock) => {
+    const draft = profileDrafts[stock.id] || {};
+    const sectorValue = draft.sector !== undefined ? draft.sector : stock.sector || '';
+    const descriptionValue = draft.description !== undefined ? draft.description : stock.description || '';
+    const res = await fetch(`/api/admin/stocks/${stock.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sector: sectorValue || null, description: descriptionValue }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('종목 정보를 저장했어요.');
+      setProfileDrafts((prev) => {
+        const next = { ...prev };
+        delete next[stock.id];
+        return next;
+      });
+      await load();
+    } else {
+      showToast(data.error || '저장에 실패했어요.');
     }
   };
 
@@ -1490,27 +1519,63 @@ function StocksTab({ showToast }) {
         {stocks && stocks.length === 0 && (
           <p className="text-xs text-gray-400 text-center py-4">등록된 종목이 없어요. 아래에서 추가해주세요.</p>
         )}
-        {stocks?.map((s) => (
-          <div key={s.id} className="flex items-center justify-between gap-2 py-2.5 border-b border-dashed border-gray-200 last:border-0">
-            <div>
-              <div className="font-bold text-sm">
-                {s.emoji} {s.name} {!s.is_active && <span className="text-gray-400 text-xs">(비활성)</span>}
+        {stocks?.map((s) => {
+          const draft = profileDrafts[s.id] || {};
+          const sectorValue = draft.sector !== undefined ? draft.sector : s.sector || '';
+          const descriptionValue = draft.description !== undefined ? draft.description : s.description || '';
+          return (
+            <div key={s.id} className="py-2.5 border-b border-dashed border-gray-200 last:border-0">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="font-bold text-sm">
+                    {s.emoji} {s.name} {!s.is_active && <span className="text-gray-400 text-xs">(비활성)</span>}
+                  </div>
+                  <div className="text-xs text-gold-deep font-bold">{s.price} GC</div>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <button
+                    onClick={() => toggleActive(s)}
+                    className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1.5"
+                  >
+                    {s.is_active ? '비활성화' : '활성화'}
+                  </button>
+                  <button onClick={() => del(s)} className="btn-3d btn-3d-coral text-xs bg-coral text-white rounded-lg px-2.5 py-1.5">
+                    삭제
+                  </button>
+                </div>
               </div>
-              <div className="text-xs text-gold-deep font-bold">{s.price} GC</div>
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <select
+                  value={sectorValue}
+                  onChange={(e) => setProfileDrafts((prev) => ({ ...prev, [s.id]: { ...draft, sector: e.target.value } }))}
+                  className="border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-xs"
+                >
+                  <option value="">업종 미설정</option>
+                  {SECTORS.map((sec) => (
+                    <option key={sec.key} value={sec.key}>
+                      {sec.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  value={descriptionValue}
+                  onChange={(e) =>
+                    setProfileDrafts((prev) => ({ ...prev, [s.id]: { ...draft, description: e.target.value } }))
+                  }
+                  maxLength={60}
+                  placeholder="한 줄 소개 (예: 신약 개발하는 바이오 기업)"
+                  className="flex-1 min-w-0 border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-xs"
+                />
+                <button
+                  onClick={() => saveProfile(s)}
+                  className="btn-3d btn-3d-outline shrink-0 text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1.5"
+                >
+                  저장
+                </button>
+              </div>
             </div>
-            <div className="flex gap-1.5 shrink-0">
-              <button
-                onClick={() => toggleActive(s)}
-                className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1.5"
-              >
-                {s.is_active ? '비활성화' : '활성화'}
-              </button>
-              <button onClick={() => del(s)} className="btn-3d btn-3d-coral text-xs bg-coral text-white rounded-lg px-2.5 py-1.5">
-                삭제
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </Card>
 
       <Card title="뉴스 발표">
@@ -1577,7 +1642,10 @@ function StocksTab({ showToast }) {
             {news.map((n) => (
               <div key={n.id} className="flex items-center justify-between gap-2 py-1.5 text-xs">
                 <div className="min-w-0">
-                  <div className="truncate">{n.headline}</div>
+                  <div className="truncate">
+                    {n.source === 'auto' && <span className="text-grape font-bold">[자동] </span>}
+                    {n.headline}
+                  </div>
                   <div className="text-gray-400">
                     {n.stock_name} · {n.pct > 0 ? '+' : ''}
                     {n.pct}% ({n.old_price}→{n.new_price} GC)
@@ -1623,6 +1691,33 @@ function StocksTab({ showToast }) {
               className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
             />
           </div>
+        </div>
+        <div className="flex gap-2 mb-3">
+          <div className="flex-1">
+            <label className="block text-xs text-gray-500 mb-1">업종 (선택, 뉴스 헤드라인에 반영됨)</label>
+            <select
+              value={sector}
+              onChange={(e) => setSector(e.target.value)}
+              className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+            >
+              <option value="">미설정</option>
+              {SECTORS.map((sec) => (
+                <option key={sec.key} value={sec.key}>
+                  {sec.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">한 줄 소개 (선택)</label>
+          <input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={60}
+            placeholder="예: 신약 개발하는 바이오 기업"
+            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+          />
         </div>
         <button onClick={add} className="btn-3d btn-3d-gold w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm">
           종목 등록

@@ -19,12 +19,21 @@ export async function GET() {
   try {
     const sb = supabaseAdmin();
     await maybeUpdateStockPrices(sb);
-    const { data: stocks, error: stocksErr } = await sb
+    let { data: stocks, error: stocksErr } = await sb
       .from('stocks')
-      .select('id, name, emoji, price')
+      .select('id, name, emoji, price, sector, description')
       .eq('is_active', true)
       .order('created_at', { ascending: true });
-    if (stocksErr) throw stocksErr;
+    if (stocksErr) {
+      // sector/description 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니 없이 재시도.
+      const fallback = await sb
+        .from('stocks')
+        .select('id, name, emoji, price')
+        .eq('is_active', true)
+        .order('created_at', { ascending: true });
+      if (fallback.error) throw fallback.error;
+      stocks = fallback.data.map((s) => ({ ...s, sector: null, description: null }));
+    }
 
     const { data: holdings, error: holdingsErr } = await sb
       .from('stock_holdings')

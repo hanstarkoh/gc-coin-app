@@ -306,6 +306,14 @@ alter table kids add column if not exists gender text check (gender in ('male', 
 -- "비쌀 때 사고/쌀 때 파는" 나쁜 습관이 줄어드는지 추적할 수 있게 함.
 alter table stock_orders add column if not exists valuation_at_trade text check (valuation_at_trade in ('over', 'under'));
 
+-- 종목에 "회사 정체성"을 부여해서 더 실감나게. sector는 lib/stockNews.js의
+-- 업종별 뉴스 헤드라인 뱅크와 짝을 이룹니다(없으면 일반 헤드라인을 씀).
+alter table stocks add column if not exists sector text;
+alter table stocks add column if not exists description text;
+
+-- 관리자가 직접 누른 뉴스인지, 시세 갱신 때 시스템이 자동으로 터뜨린 뉴스인지 구분.
+alter table stock_news add column if not exists source text not null default 'admin' check (source in ('admin', 'auto'));
+
 -- 이 앱은 Next.js 서버(API 라우트)에서 Supabase "service role" 키로만 접근합니다.
 -- 브라우저에서 테이블에 직접 접근하지 않으므로 Row Level Security 는 기본적으로 막아둡니다.
 alter table settings enable row level security;

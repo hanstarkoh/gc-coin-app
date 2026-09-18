@@ -1,13 +1,21 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { isAdmin } from '@/lib/session';
+import { SECTORS } from '@/lib/stockNews';
+
+const SECTOR_KEYS = SECTORS.map((s) => s.key);
 
 export async function PATCH(req, { params }) {
   if (!isAdmin()) return NextResponse.json({ ok: false, error: '관리자 로그인이 필요해요.' }, { status: 401 });
   try {
-    const { isActive } = await req.json();
+    const body = await req.json();
+    const update = {};
+    if ('isActive' in body) update.is_active = !!body.isActive;
+    if ('sector' in body) update.sector = SECTOR_KEYS.includes(body.sector) ? body.sector : null;
+    if ('description' in body) update.description = (body.description || '').trim().slice(0, 60) || null;
+
     const sb = supabaseAdmin();
-    const { error } = await sb.from('stocks').update({ is_active: !!isActive }).eq('id', params.id);
+    const { error } = await sb.from('stocks').update(update).eq('id', params.id);
     if (error) throw error;
     return NextResponse.json({ ok: true });
   } catch (e) {
