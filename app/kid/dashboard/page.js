@@ -64,6 +64,9 @@ function DashboardInner() {
   const [tradeMode, setTradeMode] = useState(null);
   const [tradeQty, setTradeQty] = useState('');
   const [trading, setTrading] = useState(false);
+  const [newsStockId, setNewsStockId] = useState(null);
+  const [stockNewsByStock, setStockNewsByStock] = useState({});
+  const [newsLoading, setNewsLoading] = useState(false);
   const [agreeChecked, setAgreeChecked] = useState(false);
   const [agreeing, setAgreeing] = useState(false);
   const [goals, setGoals] = useState(null);
@@ -310,6 +313,24 @@ function DashboardInner() {
     setTradeQty('');
   };
 
+  const toggleStockNews = async (stockId) => {
+    if (newsStockId === stockId) {
+      setNewsStockId(null);
+      return;
+    }
+    setNewsStockId(stockId);
+    if (!stockNewsByStock[stockId]) {
+      setNewsLoading(true);
+      try {
+        const res = await fetch(`/api/kid/stocks/${stockId}/news`);
+        const data = await res.json();
+        if (data.ok) setStockNewsByStock((m) => ({ ...m, [stockId]: data.news }));
+      } finally {
+        setNewsLoading(false);
+      }
+    }
+  };
+
   const confirmTrade = async () => {
     const qty = parseInt(tradeQty, 10);
     if (!qty || qty <= 0) return showToast('주식 수를 입력해주세요.');
@@ -421,11 +442,9 @@ function DashboardInner() {
         <ShopCard kidBalance={kid.balance} onChange={loadMe} showToast={showToast} />
 
         <Collapsible icon="📈" badgeColor="navy" title="모의투자" defaultOpen={true}>
-          {stockNews.length > 0 && (
-            <div className="mb-2">
-              <StockNewsTicker items={stockNews} />
-            </div>
-          )}
+          <div className="mb-2">
+            <StockNewsTicker items={stockNews} />
+          </div>
           {kid.investAgreedAt && (
             <div className="flex items-center justify-between text-xs mb-2">
               <span className="text-gray-500">
@@ -535,7 +554,36 @@ function DashboardInner() {
                   >
                     매도
                   </button>
+                  <button
+                    onClick={() => toggleStockNews(s.id)}
+                    className="btn-3d shrink-0 text-xs bg-white border-2 border-gray-200 text-gray-500 rounded-lg px-3 py-1.5"
+                  >
+                    뉴스
+                  </button>
                 </div>
+                {newsStockId === s.id && (
+                  <div className="mt-2 bg-paper rounded-lg p-2.5">
+                    {newsLoading && !stockNewsByStock[s.id] && (
+                      <p className="text-[11px] text-gray-400 text-center py-1">불러오는 중...</p>
+                    )}
+                    {stockNewsByStock[s.id] && stockNewsByStock[s.id].length === 0 && (
+                      <p className="text-[11px] text-gray-400 text-center py-1">아직 이 종목 소식이 없어요.</p>
+                    )}
+                    {stockNewsByStock[s.id]?.map((n) => {
+                      const nUp = n.pct > 0;
+                      const d = new Date(n.created_at);
+                      return (
+                        <div key={n.id} className="py-1.5 border-b border-dashed border-gray-200 last:border-0">
+                          <p className="text-[11.5px] text-navy">{n.headline}</p>
+                          <p className={`text-[10px] font-bold ${nUp ? 'text-mint-deep' : 'text-coral-deep'}`}>
+                            {nUp ? '▲' : '▼'} {nUp ? '+' : ''}
+                            {n.pct}% · {fmtDate(d.toISOString().slice(0, 10))} {fmtTime(n.created_at)}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
                 {isTrading && (() => {
                   const qty = Math.max(0, parseInt(tradeQty, 10) || 0);
                   const subtotal = s.price * qty;

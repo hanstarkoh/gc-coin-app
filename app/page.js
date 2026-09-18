@@ -14,6 +14,7 @@ import {
   TRADE_FEE_RATE,
   movingAverage,
   valuationStatus,
+  todayStartUtcIso,
 } from '@/lib/stocks';
 import { sectorLabel } from '@/lib/stockNews';
 
@@ -117,8 +118,9 @@ async function getStockNews() {
   const { data, error } = await sb
     .from('stock_news')
     .select('id, stock_name, headline, pct, created_at')
+    .gte('created_at', todayStartUtcIso())
     .order('created_at', { ascending: false })
-    .limit(10);
+    .limit(20);
   if (error) return [];
   return data;
 }
@@ -267,7 +269,7 @@ export default async function Home() {
           )}
         </div>
 
-        {stockNews.length > 0 && <StockNewsTicker items={stockNews} />}
+        <StockNewsTicker items={stockNews} />
 
         {stocks.length > 0 && (
           <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">

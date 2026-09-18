@@ -1648,7 +1648,7 @@ function StocksTab({ showToast }) {
                   </div>
                   <div className="text-gray-400">
                     {n.stock_name} · {n.pct > 0 ? '+' : ''}
-                    {n.pct}% ({n.old_price}→{n.new_price} GC)
+                    {n.pct}% ({n.old_price}→{n.new_price} GC) · {fmtDate(n.created_at.slice(0, 10))} {fmtTime(n.created_at)}
                   </div>
                 </div>
                 <button onClick={() => delNews(n)} className="text-gray-400 underline shrink-0">
