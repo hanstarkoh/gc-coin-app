@@ -61,6 +61,8 @@ function DashboardInner() {
   const [historyRefreshing, setHistoryRefreshing] = useState(false);
   const [ordering, setOrdering] = useState(null);
   const [completing, setCompleting] = useState(null);
+  const [jobs, setJobs] = useState(null);
+  const [applying, setApplying] = useState(null);
   const [celebration, setCelebration] = useState(null);
   const [stocks, setStocks] = useState(null);
   const [stockNews, setStockNews] = useState([]);
@@ -118,6 +120,12 @@ function DashboardInner() {
     if (data.ok) setEvents(data.events);
   }, []);
 
+  const loadJobs = useCallback(async () => {
+    const res = await fetch('/api/kid/jobs');
+    const data = await res.json();
+    if (data.ok) setJobs(data.postings);
+  }, []);
+
   const loadHistory = useCallback(async () => {
     const res = await fetch('/api/kid/history');
     const data = await res.json();
@@ -142,6 +150,7 @@ function DashboardInner() {
       const meData = await loadMe();
       await loadMenu();
       await loadEvents();
+      await loadJobs();
       await loadStocks();
       await loadStockNews();
       await loadGoals();
@@ -263,6 +272,25 @@ function DashboardInner() {
       showToast('네트워크 오류가 발생했어요.');
     } finally {
       setCompleting(null);
+    }
+  };
+
+  const handleApplyJob = async (posting) => {
+    if (!confirm(`"${posting.title}"에 지원할까요?`)) return;
+    setApplying(posting.id);
+    try {
+      const res = await fetch(`/api/kid/jobs/${posting.id}/apply`, { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('지원했어요. 관리자가 선발하면 알려드릴게요.');
+        await loadJobs();
+      } else {
+        showToast(data.error || '지원에 실패했어요.');
+      }
+    } catch (e) {
+      showToast('네트워크 오류가 발생했어요.');
+    } finally {
+      setApplying(null);
     }
   };
 
@@ -836,6 +864,55 @@ function DashboardInner() {
                 )}
                 {ev.myStatus === 'rejected' && (
                   <p className="text-[11px] text-coral-deep mt-1">이전 완료 표시는 거절됐어요.</p>
+                )}
+              </div>
+            );
+          })}
+        </Collapsible>
+
+        <Collapsible icon="🙋" badgeColor="gold" title="구인시장" defaultOpen={true}>
+          {jobs === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
+          {jobs && jobs.length === 0 && (
+            <p className="text-xs text-gray-400 py-4 text-center">지금 모집 중인 공고가 없어요.</p>
+          )}
+          {jobs?.map((j) => {
+            const full = j.hiredCount >= j.headcount;
+            return (
+              <div key={j.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="font-bold text-sm">{j.title}</div>
+                    {j.description && <p className="text-xs text-gray-500 mt-0.5">{j.description}</p>}
+                    <div className="text-xs text-gold-deep font-bold mt-1">
+                      +{j.reward} GC · 정원 {j.hiredCount}/{j.headcount}명
+                    </div>
+                  </div>
+                  {j.myStatus ? (
+                    <span
+                      className={`shrink-0 text-xs font-display px-3.5 py-2 rounded-lg whitespace-nowrap border-2 ${
+                        j.myStatus === 'applied'
+                          ? 'border-gray-200 text-gray-400'
+                          : j.myStatus === 'hired'
+                            ? 'border-gold text-gold-deep'
+                            : 'border-mint text-mint-deep'
+                      }`}
+                    >
+                      {j.myStatus === 'applied' && '지원 완료'}
+                      {j.myStatus === 'hired' && '선발됐어요!'}
+                      {j.myStatus === 'completed' && '완료'}
+                    </span>
+                  ) : (
+                    <button
+                      disabled={applying === j.id || full}
+                      onClick={() => handleApplyJob(j)}
+                      className="btn-3d btn-3d-gold shrink-0 text-xs bg-gold text-navy-deep font-display px-3.5 py-2 rounded-lg whitespace-nowrap disabled:opacity-40"
+                    >
+                      {applying === j.id ? '지원 중...' : full ? '모집 마감' : '지원하기'}
+                    </button>
+                  )}
+                </div>
+                {j.myStatus === 'hired' && (
+                  <p className="text-[11px] text-gold-deep mt-1">선발됐어요! 오늘 실제로 가서 도와주세요.</p>
                 )}
               </div>
             );

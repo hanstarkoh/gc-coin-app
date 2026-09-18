@@ -333,6 +333,38 @@ create table if not exists stock_earnings (
 create index if not exists idx_stock_earnings_stock on stock_earnings(stock_id, created_at desc);
 alter table stock_earnings enable row level security;
 
+-- 구인시장: 당일 실제로 도와줄 사람을 모집하는 용도(예: 매점 도우미). 정원이 있어서
+-- 관리자가 지원자 중 골라서 채용하고, 실제로 일을 끝내면 완료 처리해서 코인을 지급합니다.
+create table if not exists job_postings (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  reward int not null,
+  headcount int not null default 1,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists job_applications (
+  id uuid primary key default gen_random_uuid(),
+  posting_id uuid not null references job_postings(id) on delete cascade,
+  kid_id uuid not null references kids(id) on delete cascade,
+  kid_name text not null,
+  status text not null default 'applied' check (status in ('applied', 'hired', 'completed')),
+  created_at timestamptz not null default now(),
+  resolved_at timestamptz,
+  unique (posting_id, kid_id)
+);
+create index if not exists idx_job_applications_posting on job_applications(posting_id);
+create index if not exists idx_job_applications_kid on job_applications(kid_id);
+alter table job_postings enable row level security;
+alter table job_applications enable row level security;
+
+-- 구인시장 완료 지급도 이력 구분을 위해 'job' 타입으로 기록합니다.
+alter table transactions drop constraint if exists transactions_type_check;
+alter table transactions add constraint transactions_type_check
+  check (type in ('earn', 'bonus', 'spend', 'event', 'job'));
+
 -- 이 앱은 Next.js 서버(API 라우트)에서 Supabase "service role" 키로만 접근합니다.
 -- 브라우저에서 테이블에 직접 접근하지 않으므로 Row Level Security 는 기본적으로 막아둡니다.
 alter table settings enable row level security;

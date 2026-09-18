@@ -12,6 +12,7 @@ const TABS = [
   { key: 'menu', label: '메뉴 관리' },
   { key: 'orders', label: '주문 현황' },
   { key: 'events', label: '이벤트' },
+  { key: 'jobs', label: '구인시장' },
   { key: 'stocks', label: '종목 관리' },
   { key: 'predictions', label: '예측 시장' },
   { key: 'goals', label: '기부함' },
@@ -154,6 +155,7 @@ function DashboardInner() {
         {tab === 'events' && (
           <EventsTab showToast={showToast} onPendingCountChange={setPendingEventCount} />
         )}
+        {tab === 'jobs' && <JobsTab showToast={showToast} />}
         {tab === 'stocks' && <StocksTab showToast={showToast} />}
         {tab === 'predictions' && <PredictionsTab showToast={showToast} />}
         {tab === 'goals' && <GoalsTab showToast={showToast} onReadyCountChange={setReadyGoalCount} />}
@@ -1350,6 +1352,214 @@ function GoalsTab({ showToast, onReadyCountChange }) {
           ))}
         </Card>
       )}
+    </>
+  );
+}
+
+/* ---------------- JOBS(구인시장) TAB ---------------- */
+function JobsTab({ showToast }) {
+  const [postings, setPostings] = useState(null);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [reward, setReward] = useState('');
+  const [headcount, setHeadcount] = useState('1');
+  const [processingId, setProcessingId] = useState(null);
+
+  const load = useCallback(async () => {
+    const res = await fetch('/api/admin/jobs');
+    const data = await res.json();
+    if (data.ok) setPostings(data.postings);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const add = async () => {
+    const r = parseInt(reward, 10);
+    const h = parseInt(headcount, 10);
+    if (!title.trim() || !r || r <= 0) return showToast('공고 제목과 보상 코인을 확인해주세요.');
+    if (!h || h <= 0) return showToast('정원을 확인해주세요.');
+    const res = await fetch('/api/admin/jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, description, reward: r, headcount: h }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('공고를 등록했어요.');
+      setTitle('');
+      setDescription('');
+      setReward('');
+      setHeadcount('1');
+      await load();
+    } else {
+      showToast(data.error || '등록에 실패했어요.');
+    }
+  };
+
+  const toggleActive = async (posting) => {
+    const res = await fetch(`/api/admin/jobs/${posting.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: !posting.is_active }),
+    });
+    const data = await res.json();
+    if (data.ok) await load();
+  };
+
+  const del = async (posting) => {
+    if (!confirm(`"${posting.title}" 공고를 정말 삭제할까요? 지원 내역도 함께 사라져요.`)) return;
+    const res = await fetch(`/api/admin/jobs/${posting.id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('공고를 삭제했어요.');
+      await load();
+    }
+  };
+
+  const setAppStatus = async (app, status) => {
+    setProcessingId(app.id);
+    try {
+      const res = await fetch(`/api/admin/jobs/applications/${app.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast(status === 'hired' ? '채용했어요.' : '완료 처리하고 코인을 지급했어요.');
+        await load();
+      } else {
+        showToast(data.error || '처리에 실패했어요.');
+      }
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  return (
+    <>
+      <Card title="구인시장">
+        <p className="text-xs text-gray-500 -mt-2 mb-2.5">
+          당일 실제로 도와줄 사람을 모집할 때 써요(예: 매점 도우미). 청소년이 지원하면 아래에서
+          정원만큼 채용을 선택하고, 실제로 일이 끝나면 "완료 처리"를 눌러야 코인이 지급돼요.
+        </p>
+        {postings === null && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
+        {postings && postings.length === 0 && (
+          <p className="text-xs text-gray-400 text-center py-4">등록된 공고가 없어요. 아래에서 추가해주세요.</p>
+        )}
+        {postings?.map((p) => {
+          const hiredCount = p.applications.filter((a) => a.status === 'hired' || a.status === 'completed').length;
+          return (
+            <div key={p.id} className="py-2.5 border-b border-dashed border-gray-200 last:border-0">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="font-bold text-sm">
+                    {p.title} {!p.is_active && <span className="text-gray-400 text-xs">(마감)</span>}
+                  </div>
+                  {p.description && <p className="text-xs text-gray-500">{p.description}</p>}
+                  <div className="text-xs text-gold-deep font-bold">
+                    +{p.reward} GC · 정원 {hiredCount}/{p.headcount}명
+                  </div>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <button
+                    onClick={() => toggleActive(p)}
+                    className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1.5"
+                  >
+                    {p.is_active ? '마감' : '재개'}
+                  </button>
+                  <button onClick={() => del(p)} className="btn-3d btn-3d-coral text-xs bg-coral text-white rounded-lg px-2.5 py-1.5">
+                    삭제
+                  </button>
+                </div>
+              </div>
+              {p.applications.length === 0 ? (
+                <p className="text-[11px] text-gray-400 mt-1.5">아직 지원자가 없어요.</p>
+              ) : (
+                <div className="mt-1.5 space-y-1">
+                  {p.applications.map((a) => (
+                    <div key={a.id} className="flex items-center justify-between gap-2 text-xs bg-paper rounded-lg px-2.5 py-1.5">
+                      <span className="font-bold">
+                        {a.kid_name}
+                        {a.status === 'hired' && <span className="text-gold-deep"> · 채용됨</span>}
+                        {a.status === 'completed' && <span className="text-mint-deep"> · 완료</span>}
+                      </span>
+                      {a.status === 'applied' && (
+                        <button
+                          disabled={processingId === a.id || hiredCount >= p.headcount}
+                          onClick={() => setAppStatus(a, 'hired')}
+                          className="btn-3d btn-3d-navy text-[11px] bg-navy text-white rounded-lg px-2.5 py-1 disabled:opacity-40"
+                        >
+                          선발
+                        </button>
+                      )}
+                      {a.status === 'hired' && (
+                        <button
+                          disabled={processingId === a.id}
+                          onClick={() => setAppStatus(a, 'completed')}
+                          className="btn-3d btn-3d-mint text-[11px] bg-mint text-white rounded-lg px-2.5 py-1 disabled:opacity-40"
+                        >
+                          완료 처리
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </Card>
+
+      <Card title="공고 등록">
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">제목</label>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="예: 오늘 매점 도우미"
+            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+          />
+        </div>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">설명 (선택)</label>
+          <input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="예: 오후 2시~3시, 매점 정리 도와줄 사람"
+            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+          />
+        </div>
+        <div className="flex gap-2 mb-3">
+          <div className="flex-1">
+            <label className="block text-xs text-gray-500 mb-1">보상 코인 (1인당)</label>
+            <input
+              type="number"
+              min="1"
+              value={reward}
+              onChange={(e) => setReward(e.target.value)}
+              placeholder="예: 10"
+              className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs text-gray-500 mb-1">정원</label>
+            <input
+              type="number"
+              min="1"
+              value={headcount}
+              onChange={(e) => setHeadcount(e.target.value)}
+              placeholder="예: 2"
+              className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+            />
+          </div>
+        </div>
+        <button onClick={add} className="btn-3d btn-3d-gold w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm">
+          공고 등록
+        </button>
+      </Card>
     </>
   );
 }
