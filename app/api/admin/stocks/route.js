@@ -11,17 +11,26 @@ export async function GET() {
     const sb = supabaseAdmin();
     const { data, error } = await sb
       .from('stocks')
-      .select('id, name, emoji, price, is_active, created_at, sector, description')
+      .select('id, name, emoji, price, is_active, created_at, sector, description, fundamental, next_earnings_at')
       .order('created_at', { ascending: true });
     if (error) {
-      // sector/description 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니, 그때는 그
-      // 컬럼 없이 한 번 더 시도해서 종목 관리 탭 전체가 막히지 않게 합니다.
+      // sector/description/fundamental/next_earnings_at 컬럼이 아직 없는(마이그레이션 전)
+      // 상태일 수 있으니, 그때는 그 컬럼 없이 한 번 더 시도해서 종목 관리 탭 전체가 막히지
+      // 않게 합니다.
+      const mid = await sb
+        .from('stocks')
+        .select('id, name, emoji, price, is_active, created_at, sector, description')
+        .order('created_at', { ascending: true });
+      if (!mid.error) {
+        const stocks = mid.data.map((s) => ({ ...s, fundamental: null, next_earnings_at: null }));
+        return NextResponse.json({ ok: true, stocks });
+      }
       const fallback = await sb
         .from('stocks')
         .select('id, name, emoji, price, is_active, created_at')
         .order('created_at', { ascending: true });
       if (fallback.error) throw fallback.error;
-      const stocks = fallback.data.map((s) => ({ ...s, sector: null, description: null }));
+      const stocks = fallback.data.map((s) => ({ ...s, sector: null, description: null, fundamental: null, next_earnings_at: null }));
       return NextResponse.json({ ok: true, stocks });
     }
     return NextResponse.json({ ok: true, stocks: data });

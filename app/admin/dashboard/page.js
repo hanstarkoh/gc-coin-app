@@ -5,6 +5,7 @@ import TopBar from '@/components/TopBar';
 import { ToastProvider, useToast } from '@/components/Toast';
 import { MENU_CATEGORIES, DEFAULT_MENU_CATEGORY, MENU_DESCRIPTION_MAX_LENGTH } from '@/lib/menuCategories';
 import { SECTORS, sectorLabel } from '@/lib/stockNews';
+import { FUNDAMENTAL_LABELS } from '@/lib/stockEarnings';
 
 const TABS = [
   { key: 'attendance', label: '출석 · 코인 지급' },
@@ -29,6 +30,10 @@ function fmtDate(d) {
 function fmtTime(ts) {
   const dt = new Date(ts);
   return `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+}
+function daysUntil(ts) {
+  if (!ts) return null;
+  return Math.ceil((new Date(ts).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
 }
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -1364,6 +1369,7 @@ function StocksTab({ showToast }) {
   const [newsHeadline, setNewsHeadline] = useState('');
   const [newsDirection, setNewsDirection] = useState('up');
   const [publishing, setPublishing] = useState(false);
+  const [earnings, setEarnings] = useState(null);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/stocks');
@@ -1380,9 +1386,16 @@ function StocksTab({ showToast }) {
     if (data.ok) setNews(data.news);
   }, []);
 
+  const loadEarnings = useCallback(async () => {
+    const res = await fetch('/api/admin/stocks/earnings');
+    const data = await res.json();
+    if (data.ok) setEarnings(data.earnings);
+  }, []);
+
   useEffect(() => {
     load();
     loadNews();
+    loadEarnings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1412,10 +1425,11 @@ function StocksTab({ showToast }) {
     const draft = profileDrafts[stock.id] || {};
     const sectorValue = draft.sector !== undefined ? draft.sector : stock.sector || '';
     const descriptionValue = draft.description !== undefined ? draft.description : stock.description || '';
+    const fundamentalValue = draft.fundamental !== undefined ? draft.fundamental : stock.fundamental || '';
     const res = await fetch(`/api/admin/stocks/${stock.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sector: sectorValue || null, description: descriptionValue }),
+      body: JSON.stringify({ sector: sectorValue || null, description: descriptionValue, fundamental: fundamentalValue || null }),
     });
     const data = await res.json();
     if (data.ok) {
@@ -1458,7 +1472,7 @@ function StocksTab({ showToast }) {
       const data = await res.json();
       if (data.ok) {
         showToast(`${data.updated}개 종목 시세를 갱신했어요.`);
-        await load();
+        await Promise.all([load(), loadNews(), loadEarnings()]);
       } else {
         showToast(data.error || '갱신에 실패했어요.');
       }
@@ -1523,6 +1537,8 @@ function StocksTab({ showToast }) {
           const draft = profileDrafts[s.id] || {};
           const sectorValue = draft.sector !== undefined ? draft.sector : s.sector || '';
           const descriptionValue = draft.description !== undefined ? draft.description : s.description || '';
+          const fundamentalValue = draft.fundamental !== undefined ? draft.fundamental : s.fundamental || '';
+          const dday = daysUntil(s.next_earnings_at);
           return (
             <div key={s.id} className="py-2.5 border-b border-dashed border-gray-200 last:border-0">
               <div className="flex items-center justify-between gap-2">
@@ -1531,6 +1547,11 @@ function StocksTab({ showToast }) {
                     {s.emoji} {s.name} {!s.is_active && <span className="text-gray-400 text-xs">(비활성)</span>}
                   </div>
                   <div className="text-xs text-gold-deep font-bold">{s.price} GC</div>
+                  {dday !== null && (
+                    <div className="text-[10.5px] text-gray-400">
+                      실적발표까지 {dday > 0 ? `D-${dday}` : 'D-DAY'}
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-1.5 shrink-0">
                   <button
@@ -1557,6 +1578,20 @@ function StocksTab({ showToast }) {
                     </option>
                   ))}
                 </select>
+                <select
+                  value={fundamentalValue}
+                  onChange={(e) => setProfileDrafts((prev) => ({ ...prev, [s.id]: { ...draft, fundamental: e.target.value } }))}
+                  className="border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-xs"
+                >
+                  <option value="">펀더멘털 미설정</option>
+                  {Object.entries(FUNDAMENTAL_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1.5">
                 <input
                   value={descriptionValue}
                   onChange={(e) =>
@@ -1658,6 +1693,26 @@ function StocksTab({ showToast }) {
             ))}
           </div>
         )}
+      </Card>
+
+      <Card title="📢 실적발표">
+        <p className="text-xs text-gray-500 -mt-2 mb-2.5">
+          종목마다 다른 주기(약 한 달, ±나흘)로 자동으로 실적발표가 터져요. 일반 뉴스보다 등락폭이
+          훨씬 크고(15~35%), 종목의 펀더멘털(위 목록에서 설정)에 따라 결과 확률이 유리/불리하게
+          기울 뿐 결과가 확정되진 않아요 — 위기 상태여도 가끔 "어닝서프라이즈"가 날 수 있어요.
+        </p>
+        {(!earnings || earnings.length === 0) && (
+          <p className="text-xs text-gray-400 text-center py-2">아직 발생한 실적발표가 없어요.</p>
+        )}
+        {earnings?.map((e) => (
+          <div key={e.id} className="py-1.5 border-b border-dashed border-gold/30 last:border-0 text-xs">
+            <div className="truncate font-bold text-gold-deep">{e.headline}</div>
+            <div className="text-gray-400">
+              {e.stock_name} · {e.pct > 0 ? '+' : ''}
+              {e.pct}% ({e.old_price}→{e.new_price} GC) · {fmtDate(e.created_at.slice(0, 10))} {fmtTime(e.created_at)}
+            </div>
+          </div>
+        ))}
       </Card>
 
       <Card title="종목 등록">

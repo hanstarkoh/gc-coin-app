@@ -21,18 +21,28 @@ export async function GET() {
     await maybeUpdateStockPrices(sb);
     let { data: stocks, error: stocksErr } = await sb
       .from('stocks')
-      .select('id, name, emoji, price, sector, description')
+      .select('id, name, emoji, price, sector, description, next_earnings_at')
       .eq('is_active', true)
       .order('created_at', { ascending: true });
     if (stocksErr) {
-      // sector/description 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니 없이 재시도.
-      const fallback = await sb
+      // sector/description/next_earnings_at 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니
+      // 단계적으로 재시도.
+      const mid = await sb
         .from('stocks')
-        .select('id, name, emoji, price')
+        .select('id, name, emoji, price, sector, description')
         .eq('is_active', true)
         .order('created_at', { ascending: true });
-      if (fallback.error) throw fallback.error;
-      stocks = fallback.data.map((s) => ({ ...s, sector: null, description: null }));
+      if (!mid.error) {
+        stocks = mid.data.map((s) => ({ ...s, next_earnings_at: null }));
+      } else {
+        const fallback = await sb
+          .from('stocks')
+          .select('id, name, emoji, price')
+          .eq('is_active', true)
+          .order('created_at', { ascending: true });
+        if (fallback.error) throw fallback.error;
+        stocks = fallback.data.map((s) => ({ ...s, sector: null, description: null, next_earnings_at: null }));
+      }
     }
 
     const { data: holdings, error: holdingsErr } = await sb

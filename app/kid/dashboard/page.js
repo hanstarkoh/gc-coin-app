@@ -22,6 +22,10 @@ function fmtTime(ts) {
   const d = new Date(ts);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
+function daysUntil(ts) {
+  if (!ts) return null;
+  return Math.ceil((new Date(ts).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+}
 
 function Collapsible({ icon, badgeColor = 'navy', title, right, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -67,6 +71,9 @@ function DashboardInner() {
   const [newsStockId, setNewsStockId] = useState(null);
   const [stockNewsByStock, setStockNewsByStock] = useState({});
   const [newsLoading, setNewsLoading] = useState(false);
+  const [earningsStockId, setEarningsStockId] = useState(null);
+  const [stockEarningsByStock, setStockEarningsByStock] = useState({});
+  const [earningsLoading, setEarningsLoading] = useState(false);
   const [agreeChecked, setAgreeChecked] = useState(false);
   const [agreeing, setAgreeing] = useState(false);
   const [goals, setGoals] = useState(null);
@@ -318,6 +325,7 @@ function DashboardInner() {
       setNewsStockId(null);
       return;
     }
+    setEarningsStockId(null);
     setNewsStockId(stockId);
     if (!stockNewsByStock[stockId]) {
       setNewsLoading(true);
@@ -327,6 +335,25 @@ function DashboardInner() {
         if (data.ok) setStockNewsByStock((m) => ({ ...m, [stockId]: data.news }));
       } finally {
         setNewsLoading(false);
+      }
+    }
+  };
+
+  const toggleStockEarnings = async (stockId) => {
+    if (earningsStockId === stockId) {
+      setEarningsStockId(null);
+      return;
+    }
+    setNewsStockId(null);
+    setEarningsStockId(stockId);
+    if (!stockEarningsByStock[stockId]) {
+      setEarningsLoading(true);
+      try {
+        const res = await fetch(`/api/kid/stocks/${stockId}/earnings`);
+        const data = await res.json();
+        if (data.ok) setStockEarningsByStock((m) => ({ ...m, [stockId]: data.earnings }));
+      } finally {
+        setEarningsLoading(false);
       }
     }
   };
@@ -527,6 +554,15 @@ function DashboardInner() {
                         {s.valuation === 'over' ? '📊 고평가 상태예요' : '📉 저평가 상태예요'}
                       </div>
                     )}
+                    {(() => {
+                      const dday = daysUntil(s.next_earnings_at);
+                      if (dday === null) return null;
+                      return (
+                        <div className="text-[10.5px] font-bold text-gold-deep">
+                          📢 실적발표까지 {dday > 0 ? `D-${dday}` : 'D-DAY'}
+                        </div>
+                      );
+                    })()}
                     {s.myShares > 0 && (
                       <div className="text-[11px] text-gray-400 mt-0.5">
                         보유 {s.myShares}주 · 평가 {s.myShares * s.price} GC ·{' '}
@@ -560,6 +596,12 @@ function DashboardInner() {
                   >
                     뉴스
                   </button>
+                  <button
+                    onClick={() => toggleStockEarnings(s.id)}
+                    className="btn-3d shrink-0 text-xs bg-white border-2 border-gold text-gold-deep rounded-lg px-3 py-1.5"
+                  >
+                    실적
+                  </button>
                 </div>
                 {newsStockId === s.id && (
                   <div className="mt-2 bg-paper rounded-lg p-2.5">
@@ -578,6 +620,29 @@ function DashboardInner() {
                           <p className={`text-[10px] font-bold ${nUp ? 'text-mint-deep' : 'text-coral-deep'}`}>
                             {nUp ? '▲' : '▼'} {nUp ? '+' : ''}
                             {n.pct}% · {fmtDate(d.toISOString().slice(0, 10))} {fmtTime(n.created_at)}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {earningsStockId === s.id && (
+                  <div className="mt-2 bg-gold-light/30 border-2 border-gold/40 rounded-lg p-2.5">
+                    {earningsLoading && !stockEarningsByStock[s.id] && (
+                      <p className="text-[11px] text-gray-400 text-center py-1">불러오는 중...</p>
+                    )}
+                    {stockEarningsByStock[s.id] && stockEarningsByStock[s.id].length === 0 && (
+                      <p className="text-[11px] text-gray-400 text-center py-1">아직 실적발표가 없었어요.</p>
+                    )}
+                    {stockEarningsByStock[s.id]?.map((e) => {
+                      const eUp = e.pct > 0;
+                      const d = new Date(e.created_at);
+                      return (
+                        <div key={e.id} className="py-1.5 border-b border-dashed border-gold/30 last:border-0">
+                          <p className="text-[11.5px] font-bold text-navy">📢 {e.headline}</p>
+                          <p className={`text-[10px] font-bold ${eUp ? 'text-mint-deep' : 'text-coral-deep'}`}>
+                            {eUp ? '▲' : '▼'} {eUp ? '+' : ''}
+                            {e.pct}% · {fmtDate(d.toISOString().slice(0, 10))} {fmtTime(e.created_at)}
                           </p>
                         </div>
                       );

@@ -314,6 +314,25 @@ alter table stocks add column if not exists description text;
 -- 관리자가 직접 누른 뉴스인지, 시세 갱신 때 시스템이 자동으로 터뜨린 뉴스인지 구분.
 alter table stock_news add column if not exists source text not null default 'admin' check (source in ('admin', 'auto'));
 
+-- 실적발표: 종목마다 다른 주기(약 한 달, ±나흘 무작위)로 일반 뉴스보다 훨씬 큰 폭의 가격
+-- 변동이 옵니다. fundamental(성장중/정체/위기)은 관리자가 종목의 "이야기"를 부여하는 용도로,
+-- 결과 확률을 유리/불리하게 기울일 뿐 결과를 확정 짓진 않습니다.
+alter table stocks add column if not exists fundamental text check (fundamental in ('growing', 'stagnant', 'crisis'));
+alter table stocks add column if not exists next_earnings_at timestamptz;
+
+create table if not exists stock_earnings (
+  id uuid primary key default gen_random_uuid(),
+  stock_id uuid not null references stocks(id) on delete cascade,
+  stock_name text not null,
+  headline text not null,
+  pct int not null,
+  old_price int not null,
+  new_price int not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_stock_earnings_stock on stock_earnings(stock_id, created_at desc);
+alter table stock_earnings enable row level security;
+
 -- 이 앱은 Next.js 서버(API 라우트)에서 Supabase "service role" 키로만 접근합니다.
 -- 브라우저에서 테이블에 직접 접근하지 않으므로 Row Level Security 는 기본적으로 막아둡니다.
 alter table settings enable row level security;
