@@ -1428,7 +1428,8 @@ function JobsTab({ showToast }) {
       });
       const data = await res.json();
       if (data.ok) {
-        showToast(status === 'hired' ? '채용했어요.' : '완료 처리하고 코인을 지급했어요.');
+        const msg = { hired: '채용했어요.', completed: '완료 처리하고 코인을 지급했어요.', applied: '선발을 취소했어요.' };
+        showToast(msg[status]);
         await load();
       } else {
         showToast(data.error || '처리에 실패했어요.');
@@ -1436,6 +1437,19 @@ function JobsTab({ showToast }) {
     } finally {
       setProcessingId(null);
     }
+  };
+
+  const changeHeadcount = async (posting, delta) => {
+    const next = posting.headcount + delta;
+    if (next <= 0) return;
+    const res = await fetch(`/api/admin/jobs/${posting.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ headcount: next }),
+    });
+    const data = await res.json();
+    if (data.ok) await load();
+    else showToast(data.error || '정원 변경에 실패했어요.');
   };
 
   return (
@@ -1459,8 +1473,23 @@ function JobsTab({ showToast }) {
                     {p.title} {!p.is_active && <span className="text-gray-400 text-xs">(마감)</span>}
                   </div>
                   {p.description && <p className="text-xs text-gray-500">{p.description}</p>}
-                  <div className="text-xs text-gold-deep font-bold">
+                  <div className="text-xs text-gold-deep font-bold flex items-center gap-1">
                     +{p.reward} GC · 정원 {hiredCount}/{p.headcount}명
+                    <button
+                      onClick={() => changeHeadcount(p, -1)}
+                      disabled={p.headcount <= hiredCount || p.headcount <= 1}
+                      className="w-4 h-4 leading-none rounded border border-gray-300 text-gray-500 text-[10px] disabled:opacity-30"
+                      title="정원 줄이기"
+                    >
+                      −
+                    </button>
+                    <button
+                      onClick={() => changeHeadcount(p, 1)}
+                      className="w-4 h-4 leading-none rounded border border-gray-300 text-gray-500 text-[10px]"
+                      title="정원 늘리기"
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
                 <div className="flex gap-1.5 shrink-0">
@@ -1496,13 +1525,22 @@ function JobsTab({ showToast }) {
                         </button>
                       )}
                       {a.status === 'hired' && (
-                        <button
-                          disabled={processingId === a.id}
-                          onClick={() => setAppStatus(a, 'completed')}
-                          className="btn-3d btn-3d-mint text-[11px] bg-mint text-white rounded-lg px-2.5 py-1 disabled:opacity-40"
-                        >
-                          완료 처리
-                        </button>
+                        <div className="flex gap-1">
+                          <button
+                            disabled={processingId === a.id}
+                            onClick={() => setAppStatus(a, 'applied')}
+                            className="btn-3d btn-3d-outline text-[11px] border-2 border-gray-300 text-gray-500 rounded-lg px-2 py-1 disabled:opacity-40"
+                          >
+                            선발취소
+                          </button>
+                          <button
+                            disabled={processingId === a.id}
+                            onClick={() => setAppStatus(a, 'completed')}
+                            className="btn-3d btn-3d-mint text-[11px] bg-mint text-white rounded-lg px-2.5 py-1 disabled:opacity-40"
+                          >
+                            완료 처리
+                          </button>
+                        </div>
                       )}
                     </div>
                   ))}

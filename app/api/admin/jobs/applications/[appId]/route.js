@@ -6,7 +6,7 @@ export async function PATCH(req, { params }) {
   if (!isAdmin()) return NextResponse.json({ ok: false, error: '관리자 로그인이 필요해요.' }, { status: 401 });
   try {
     const { status } = await req.json();
-    if (status !== 'hired' && status !== 'completed') {
+    if (status !== 'hired' && status !== 'completed' && status !== 'applied') {
       return NextResponse.json({ ok: false, error: '잘못된 요청이에요.' }, { status: 400 });
     }
 
@@ -17,6 +17,25 @@ export async function PATCH(req, { params }) {
       .eq('id', params.appId)
       .single();
     if (appErr || !app) return NextResponse.json({ ok: false, error: '지원 정보를 찾을 수 없어요.' }, { status: 404 });
+
+    if (status === 'applied') {
+      // 선발 취소 — 채용됐다가 실제로는 못 하게 된 경우 지원 상태로 되돌려서 정원을 다시 비웁니다.
+      // 이미 코인이 지급된 완료 건은 되돌리지 않습니다.
+      if (app.status !== 'hired') {
+        return NextResponse.json({ ok: false, error: '채용된 지원만 취소할 수 있어요.' }, { status: 400 });
+      }
+      const { data: updRows, error: updErr } = await sb
+        .from('job_applications')
+        .update({ status: 'applied', resolved_at: null })
+        .eq('id', app.id)
+        .eq('status', 'hired')
+        .select('id');
+      if (updErr) throw updErr;
+      if (!updRows || updRows.length === 0) {
+        return NextResponse.json({ ok: false, error: '잠시 후 다시 시도해주세요.' }, { status: 409 });
+      }
+      return NextResponse.json({ ok: true });
+    }
 
     if (status === 'hired') {
       if (app.status !== 'applied') {
