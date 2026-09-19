@@ -843,6 +843,9 @@ function DashboardInner() {
             const isPending = ev.myStatus === 'pending';
             return (
               <div key={ev.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
+                {ev.posterUrl && (
+                  <img src={ev.posterUrl} alt={ev.title} className="w-full rounded-xl mb-2 max-h-48 object-cover" />
+                )}
                 <div className="flex items-center justify-between gap-2">
                   <div>
                     <div className="font-bold text-sm">{ev.title}</div>

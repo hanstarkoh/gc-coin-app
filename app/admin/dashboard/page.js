@@ -894,6 +894,9 @@ function EventsTab({ showToast, onPendingCountChange }) {
   const [description, setDescription] = useState('');
   const [reward, setReward] = useState('');
   const [resolving, setResolving] = useState(null);
+  const [posterPath, setPosterPath] = useState(null);
+  const [posterUrl, setPosterUrl] = useState(null);
+  const [uploadingPoster, setUploadingPoster] = useState(false);
 
   const loadEvents = useCallback(async () => {
     const res = await fetch('/api/admin/events');
@@ -915,13 +918,32 @@ function EventsTab({ showToast, onPendingCountChange }) {
     loadSubmissions();
   }, [loadEvents, loadSubmissions]);
 
+  const uploadPoster = async (file) => {
+    if (!file) return;
+    setUploadingPoster(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/admin/events/upload', { method: 'POST', body: form });
+      const data = await res.json();
+      if (data.ok) {
+        setPosterPath(data.path);
+        setPosterUrl(data.url);
+      } else {
+        showToast(data.error || '이미지 업로드에 실패했어요.');
+      }
+    } finally {
+      setUploadingPoster(false);
+    }
+  };
+
   const add = async () => {
     const r = parseInt(reward, 10);
     if (!title.trim() || !r || r <= 0) return showToast('이벤트 제목과 보상 코인을 확인해주세요.');
     const res = await fetch('/api/admin/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, description, reward: r }),
+      body: JSON.stringify({ title, description, reward: r, posterPath }),
     });
     const data = await res.json();
     if (data.ok) {
@@ -929,9 +951,26 @@ function EventsTab({ showToast, onPendingCountChange }) {
       setTitle('');
       setDescription('');
       setReward('');
+      setPosterPath(null);
+      setPosterUrl(null);
       await loadEvents();
     } else {
       showToast(data.error || '등록에 실패했어요.');
+    }
+  };
+
+  const removePoster = async (ev) => {
+    const res = await fetch(`/api/admin/events/${ev.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ posterPath: null }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('포스터를 지웠어요.');
+      await loadEvents();
+    } else {
+      showToast(data.error || '삭제에 실패했어요.');
     }
   };
 
@@ -1022,25 +1061,37 @@ function EventsTab({ showToast, onPendingCountChange }) {
           <p className="text-xs text-gray-400 text-center py-4">등록된 이벤트가 없어요. 아래에서 추가해주세요.</p>
         )}
         {events?.map((ev) => (
-          <div key={ev.id} className="flex items-center justify-between gap-2 py-2.5 border-b border-dashed border-gray-200 last:border-0">
-            <div>
-              <div className="font-bold text-sm">
-                {ev.title} {!ev.is_active && <span className="text-gray-400 text-xs">(비활성)</span>}
+          <div key={ev.id} className="py-2.5 border-b border-dashed border-gray-200 last:border-0">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                {ev.posterUrl && (
+                  <img src={ev.posterUrl} alt={ev.title} className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <div className="font-bold text-sm truncate">
+                    {ev.title} {!ev.is_active && <span className="text-gray-400 text-xs">(비활성)</span>}
+                  </div>
+                  {ev.description && <p className="text-xs text-gray-500 truncate">{ev.description}</p>}
+                  <div className="text-xs text-gold-deep font-bold">+{ev.reward} GC</div>
+                </div>
               </div>
-              {ev.description && <p className="text-xs text-gray-500">{ev.description}</p>}
-              <div className="text-xs text-gold-deep font-bold">+{ev.reward} GC</div>
+              <div className="flex gap-1.5 shrink-0">
+                <button
+                  onClick={() => toggleActive(ev)}
+                  className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1.5"
+                >
+                  {ev.is_active ? '비활성화' : '활성화'}
+                </button>
+                <button onClick={() => del(ev)} className="btn-3d btn-3d-coral text-xs bg-coral text-white rounded-lg px-2.5 py-1.5">
+                  삭제
+                </button>
+              </div>
             </div>
-            <div className="flex gap-1.5 shrink-0">
-              <button
-                onClick={() => toggleActive(ev)}
-                className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1.5"
-              >
-                {ev.is_active ? '비활성화' : '활성화'}
+            {ev.posterUrl && (
+              <button onClick={() => removePoster(ev)} className="text-[11px] text-gray-400 underline mt-1">
+                포스터만 지우기
               </button>
-              <button onClick={() => del(ev)} className="btn-3d btn-3d-coral text-xs bg-coral text-white rounded-lg px-2.5 py-1.5">
-                삭제
-              </button>
-            </div>
+            )}
           </div>
         ))}
       </Card>
@@ -1074,6 +1125,19 @@ function EventsTab({ showToast, onPendingCountChange }) {
             placeholder="예: 5"
             className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
           />
+        </div>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">포스터 이미지 (선택, 5MB 이하)</label>
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            onChange={(e) => uploadPoster(e.target.files?.[0])}
+            className="w-full text-xs"
+          />
+          {uploadingPoster && <p className="text-[11px] text-gray-400 mt-1">업로드 중...</p>}
+          {posterUrl && !uploadingPoster && (
+            <img src={posterUrl} alt="포스터 미리보기" className="w-full rounded-xl mt-2 max-h-40 object-cover" />
+          )}
         </div>
         <button onClick={add} className="btn-3d btn-3d-gold w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm">
           이벤트 등록

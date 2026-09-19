@@ -17,6 +17,7 @@ import {
   todayStartUtcIso,
 } from '@/lib/stocks';
 import { sectorLabel } from '@/lib/stockNews';
+import { eventPosterUrl } from '@/lib/events';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,11 +47,20 @@ async function getActiveEvents() {
   const sb = supabaseAdmin();
   const { data, error } = await sb
     .from('events')
-    .select('id, title, description, reward')
+    .select('id, title, description, reward, poster_path')
     .eq('is_active', true)
     .order('created_at', { ascending: true });
-  if (error) return [];
-  return data;
+  if (error) {
+    // poster_path 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니 없이 재시도.
+    const fallback = await sb
+      .from('events')
+      .select('id, title, description, reward')
+      .eq('is_active', true)
+      .order('created_at', { ascending: true });
+    if (fallback.error) return [];
+    return fallback.data.map((e) => ({ ...e, posterUrl: null }));
+  }
+  return data.map((e) => ({ ...e, posterUrl: eventPosterUrl(sb, e.poster_path) }));
 }
 
 async function getActiveJobs() {
@@ -289,6 +299,9 @@ export default async function Home() {
           )}
           {events.map((ev) => (
             <div key={ev.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
+              {ev.posterUrl && (
+                <img src={ev.posterUrl} alt={ev.title} className="w-full rounded-xl mb-2 max-h-48 object-cover" />
+              )}
               <div className="flex items-center justify-between">
                 <div className="font-bold text-sm">{ev.title}</div>
                 <div className="text-xs text-gold-deep font-bold">+{ev.reward} GC</div>

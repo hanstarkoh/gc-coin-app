@@ -333,6 +333,10 @@ create table if not exists stock_earnings (
 create index if not exists idx_stock_earnings_stock on stock_earnings(stock_id, created_at desc);
 alter table stock_earnings enable row level security;
 
+-- 이벤트 포스터 이미지(선택). 파일 자체는 Supabase Storage "event-posters" 버킷에 저장하고
+-- (서비스 롤 키로 이미 생성해둠), 여기엔 경로만 남겨서 이벤트 삭제/포스터 교체 시 같이 지웁니다.
+alter table events add column if not exists poster_path text;
+
 -- 구인시장: 당일 실제로 도와줄 사람을 모집하는 용도(예: 매점 도우미). 정원이 있어서
 -- 관리자가 지원자 중 골라서 채용하고, 실제로 일을 끝내면 완료 처리해서 코인을 지급합니다.
 create table if not exists job_postings (
