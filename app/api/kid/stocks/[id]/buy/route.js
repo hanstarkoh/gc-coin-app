@@ -16,11 +16,12 @@ export async function POST(req, { params }) {
   if (!kidId) return NextResponse.json({ ok: false, error: '로그인이 필요해요.' }, { status: 401 });
 
   try {
-    const { shares } = await req.json();
+    const { shares, memo } = await req.json();
     const qty = Number(shares);
     if (!qty || qty <= 0 || !Number.isInteger(qty)) {
       return NextResponse.json({ ok: false, error: '주식 수를 확인해주세요.' }, { status: 400 });
     }
+    const memoValue = (memo || '').trim().slice(0, 60) || null;
 
     const sb = supabaseAdmin();
     const { data: stock, error: stockErr } = await sb
@@ -97,12 +98,13 @@ export async function POST(req, { params }) {
       amount,
       fee,
       valuation_at_trade: valuation,
+      memo: memoValue,
     };
     const { error: orderErr } = await sb.from('stock_orders').insert(orderRow);
     if (orderErr) {
-      // valuation_at_trade 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니, 잔액/보유
-      // 주식은 이미 반영된 뒤라 기록 자체가 안 남는 걸 막기 위해 그 컬럼 없이 재시도합니다.
-      const { valuation_at_trade, ...withoutValuation } = orderRow;
+      // valuation_at_trade/memo 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니, 잔액/보유
+      // 주식은 이미 반영된 뒤라 기록 자체가 안 남는 걸 막기 위해 그 컬럼들 없이 재시도합니다.
+      const { valuation_at_trade, memo: _memo, ...withoutValuation } = orderRow;
       const fallback = await sb.from('stock_orders').insert(withoutValuation);
       if (fallback.error) throw fallback.error;
     }

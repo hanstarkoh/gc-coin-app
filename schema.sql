@@ -306,6 +306,10 @@ alter table kids add column if not exists gender text check (gender in ('male', 
 -- "비쌀 때 사고/쌀 때 파는" 나쁜 습관이 줄어드는지 추적할 수 있게 함.
 alter table stock_orders add column if not exists valuation_at_trade text check (valuation_at_trade in ('over', 'under'));
 
+-- 매수할 때 "왜 사는지, 얼마에 팔 건지" 한 줄 남겨두는 선택 메모. 강제는 아니고,
+-- 종목 상세의 "메모" 탭에서 그때 적은 계획과 지금 가격을 나란히 보여주는 용도.
+alter table stock_orders add column if not exists memo text;
+
 -- 종목에 "회사 정체성"을 부여해서 더 실감나게. sector는 lib/stockNews.js의
 -- 업종별 뉴스 헤드라인 뱅크와 짝을 이룹니다(없으면 일반 헤드라인을 씀).
 alter table stocks add column if not exists sector text;

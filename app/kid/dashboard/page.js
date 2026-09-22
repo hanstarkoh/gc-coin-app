@@ -69,7 +69,11 @@ function DashboardInner() {
   const [tradeStockId, setTradeStockId] = useState(null);
   const [tradeMode, setTradeMode] = useState(null);
   const [tradeQty, setTradeQty] = useState('');
+  const [tradeMemo, setTradeMemo] = useState('');
   const [trading, setTrading] = useState(false);
+  const [memoStockId, setMemoStockId] = useState(null);
+  const [stockMemosByStock, setStockMemosByStock] = useState({});
+  const [memoLoading, setMemoLoading] = useState(false);
   const [newsStockId, setNewsStockId] = useState(null);
   const [stockNewsByStock, setStockNewsByStock] = useState({});
   const [newsLoading, setNewsLoading] = useState(false);
@@ -340,12 +344,34 @@ function DashboardInner() {
     setTradeStockId(stock.id);
     setTradeMode(mode);
     setTradeQty('');
+    setTradeMemo('');
   };
 
   const cancelTrade = () => {
     setTradeStockId(null);
     setTradeMode(null);
     setTradeQty('');
+    setTradeMemo('');
+  };
+
+  const toggleStockMemos = async (stockId) => {
+    if (memoStockId === stockId) {
+      setMemoStockId(null);
+      return;
+    }
+    setNewsStockId(null);
+    setEarningsStockId(null);
+    setMemoStockId(stockId);
+    if (!stockMemosByStock[stockId]) {
+      setMemoLoading(true);
+      try {
+        const res = await fetch(`/api/kid/stocks/${stockId}/memos`);
+        const data = await res.json();
+        if (data.ok) setStockMemosByStock((m) => ({ ...m, [stockId]: data.memos }));
+      } finally {
+        setMemoLoading(false);
+      }
+    }
   };
 
   const toggleStockNews = async (stockId) => {
@@ -354,6 +380,7 @@ function DashboardInner() {
       return;
     }
     setEarningsStockId(null);
+    setMemoStockId(null);
     setNewsStockId(stockId);
     if (!stockNewsByStock[stockId]) {
       setNewsLoading(true);
@@ -373,6 +400,7 @@ function DashboardInner() {
       return;
     }
     setNewsStockId(null);
+    setMemoStockId(null);
     setEarningsStockId(stockId);
     if (!stockEarningsByStock[stockId]) {
       setEarningsLoading(true);
@@ -394,7 +422,7 @@ function DashboardInner() {
       const res = await fetch(`/api/kid/stocks/${tradeStockId}/${tradeMode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shares: qty }),
+        body: JSON.stringify(tradeMode === 'buy' ? { shares: qty, memo: tradeMemo } : { shares: qty }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -635,6 +663,12 @@ function DashboardInner() {
                   >
                     실적
                   </button>
+                  <button
+                    onClick={() => toggleStockMemos(s.id)}
+                    className="btn-3d shrink-0 text-xs bg-white border-2 border-grape text-grape rounded-lg px-3 py-1.5"
+                  >
+                    메모
+                  </button>
                 </div>
                 {newsStockId === s.id && (
                   <div className="mt-2 bg-paper rounded-lg p-2.5">
@@ -682,6 +716,35 @@ function DashboardInner() {
                     })}
                   </div>
                 )}
+                {memoStockId === s.id && (
+                  <div className="mt-2 bg-grape/10 border-2 border-grape/30 rounded-lg p-2.5">
+                    {memoLoading && !stockMemosByStock[s.id] && (
+                      <p className="text-[11px] text-gray-400 text-center py-1">불러오는 중...</p>
+                    )}
+                    {stockMemosByStock[s.id] && stockMemosByStock[s.id].length === 0 && (
+                      <p className="text-[11px] text-gray-400 text-center py-1">
+                        매수할 때 남긴 메모가 없어요. 다음에 살 때 "왜 사는지" 적어보세요!
+                      </p>
+                    )}
+                    {stockMemosByStock[s.id]?.map((m) => {
+                      const pl = Math.round(((s.price - m.price) / m.price) * 1000) / 10;
+                      const plUp = pl >= 0;
+                      const d = new Date(m.created_at);
+                      return (
+                        <div key={m.id} className="py-1.5 border-b border-dashed border-grape/20 last:border-0">
+                          <p className="text-[11.5px] text-navy">💭 {m.memo}</p>
+                          <p className="text-[10px] text-gray-400">
+                            {fmtDate(d.toISOString().slice(0, 10))} {fmtTime(m.created_at)} · {m.price} GC에 매수
+                          </p>
+                          <p className={`text-[10.5px] font-bold ${plUp ? 'text-mint-deep' : 'text-coral-deep'}`}>
+                            지금 {s.price} GC ({plUp ? '+' : ''}
+                            {pl}%)
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
                 {isTrading && (() => {
                   const qty = Math.max(0, parseInt(tradeQty, 10) || 0);
                   const subtotal = s.price * qty;
@@ -711,6 +774,14 @@ function DashboardInner() {
                           취소
                         </button>
                       </div>
+                      {tradeMode === 'buy' && (
+                        <input
+                          value={tradeMemo}
+                          onChange={(e) => setTradeMemo(e.target.value.slice(0, 60))}
+                          placeholder="왜 사는지 적어볼까요? (선택)"
+                          className="w-full mt-1.5 border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-xs"
+                        />
+                      )}
                       {qty === 0 ? (
                         <p className="text-[10.5px] text-gray-400 mt-1.5">
                           수수료 {Math.round(feeRate * 1000) / 10}%가 붙어요
