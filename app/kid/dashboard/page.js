@@ -511,6 +511,11 @@ function DashboardInner() {
               </span>
             </div>
           )}
+          {kid.investAgreedAt && kid.investTotalFees > 0 && (
+            <p className="text-[10.5px] text-gray-400 mb-2">
+              지금까지 낸 수수료 총 {kid.investTotalFees} GC — 너무 자주 사고팔면 수수료로 까먹어요!
+            </p>
+          )}
 
           {!kid.investAgreedAt ? (
             <div>

@@ -179,6 +179,7 @@ export async function GET(req) {
         overBuyPct: buyOrders.length > 0 ? Math.round((overBuys.length / buyOrders.length) * 1000) / 10 : 0,
         underBuyPct: buyOrders.length > 0 ? Math.round((underBuys.length / buyOrders.length) * 1000) / 10 : 0,
         underSellPct: sellOrders.length > 0 ? Math.round((underSells.length / sellOrders.length) * 1000) / 10 : 0,
+        totalFees: stockOrders.reduce((s, o) => s + (o.fee || 0), 0),
         totalRealizedProfit: scopeKids.reduce((s, k) => s + (k.invest_realized_profit || 0), 0),
         avgRealizedProfit: Math.round(
           scopeKids.reduce((s, k) => s + (k.invest_realized_profit || 0), 0) / kidCount

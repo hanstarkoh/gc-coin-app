@@ -2794,6 +2794,9 @@ function StatsTab({ kids, showToast }) {
                 </b>
                 {' '}(합계 {stats.investing.totalRealizedProfit} GC)
               </div>
+              <div className="col-span-2">
+                누적 수수료 합계 <b className="text-gold-deep">{stats.investing.totalFees} GC</b>
+              </div>
             </div>
             <p className="text-[10.5px] text-gray-400 mt-2">
               "고평가 상태에 매수"가 낮을수록, "저평가 상태에 매도"가 낮을수록 &apos;쌀 때

@@ -15,6 +15,9 @@ export async function GET() {
     const { data: kid, error } = await sb.from('kids').select('*').eq('id', kidId).single();
     if (error || !kid) return NextResponse.json({ ok: false, error: '학생 정보를 찾을 수 없어요.' }, { status: 404 });
 
+    const { data: feeRows } = await sb.from('stock_orders').select('fee').eq('kid_id', kidId);
+    const investTotalFees = (feeRows || []).reduce((s, r) => s + (r.fee || 0), 0);
+
     const levelInfo = calcLevel(kid.total_earned);
     const badges = getEarnedBadges(kid);
     const nextBadge = getNextBadge(kid);
@@ -45,6 +48,7 @@ export async function GET() {
         investAgreedAt: kid.invest_agreed_at,
         investRealizedProfit: kid.invest_realized_profit || 0,
         investTradeCount: kid.invest_trade_count || 0,
+        investTotalFees,
       },
       level: levelInfo,
       badges,
