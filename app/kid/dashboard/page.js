@@ -841,6 +841,8 @@ function DashboardInner() {
           )}
           {events?.map((ev) => {
             const isPending = ev.myStatus === 'pending';
+            const isApprovedToday = ev.myStatus === 'approved';
+            const isDone = isPending || isApprovedToday;
             return (
               <div key={ev.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
                 {ev.posterUrl && (
@@ -853,17 +855,17 @@ function DashboardInner() {
                     <div className="text-xs text-gold-deep font-bold mt-1">+{ev.reward} GC</div>
                   </div>
                   <button
-                    disabled={isPending || completing === ev.id}
+                    disabled={isDone || completing === ev.id}
                     onClick={() => handleCompleteEvent(ev)}
                     className={`shrink-0 text-xs font-display px-3.5 py-2 rounded-lg whitespace-nowrap ${
-                      isPending ? 'border-2 border-gray-200 text-gray-300' : 'btn-3d btn-3d-mint bg-mint text-white'
+                      isDone ? 'border-2 border-gray-200 text-gray-300' : 'btn-3d btn-3d-mint bg-mint text-white'
                     }`}
                   >
-                    {isPending ? '승인 대기 중' : completing === ev.id ? '처리 중...' : '완료했어요'}
+                    {isPending ? '승인 대기 중' : isApprovedToday ? '오늘 완료' : completing === ev.id ? '처리 중...' : '완료했어요'}
                   </button>
                 </div>
                 {ev.myStatus === 'approved' && (
-                  <p className="text-[11px] text-mint-deep mt-1">이전에 승인되어 코인을 받았어요.</p>
+                  <p className="text-[11px] text-mint-deep mt-1">오늘 승인되어 코인을 받았어요. 내일 다시 도전할 수 있어요.</p>
                 )}
                 {ev.myStatus === 'rejected' && (
                   <p className="text-[11px] text-coral-deep mt-1">이전 완료 표시는 거절됐어요.</p>
