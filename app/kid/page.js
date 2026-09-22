@@ -80,7 +80,11 @@ function KidLoginInner() {
                   <div className="relative">
                     <div
                       className={`icon-badge icon-badge-${fallback.color} w-12 h-12 rounded-full text-2xl ${
-                        k.avatarRingFire
+                        k.isDonationKing
+                          ? 'avatar-ring-donation'
+                          : k.isInvestKing
+                          ? 'avatar-ring-invest'
+                          : k.avatarRingFire
                           ? 'avatar-ring-fire'
                           : k.avatarRingRainbow
                           ? 'avatar-ring-rainbow'

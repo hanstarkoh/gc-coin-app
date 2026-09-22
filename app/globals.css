@@ -194,6 +194,56 @@ html, body {
   75% { transform: rotate(4deg); }
 }
 
+/* ---- 랭킹 칭호: 기부왕(온화한 빛이 흘러내림) ---- */
+.avatar-ring-donation {
+  position: relative;
+  overflow: hidden;
+  animation: donationGlow 2.4s ease-in-out infinite;
+}
+.avatar-ring-donation::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 250, 230, 0) 55%);
+  animation: donationLightFall 2.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes donationGlow {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(255, 239, 192, 0.7), 0 0 14px 4px rgba(255, 224, 130, 0.5); }
+  50% { box-shadow: 0 0 0 4px rgba(255, 250, 230, 0.9), 0 0 20px 6px rgba(255, 224, 130, 0.75); }
+}
+@keyframes donationLightFall {
+  0% { transform: translateY(-100%); opacity: 0; }
+  30% { opacity: 0.9; }
+  70% { opacity: 0.4; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+
+/* ---- 랭킹 칭호: 투자왕(번쩍번쩍 돈이 그득그득) ---- */
+.avatar-ring-invest {
+  position: relative;
+  animation: investShine 1s ease-in-out infinite;
+}
+@keyframes investShine {
+  0%, 100% { box-shadow: 0 0 0 3px #ffd873, 0 0 12px 3px rgba(63, 182, 139, 0.6); }
+  50% { box-shadow: 0 0 0 5px #fff2c2, 0 0 22px 6px rgba(242, 172, 30, 0.9); }
+}
+.avatar-ring-invest::before,
+.avatar-ring-invest::after {
+  content: '💰';
+  position: absolute;
+  font-size: 11px;
+  animation: moneyFloat 1.4s ease-in-out infinite;
+  pointer-events: none;
+}
+.avatar-ring-invest::before { top: -6px; left: -6px; animation-delay: 0s; }
+.avatar-ring-invest::after { bottom: -6px; right: -6px; animation-delay: 0.5s; content: '💵'; }
+@keyframes moneyFloat {
+  0%, 100% { opacity: 0.3; transform: translateY(0) scale(0.8) rotate(-8deg); }
+  50% { opacity: 1; transform: translateY(-4px) scale(1.2) rotate(8deg); }
+}
+
 /* ---- 상점 특별효과: VIP 마크 ---- */
 .vip-badge-tag {
   display: inline-flex;

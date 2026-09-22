@@ -40,7 +40,7 @@ export async function GET() {
     const sb = supabaseAdmin();
     const { data, error } = await sb
       .from('kids')
-      .select('id, name, pin, total_earned, invest_realized_profit')
+      .select('id, name, pin, total_earned, invest_realized_profit, total_donated')
       .order('name', { ascending: true });
 
     if (error) {
@@ -60,17 +60,31 @@ export async function GET() {
 
     const { equippedMap, specialMap } = await loadCustomization(sb);
 
+    // 기부/투자 1등은 살 수 없는 "지금 1등"인 랭킹 칭호라, 살 수 있는 상점 칭호보다
+    // 우선해서 보여줍니다. 1등이 바뀌면 자동으로 다른 아이에게 넘어가요.
+    const donationMax = Math.max(0, ...data.map((k) => k.total_donated || 0));
+    const investMax = Math.max(0, ...data.map((k) => k.invest_realized_profit || 0));
+
     const kids = data.map((k) => {
       const eq = equippedMap.get(k.id);
       const avatarItem = eq ? findShopItem('avatar', eq.avatar_key) : null;
       const accessoryItem = eq ? findShopItem('accessory', eq.accessory_key) : null;
       const stickerItem = eq ? findShopItem('sticker', eq.sticker_key) : null;
       const specials = specialMap.get(k.id) || new Set();
+
+      const isDonationKing = donationMax > 0 && (k.total_donated || 0) === donationMax;
+      const isInvestKing = investMax > 0 && (k.invest_realized_profit || 0) === investMax;
+      let title = getActiveTitle(k);
+      if (isInvestKing) title = { icon: '💰', name: '투자왕' };
+      if (isDonationKing) title = { icon: '💝', name: '기부왕' };
+
       return {
         id: k.id,
         name: k.name,
         hasPin: !!k.pin,
-        title: getActiveTitle(k),
+        title,
+        isDonationKing,
+        isInvestKing,
         level: calcLevel(k.total_earned).level,
         avatarEmoji: avatarItem?.emoji || null,
         accessoryEmoji: accessoryItem?.emoji || null,
