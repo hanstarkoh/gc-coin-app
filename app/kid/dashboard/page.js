@@ -6,6 +6,7 @@ import TopBar from '@/components/TopBar';
 import LevelBar from '@/components/LevelBar';
 import BadgeGrid from '@/components/BadgeGrid';
 import Celebration from '@/components/Celebration';
+import InvestGuideModal from '@/components/InvestGuideModal';
 import Sparkline from '@/components/Sparkline';
 import StockNewsTicker from '@/components/StockNewsTicker';
 import { sectorLabel } from '@/lib/stockNews';
@@ -74,6 +75,7 @@ function DashboardInner() {
   const [memoStockId, setMemoStockId] = useState(null);
   const [stockMemosByStock, setStockMemosByStock] = useState({});
   const [memoLoading, setMemoLoading] = useState(false);
+  const [showInvestGuide, setShowInvestGuide] = useState(false);
   const [newsStockId, setNewsStockId] = useState(null);
   const [stockNewsByStock, setStockNewsByStock] = useState({});
   const [newsLoading, setNewsLoading] = useState(false);
@@ -525,6 +527,12 @@ function DashboardInner() {
         <ShopCard kidBalance={kid.balance} onChange={loadMe} showToast={showToast} />
 
         <Collapsible icon="📈" badgeColor="navy" title="모의투자" defaultOpen={true}>
+          <button
+            onClick={() => setShowInvestGuide(true)}
+            className="btn-3d btn-3d-gold w-full mb-2 bg-gold text-navy-deep font-display rounded-xl py-2.5 text-sm"
+          >
+            📖 모의투자 성공 가이드
+          </button>
           <div className="mb-2">
             <StockNewsTicker items={stockNews} />
           </div>
@@ -1240,6 +1248,7 @@ function DashboardInner() {
           onClose={closeCelebration}
         />
       )}
+      {showInvestGuide && <InvestGuideModal onClose={() => setShowInvestGuide(false)} />}
     </div>
   );
 }

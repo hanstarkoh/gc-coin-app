@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1400" font-family="'Apple SD Gothic Neo','Malgun Gothic','Segoe UI',system-ui,sans-serif">
+  <rect x="0" y="0" width="720" height="1400" rx="0" fill="#F5F6F0" />
+
+  <!-- Header -->
+  <rect x="24" y="24" width="672" height="176" rx="28" fill="#16324F" />
+  <text x="360" y="98" font-size="60" text-anchor="middle">📈</text>
+  <text x="360" y="160" font-size="34" font-weight="700" fill="#FFFFFF" text-anchor="middle">모의투자 성공 가이드</text>
+
+  <!-- Card 1 -->
+  <rect x="24" y="222" width="672" height="205" rx="22" fill="#FFFFFF" stroke="#3FB68B" stroke-width="3" />
+  <circle cx="104" cy="324" r="48" fill="#3FB68B" />
+  <text x="104" y="341" font-size="44" text-anchor="middle">📊</text>
+  <text x="172" y="288" font-size="27" font-weight="700" fill="#16324F">고평가·저평가 뱃지를 믿어요</text>
+  <text x="172" y="330" font-size="21" fill="#6B7280">쌀 때(저평가) 사고,</text>
+  <text x="172" y="364" font-size="21" fill="#6B7280">비쌀 때(고평가) 팔면 진짜 유리해요!</text>
+
+  <!-- Card 2 -->
+  <rect x="24" y="447" width="672" height="205" rx="22" fill="#FFFFFF" stroke="#F2AC1E" stroke-width="3" />
+  <circle cx="104" cy="549" r="48" fill="#F2AC1E" />
+  <text x="104" y="566" font-size="44" text-anchor="middle">🎯</text>
+  <text x="172" y="513" font-size="27" font-weight="700" fill="#16324F">확신이 서면 화끈하게!</text>
+  <text x="172" y="555" font-size="21" fill="#6B7280">조금씩 나눠서 자꾸 사고팔면</text>
+  <text x="172" y="589" font-size="21" fill="#6B7280">수수료만 계속 나가요</text>
+
+  <!-- Card 3 -->
+  <rect x="24" y="672" width="672" height="205" rx="22" fill="#FFFFFF" stroke="#E2574C" stroke-width="3" />
+  <circle cx="104" cy="774" r="48" fill="#E2574C" />
+  <text x="104" y="791" font-size="44" text-anchor="middle">🔥</text>
+  <text x="172" y="738" font-size="27" font-weight="700" fill="#16324F">급등 추격매수는 조심!</text>
+  <text x="172" y="780" font-size="21" fill="#6B7280">이미 많이 오른 종목을 쫓아 사면</text>
+  <text x="172" y="814" font-size="21" fill="#6B7280">수수료가 더 많이 붙어요</text>
+
+  <!-- Card 4 -->
+  <rect x="24" y="897" width="672" height="205" rx="22" fill="#FFFFFF" stroke="#7C5CBF" stroke-width="3" />
+  <circle cx="104" cy="999" r="48" fill="#7C5CBF" />
+  <text x="104" y="1016" font-size="44" text-anchor="middle">📰</text>
+  <text x="172" y="963" font-size="27" font-weight="700" fill="#16324F">뉴스와 실적발표를 챙겨봐요</text>
+  <text x="172" y="1005" font-size="21" fill="#6B7280">좋은 소식이 며칠간 이어지면</text>
+  <text x="172" y="1039" font-size="21" fill="#6B7280">실적도 좋을 확률이 높아져요</text>
+
+  <!-- Card 5 -->
+  <rect x="24" y="1122" width="672" height="205" rx="22" fill="#FFFFFF" stroke="#16324F" stroke-width="3" />
+  <circle cx="104" cy="1224" r="48" fill="#16324F" />
+  <text x="104" y="1241" font-size="44" text-anchor="middle">💭</text>
+  <text x="172" y="1188" font-size="27" font-weight="700" fill="#16324F">왜 사는지 메모해둬요</text>
+  <text x="172" y="1230" font-size="21" fill="#6B7280">나중에 내 판단이 맞았는지</text>
+  <text x="172" y="1264" font-size="21" fill="#6B7280">돌아보면 더 똑똑해져요</text>
+
+  <!-- Footer -->
+  <text x="360" y="1370" font-size="21" font-weight="700" fill="#C98A0E" text-anchor="middle">실제 돈이 아니니까 안심하고 연습해봐요! 🪙</text>
+</svg>
