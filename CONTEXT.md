@@ -1,102 +1,185 @@
-# 금청코인(GC) 앱 — 현재 상태 & 다음 작업 요청
+# 금청코인(GC) 앱 — 현재 상태
 
-이 문서는 Claude(claude.ai)와 함께 처음 버전을 만든 뒤, VS Code의 Claude Code에게 이어서
-작업을 맡기기 위해 정리한 컨텍스트예요. 프로젝트 루트에 이 파일을 두고 "이 문서 참고해서
-아래 요청사항 작업해줘"라고 하면 됩니다.
+이 문서는 Claude Code가 다음 세션에서 바로 맥락을 파악할 수 있도록 정리한 현재 코드 기준
+스냅샷이에요. **기능이나 수치를 바꿀 때마다 이 문서도 같이 업데이트할 것.**
 
 ## 프로젝트 개요
 
-- 금정청소년수련관 주말 방과후 아카데미에서 쓰는 코인(GC) 관리 앱
-- 청소년 약 30명이 토요일마다 출석 코인을 받고, 그 코인으로 오늘의 메뉴(간식)를 주문
-- 관리자는 출석/보너스 코인 지급, 메뉴 등록, 청소년 관리, 전체 현황 확인
-- 배포 주소: `gc-coin-app.vercel.app`
+- 금정청소년수련관 주말 방과후 아카데미에서 쓰는 코인(GC) 관리 + 경제 교육 앱
+- 청소년 약 30명(초4~중2)이 토요일마다 출석 코인을 받고, 코인으로 간식을 사 먹거나
+  모의투자·예금·예측시장 등으로 불려보는 걸 배움
+- 관리자(수련관 직원)는 코인 지급, 메뉴/이벤트/구인공고 등록, 청소년 관리, 전체 현황 확인
+- 배포: `gc-coin-app.vercel.app`, GitHub `hanstarkoh/gc-coin-app`
 
 ## 기술 스택
 
 - Next.js 14 (App Router), JavaScript (TypeScript 아님)
-- Supabase (Postgres DB) — 서버(API 라우트)에서 service_role(=새 이름 secret) 키로만 접근, 클라이언트는 직접 DB 접근 안 함
-- Tailwind CSS
-- Vercel 배포, GitHub(`hanstarkoh/gc-coin-app`) 연동
-- 인증: 자체 4자리 PIN + HMAC 서명된 httpOnly 쿠키 세션 (Supabase Auth는 안 씀)
+- Supabase(Postgres) — 서버(API 라우트)에서 `SUPABASE_SERVICE_ROLE_KEY`로만 접근, 클라이언트는
+  직접 DB 접근 안 함. Supabase Storage(버킷 `event-posters`)도 같은 키로 사용
+- Tailwind CSS, 폰트 Jua(제목)/Noto Sans KR(본문)
+- Vercel 배포 + Vercel Cron(`vercel.json`, `/api/cron/update-stocks`)
+- 인증: 자체 4자리 PIN + HMAC 서명 httpOnly 쿠키 세션(Supabase Auth 안 씀).
+  청소년 세션 60일 유지, 관리자 세션 8시간 유지 (`lib/session.js`)
 
-## 폴더 구조
+## 폴더 구조 (기능 영역별)
 
 ```
 app/
-  page.js                    # 홈 - 청소년/관리자 선택 화면
-  kid/page.js                 # 청소년 이름 선택 → PIN 설정/로그인
-  kid/dashboard/page.js       # 청소년 대시보드 (잔액, 레벨바, 뱃지, 오늘의 메뉴, 주문, 내역)
-  admin/page.js                # 관리자 PIN 로그인
-  admin/dashboard/page.js      # 관리자 대시보드 (탭 5개)
-  api/kids/route.js                        # GET 청소년 이름 목록(공개용, 이름만)
-  api/kid/login/route.js                   # POST PIN 설정/검증 + 세션 쿠키 발급
-  api/kid/me/route.js                      # GET 내 정보(잔액/레벨/뱃지)
-  api/kid/menu/route.js                    # GET 오늘 메뉴
-  api/kid/order/route.js                   # POST 메뉴 주문(코인 차감)
-  api/kid/history/route.js                 # GET 내 거래내역
-  api/kid/logout/route.js
-  api/admin/login/route.js                 # POST 관리자 PIN 검증
-  api/admin/logout/route.js
-  api/admin/me/route.js                    # GET 관리자 세션 확인
-  api/admin/kids/route.js                  # GET 전체 청소년 / POST 청소년 추가
-  api/admin/kids/[id]/route.js             # DELETE 청소년 삭제
-  api/admin/kids/[id]/reset-pin/route.js   # POST PIN 초기화
-  api/admin/attendance/route.js            # POST 출석 코인 일괄 지급(+5GC, 중복지급 방지)
-  api/admin/bonus/route.js                 # POST 개별 보너스 코인 지급
-  api/admin/menu/route.js                  # GET/POST 오늘 메뉴 관리
-  api/admin/menu/[id]/route.js             # DELETE 메뉴 삭제
-  api/admin/transactions/route.js          # GET 전체 거래내역 (kidId, date 쿼리 필터 지원)
-  api/admin/settings/pin/route.js          # POST 관리자 PIN 변경
+  page.js                       # 홈 — 로그인 없이 메뉴/이벤트/구인/모의투자/기부함 미리보기 + 랭킹
+  kid/page.js                    # 이름 선택 → PIN 설정/로그인 (기부왕/투자왕 이펙트가 여기 뜸)
+  kid/dashboard/page.js          # 청소년 대시보드 (아래 "청소년 대시보드" 기능 전부 여기 모여있음)
+  kid/room/page.js, room/[id]/page.js, room/friends/page.js   # 마이룸 배치·친구 구경
+  admin/page.js                  # 관리자 PIN 로그인
+  admin/dashboard/page.js        # 관리자 대시보드 (탭 13개, 아래 "관리자 대시보드" 참고)
+  pickup-board/page.js           # 로그인 없는 픽업 현황판(태블릿용 공개 화면)
+
+  api/kids/route.js                          # GET 이름 목록(공개, 로그인 화면용) + 기부왕/투자왕 계산
+  api/kid/*                                  # 청소년 세션 필요한 라우트 전체
+  api/admin/*                                # 관리자 세션 필요한 라우트 전체
+  api/cron/update-stocks/route.js            # Vercel Cron: 주식 시세 강제 갱신
+
 lib/
-  supabaseAdmin.js   # 서버 전용 Supabase 클라이언트 (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY 사용)
-  session.js         # 쿠키 서명/검증, 청소년·관리자 세션 관리
-  level.js           # 레벨 계산 (누적 코인 15GC당 1레벨업, XP_PER_LEVEL 상수로 조정 가능)
-  badges.js          # 뱃지 8종 정의 (배열에 항목만 추가하면 뱃지 늘어남)
+  supabaseAdmin.js   # 서버 전용 Supabase 클라이언트
+  session.js         # 쿠키 서명/검증, 청소년·관리자 세션
+  level.js           # 레벨 계산 (XP_PER_LEVEL)
+  badges.js          # 뱃지 14종 정의(배열 추가만 하면 늘어남)
+  titles.js          # 상점 안 사도 조건 달성하면 붙는 칭호(현재 주식왕 1종)
+  shop.js            # 상점 카탈로그(아바타/액세서리/스티커/테마/특수효과/가구) 전체
+  room.js            # 마이룸 크기/확장 비용
+  deposits.js        # 예금 상품(기간/이율)
+  goals.js           # 기부함 순위 집계
+  predictions.js     # 예측 시장 패리뮤추얼 정산 로직
+  announcements.js   # 확성기 가격/만료 계산
+  events.js          # 이벤트 포스터(Storage 업로드/삭제) 헬퍼
+  jobs.js            # 구인시장 글자수/정원 제한 상수
+  stocks.js           # 모의투자 핵심 엔진(시세 생성, 수수료, 평균회귀, 뉴스/실적 발표 트리거)
+  stockNews.js         # 업종 12종 + 업종별 뉴스 헤드라인 뱅크
+  stockEarnings.js     # 실적발표 헤드라인 뱅크 + 펀더멘털 라벨
+  history.js          # 청소년 개인 통합 사용내역(transactions+stock_orders+kid_inventory 합침)
+  menuCategories.js   # 금청수 상점 메뉴 소분류(간식/음료/완구/기타)
+
 components/
-  TopBar.jsx, PinPad.jsx, Toast.jsx, LevelBar.jsx, BadgeGrid.jsx, Celebration.jsx(컨페티)
-schema.sql            # Supabase 테이블 정의 (settings, kids, transactions, menu_items)
+  TopBar, PinPad, Toast, LevelBar, BadgeGrid, Celebration(컨페티), MenuTabs,
+  Sparkline(주식 미니 그래프), StockNewsTicker, AnnouncementTicker, InvestGuideModal(가이드 팝업)
+
+schema.sql   # Supabase 테이블 정의 — 전체 마이그레이션의 단일 소스. Supabase SQL Editor에서
+             # 수동 실행 필요(Claude Code가 직접 DDL 실행 불가). 새로 추가되는 alter/create문은
+             # 항상 이 파일 맨 아래에 누적됨
 ```
 
-## DB 테이블 요약
+## 기능 목록
 
-- `settings` — admin_pin (관리자 비밀번호, 기본 1234)
-- `kids` — id, name, pin(null=미설정), balance, total_earned, total_spent, attendance_count, purchase_count
-- `transactions` — kid_id, type(earn/bonus/spend), amount, reason, tx_date, created_at
-- `menu_items` — item_date, name, price (날짜별로 저장돼서 이력이 남음)
+### 홈 화면 (`/`, 로그인 불필요)
+오늘의 메뉴 · 진행 중인 이벤트(포스터 포함) · 구인시장 공고(읽기 전용) · 모의투자 시세 요약 +
+뉴스 티커(오늘 것만, 종목당 최신 1건) · 기부함 진행 현황 · 확성기 티커 · 기부 랭킹/투자수익
+랭킹 Top5 · "청소년으로 시작하기" 버튼 · 관리자 로그인(우측 상단 작은 아이콘)
 
-## 현재 동작 방식 (중요한 설계 원칙)
+### 청소년 로그인 화면 (`/kid`)
+이름 그리드에서 선택 → PIN 미설정이면 새로 설정, 있으면 입력. 아바타/액세서리/스티커/특수효과
+(상점에서 구매한 것)가 여기서 보임. **기부 1등에게 "기부왕" 칭호 + 빛 흘러내리는 효과,
+모의투자 실현손익 1등에게 "투자왕" 칭호 + 반짝이는 돈 이펙트** — 매번 전체 순위를 다시 계산해서
+1등이 바뀌면 자동으로 넘어감(`/api/kids`에서 계산).
 
-- 모든 코인 지급/차감 로직은 **서버(API 라우트)에서만** 처리. 클라이언트가 직접 DB를 건드릴 수 없음 → 계속 유지해야 함
-- 청소년 세션: httpOnly 쿠키 60일 유지. 관리자 세션: httpOnly 쿠키 8시간 유지
-- 출석 지급은 "오늘 이미 받은 사람 자동 제외" 로직 있음 (reason === '출석' 기준)
-- 레벨/뱃지는 별도 테이블 없이 kids 테이블의 누적 값(total_earned, attendance_count, purchase_count)으로 매번 계산
+### 청소년 대시보드 (`/kid/dashboard`)
+- **내 뱃지**: 14종(`lib/badges.js`), 조건 달성 시 자동 표시 — 출석(1/5/10/20회), 누적코인
+  (50/100), 구매(1/10회), 투자 매매(1/10회), 투자 실현손익(30/100 GC), 기부(1회/50 GC)
+- **모의투자**: 종목 목록(가격/등락률/스파크라인), 종목별 "뉴스"/"실적"/"메모" 탭, 고평가·저평가
+  뱃지, 실적발표 D-day, 매수 시 선택 메모, "📖 모의투자 성공 가이드" 팝업(이미지 인포그래픽)
+- **기부함**: 진행 중인 공동 목표에 기부, 목표별 기부 순위
+- **확성기**: 코인 내고 24시간 동안 홈 화면 상단에 한마디 노출
+- **진행 중인 이벤트**: 완료 표시 → 관리자 승인 대기 → 승인 시 코인 지급. **하루 1회만
+  완료 가능**(당일 승인 대기/승인 완료 건이 있으면 재신청 막힘, 다음날 자동 재개방)
+- **구인시장**: 공고에 지원 → 관리자가 정원만큼 선발 → 실제로 일하고 나면 관리자가
+  "완료 처리"해야 코인 지급(선발 취소 가능, 정원 관리자가 나중에 조절 가능)
+- **꾸미기 상점**: 아바타/액세서리/스티커/테마/특수효과/가구 구매+착용
+- **예금**: 2/3/4주 상품 중 선택, 만기 지나면 조회 시점에 이자 포함 자동 지급
+- **예측 시장**: 관리자가 낸 질문에 둘 중 하나로 베팅, 정산 시 패리뮤추얼 방식 분배
+- **마이룸**: 4x4 기본 크기에서 코인으로 확장, 가구 배치, 잔액 공개 여부 설정, 친구 마이룸 구경
+- **내 사용 내역**: transactions+주식 매매+상점 구매를 합친 통합 내역, 월별 보기+페이지네이션
 
----
+### 픽업 현황판 (`/pickup-board`)
+로그인 없는 공개 화면(태블릿 거치용). "준비완료" 상태인 주문을 이름/메뉴/장소와 함께 보여줌.
 
-## 지금 요청하는 작업: 인터페이스 개편
+### 관리자 대시보드 (`/admin/dashboard`, 탭 13개)
+출석·코인 지급 / 메뉴 관리 / 주문 현황(수령 처리) / 이벤트(포스터 업로드 포함, 완료 승인) /
+구인시장(공고 등록, 지원자 선발/선발취소/완료 처리, 정원 조절) / 종목 관리(등록·업종·펀더멘털·
+실적발표일 지정·수동 뉴스 발표·강제 시세 갱신) / 예측 시장(질문 등록·마감·정산) / 기부함(목표
+등록·달성 완료 처리) / 확성기(부적절한 글 내리기) / 청소년 관리(등록·PIN 초기화·삭제·성별 설정) /
+전체 현황 / 통계(참여율·지출 분석·투자 행동·추격매수 비율·누적 수수료·성별 비교) / 설정(관리자
+PIN 변경, 간식 주문 오픈/마감)
 
-전체적으로 화면 구조를 다시 짜고 싶어요. 요청사항:
+### 모의투자 엔진 상세 (`lib/stocks.js`)
+- **가격 갱신 타이밍**: 트래픽에 얹혀 지연 갱신(`maybeUpdateStockPrices`). 토요일 9~18시는
+  시간당 1번, 그 외엔 하루 1번. 관리자가 "지금 시세 갱신" 버튼으로 강제 갱신 가능. Vercel Cron도
+  주기적으로 호출
+- **평균회귀**: 최근 14틱 이동평균을 "적정가"로 삼아 그 방향으로 서서히 당김(강도 0.55) —
+  고평가/저평가 뱃지가 실제로 신뢰할 만하게 작동하도록 튜닝됨
+- **매수/매도 쏠림 반영**: 직전 구간 주문 쏠림을 시세에 반영(가중치 0.4) — 공매도가 없어
+  구조적으로 매수가 많을 수밖에 없는 편향을 고려해 낮게 잡음
+- **자동 뉴스**(틱당 12% 확률): 직전 뉴스와 같은 방향이 이어질 확률 70%(스티키니스), 이미
+  고평가/저평가면 효과 절반으로 감쇠(과열 방지)
+- **업종 전체 뉴스**(틱당 4% 확률): 같은 업종 종목 2개 이상일 때만, 같은 헤드라인/등락률로 동시 반영
+- **실적발표**: 종목마다 약 한 달(26~34일) 주기, 등락폭 15~35%(일반 뉴스보다 큼). 확률은
+  펀더멘털(성장중 68%/정체 50%/위기 32%) + 최근 30일 뉴스 흐름(최대 ±30%p)으로 결정되되 100%는
+  안 됨(최대 85%) — 뉴스 흐름과 반대로 가면 헤드라인에 이유(일회성 비용 등)가 붙음. 관리자가
+  발표일을 직접 지정 가능(지정 시 한 달 안쪽이면 이전 발표 내역 자동 백필)
+- **수수료**: 기본 2%(최소 1GC), 최근 5틱 사이 15% 넘게 오른 종목을 추격매수하면 최대 +8%p 할증
+- **매수 메모**: 살 때 "왜 사는지" 선택 메모 남기고 종목별 "메모" 탭에서 그때 가격 대비 지금
+  등락률을 계속 비교해볼 수 있음
+- 매매는 `kids.balance`만 증감시키고 `total_earned`/`total_spent`/`purchase_count`(레벨·뱃지용)는
+  안 건드림 — 반복 매매로 레벨 어뷰징하는 걸 막기 위해 별도 원장(`stock_orders`)에 기록
 
-1. **관리자 로그인을 눈에 안 띄게 축소** — 지금처럼 홈 화면에 "청소년/관리자" 큰 버튼 두 개를 나란히 두는 구조 대신, **관리자 로그인은 우측 상단에 작은 탭/아이콘 버튼**으로만 존재하게 바꾸기. 메인 화면은 기본적으로 청소년 중심으로 구성.
+## 코인 수치 요약
 
-2. **오늘의 메뉴를 메인 페이지에 바로 노출** — 지금은 청소년이 이름+PIN으로 로그인해야 대시보드에서 메뉴를 볼 수 있는데, 오늘의 메뉴 자체는 메인 페이지에서 로그인 없이도 바로 보이게 하고 싶음 (구경은 누구나, 주문/코인 사용은 로그인 후).
+| 항목 | 값 | 근거 |
+|---|---|---|
+| 출석 코인 | 2 GC, 하루 1인 1회 | `app/api/admin/attendance/route.js` |
+| 보너스 지급 | 관리자 자유 지정 | `app/api/admin/bonus/route.js` |
+| 이벤트/구인시장 보상 | 관리자 자유 지정 | 등록 시 입력 |
+| 레벨업 | 누적 코인(`total_earned`) 15 GC당 1레벨 | `lib/level.js` (`XP_PER_LEVEL`) |
+| 매수/매도 수수료 | 2%, 최소 1 GC | `lib/stocks.js` (`TRADE_FEE_RATE`) |
+| 추격매수 할증 | 최근 5틱 +15% 초과분부터, 최대 +8%p(합산 최대 10%) | `CHASE_FEE_THRESHOLD/MAX_SURCHARGE` |
+| 뉴스 등락률 | 방향만 정하면 폭은 5~20% 무작위 | `NEWS_PCT_MIN/MAX` |
+| 실적발표 등락률 | 15~35% 무작위 | `EARNINGS_PCT_MIN/MAX` |
+| 예금 | 2주 5% / 3주 8% / 4주 12%, 최소 10 GC | `lib/deposits.js` |
+| 확성기 | 5 GC, 24시간 노출 | `lib/announcements.js` |
+| 마이룸 확장(4단계) | 30 / 50 / 80 / 120 GC | `lib/room.js` |
+| 상점 - 아바타 | 기본 24종 10 GC, 프리미엄 10종 35 GC (총 34종) | `lib/shop.js` |
+| 상점 - 액세서리 | 12~30 GC (11종) | 〃 |
+| 상점 - 스티커 | 8~12 GC (11종) | 〃 |
+| 상점 - 테마 | 25~30 GC (8종) | 〃 |
+| 상점 - 특수효과 | 10~25 GC, 30일 기간제 (9종) | 〃 |
+| 상점 - 가구 | 8~30 GC (20종) | 〃 |
 
-3. **"이벤트" 기능 신설** — 관리자가 이벤트(미션/과제)를 등록하면, 청소년이 그걸 보고 수행한 뒤 코인을 받을 수 있는 구조.
-   - 예: 관리자가 "방 정리 도와주기 - 5GC" 같은 이벤트를 올림
-   - 청소년 대시보드(또는 메인 페이지)에 오늘의 메뉴처럼 "진행 중인 이벤트" 목록이 보임
-   - 청소년이 완료 표시를 하면 → (남용 방지를 위해) 관리자가 승인해야 코인 지급되는 방식 추천 — 자기가 자기한테 코인 주는 걸 막아야 함
-   - 기존 "보너스 지급"과 통합할지, 별도 기능으로 둘지는 논의 필요
+## DB 테이블 (schema.sql 기준, 기능별)
 
-4. 전체적으로 지금보다 더 "보강"된 느낌으로 — 구체적으로 어떤 부분을 더 보강하고 싶은지는 진행하면서 논의
+- **기본**: `settings`(관리자 PIN, 주문 오픈여부) · `kids`(잔액/누적코인/출석/구매/투자손익/기부액/
+  성별/마이룸 확장단계 등) · `transactions`(코인 입출 내역, type: earn/bonus/spend/event/job) ·
+  `menu_items`(날짜별 메뉴, 카테고리/재고/설명)
+- **이벤트**: `events`(제목/설명/보상/포스터경로) · `event_submissions`(완료 신청~승인 상태)
+- **구인시장**: `job_postings`(제목/보상/정원) · `job_applications`(지원~채용~완료 상태)
+- **모의투자**: `stocks`(가격/업종/펀더멘털/다음실적발표일) · `stock_price_history`(시세 이력) ·
+  `stock_holdings`(보유 주식/평단가) · `stock_orders`(매매 원장, 수수료/평가상태/메모 포함) ·
+  `stock_news`(뉴스, admin/auto 구분) · `stock_earnings`(실적발표 이력)
+- **예금**: `kid_deposits`(원금/이율/만기일/청구여부)
+- **상점/마이룸**: `kid_inventory`(구매 내역, 기간제는 `expires_at`) · `kid_equipped`(착용 중인
+  아바타/액세서리/스티커/테마) · `kid_room_items`(마이룸 가구 배치 좌표)
+- **기부함**: `group_goals`(목표) · `group_goal_donations`(기부 내역)
+- **확성기**: `announcements`(메시지/만료시각/삭제여부)
+- **예측시장**: `predictions`(질문/상태/정답) · `prediction_bets`(베팅, prediction+kid당 1건)
 
-### 참고: 지금 화면 흐름 (개편 전)
+## 중요한 설계 원칙
 
-```
-/ (홈: 청소년/관리자 선택)
-  → /kid (이름 선택 → PIN)
-    → /kid/dashboard (잔액, 레벨, 뱃지, 오늘의 메뉴, 주문, 내역)
-  → /admin (PIN 로그인)
-    → /admin/dashboard (탭: 출석·코인지급 / 메뉴관리 / 청소년관리 / 전체현황 / 설정)
-```
-
-이 흐름을 어떻게 재구성할지는 Claude Code와 논의하면서 진행하면 될 것 같아요.
+- 모든 코인 지급/차감은 **서버(API 라우트)에서만** 처리, service role 키로만 DB 접근
+- **마이그레이션은 Supabase SQL Editor에서 수동 실행**해야 함 — 새 컬럼/테이블을 쓰는 코드는
+  항상 "select/insert 실패 시 그 컬럼 없이 재시도" 폴백을 넣을 것. 특히 `updateStockPrices`처럼
+  트래픽에 얹혀 매번 도는 핫패스에서 폴백을 빠뜨리면 마이그레이션 전 상태에서 기능 전체가
+  멈출 수 있음(실제로 한 번 발생했던 사고)
+- **중복 처리 방지**: 상태를 바꾸는 API는 `.eq('status', 예상값)` 같은 낙관적 동시성 체크로
+  더블탭/중복 승인을 막음(이벤트 완료 승인, 구인시장 선발/완료, 예금 만기 청구, 마이룸 확장 등
+  반복 적용된 패턴)
+- 레벨/뱃지/칭호는 별도 테이블 없이 `kids`의 누적 값으로 매번 계산
+- 모의투자는 `kids.balance`만 건드리고 레벨/뱃지용 누적치는 건드리지 않음(어뷰징 방지)
+- KST(UTC+9) 기준 "오늘"/"이번 주" 판정이 곳곳에 있음(출석 중복 방지, 확성기 만료, 이벤트 하루
+  1회 제한, 오늘 뉴스 필터 등) — 서버가 UTC로 돌기 때문에 각 lib 파일에 KST 보정 로직이 개별적으로
+  들어가 있음(공용 유틸로 통합돼 있지 않음, 참고)
