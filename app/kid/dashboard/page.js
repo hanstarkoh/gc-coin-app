@@ -927,6 +927,7 @@ function DashboardInner() {
             const isPending = ev.myStatus === 'pending';
             const isApproved = ev.myStatus === 'approved';
             const isDone = isPending || isApproved;
+            const repeatable = ev.repeat_type === 'repeatable';
             return (
               <div key={ev.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
                 {ev.posterUrl && (
@@ -941,6 +942,7 @@ function DashboardInner() {
                     <div className="font-bold text-sm">{ev.title}</div>
                     {ev.description && <p className="text-xs text-gray-500 mt-0.5">{ev.description}</p>}
                     <div className="text-xs text-gold-deep font-bold mt-1">+{ev.reward} GC</div>
+                    {repeatable && <div className="text-[10px] text-gray-400 mt-0.5">🔁 매일 다시 도전할 수 있어요</div>}
                   </div>
                   <button
                     disabled={isDone || completing === ev.id}
@@ -953,7 +955,9 @@ function DashboardInner() {
                   </button>
                 </div>
                 {ev.myStatus === 'approved' && (
-                  <p className="text-[11px] text-mint-deep mt-1">이미 완료해서 코인을 받은 이벤트예요.</p>
+                  <p className="text-[11px] text-mint-deep mt-1">
+                    {repeatable ? '오늘 완료해서 코인을 받았어요. 내일 다시 도전할 수 있어요.' : '이미 완료해서 코인을 받은 이벤트예요.'}
+                  </p>
                 )}
                 {ev.myStatus === 'rejected' && (
                   <p className="text-[11px] text-coral-deep mt-1">이전 완료 표시는 거절됐어요.</p>

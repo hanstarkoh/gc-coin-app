@@ -6,6 +6,7 @@ import { ToastProvider, useToast } from '@/components/Toast';
 import { MENU_CATEGORIES, DEFAULT_MENU_CATEGORY, MENU_DESCRIPTION_MAX_LENGTH } from '@/lib/menuCategories';
 import { SECTORS, sectorLabel } from '@/lib/stockNews';
 import { FUNDAMENTAL_LABELS } from '@/lib/stockEarnings';
+import { EVENT_REPEAT_TYPES } from '@/lib/events';
 
 const TABS = [
   { key: 'attendance', label: '출석 · 코인 지급' },
@@ -897,6 +898,7 @@ function EventsTab({ showToast, onPendingCountChange }) {
   const [posterPath, setPosterPath] = useState(null);
   const [posterUrl, setPosterUrl] = useState(null);
   const [uploadingPoster, setUploadingPoster] = useState(false);
+  const [repeatType, setRepeatType] = useState('repeatable');
 
   const loadEvents = useCallback(async () => {
     const res = await fetch('/api/admin/events');
@@ -943,7 +945,7 @@ function EventsTab({ showToast, onPendingCountChange }) {
     const res = await fetch('/api/admin/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, description, reward: r, posterPath }),
+      body: JSON.stringify({ title, description, reward: r, posterPath, repeatType }),
     });
     const data = await res.json();
     if (data.ok) {
@@ -953,10 +955,22 @@ function EventsTab({ showToast, onPendingCountChange }) {
       setReward('');
       setPosterPath(null);
       setPosterUrl(null);
+      setRepeatType('repeatable');
       await loadEvents();
     } else {
       showToast(data.error || '등록에 실패했어요.');
     }
+  };
+
+  const changeRepeatType = async (ev, newType) => {
+    const res = await fetch(`/api/admin/events/${ev.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repeatType: newType }),
+    });
+    const data = await res.json();
+    if (data.ok) await loadEvents();
+    else showToast(data.error || '변경에 실패했어요.');
   };
 
   const removePoster = async (ev) => {
@@ -1087,11 +1101,24 @@ function EventsTab({ showToast, onPendingCountChange }) {
                 </button>
               </div>
             </div>
-            {ev.posterUrl && (
-              <button onClick={() => removePoster(ev)} className="text-[11px] text-gray-400 underline mt-1">
-                포스터만 지우기
-              </button>
-            )}
+            <div className="flex items-center gap-2 mt-1.5">
+              <select
+                value={ev.repeat_type || 'once'}
+                onChange={(e) => changeRepeatType(ev, e.target.value)}
+                className="border-[1.5px] border-gray-200 rounded-lg px-2 py-1 text-[11px]"
+              >
+                {EVENT_REPEAT_TYPES.map((t) => (
+                  <option key={t.key} value={t.key}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+              {ev.posterUrl && (
+                <button onClick={() => removePoster(ev)} className="text-[11px] text-gray-400 underline">
+                  포스터만 지우기
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </Card>
@@ -1125,6 +1152,25 @@ function EventsTab({ showToast, onPendingCountChange }) {
             placeholder="예: 5"
             className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
           />
+        </div>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">유형</label>
+          <div className="flex gap-2">
+            {EVENT_REPEAT_TYPES.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setRepeatType(t.key)}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-bold border-2 ${
+                  repeatType === t.key ? 'bg-navy text-white border-navy' : 'border-gray-200 text-gray-500'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10.5px] text-gray-400 mt-1">
+            반복형은 매일 다시 완료 가능, 일회성은 한 아이당 평생 한 번만 완료 가능해요.
+          </p>
         </div>
         <div className="mb-3">
           <label className="block text-xs text-gray-500 mb-1">포스터 이미지 (선택, 5MB 이하)</label>

@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { isAdmin } from '@/lib/session';
-import { deleteEventPoster } from '@/lib/events';
+import { deleteEventPoster, EVENT_REPEAT_TYPES } from '@/lib/events';
+
+const REPEAT_TYPE_KEYS = EVENT_REPEAT_TYPES.map((t) => t.key);
 
 export async function PATCH(req, { params }) {
   if (!isAdmin()) return NextResponse.json({ ok: false, error: '관리자 로그인이 필요해요.' }, { status: 401 });
@@ -9,6 +11,7 @@ export async function PATCH(req, { params }) {
     const body = await req.json();
     const update = {};
     if ('isActive' in body) update.is_active = !!body.isActive;
+    if ('repeatType' in body && REPEAT_TYPE_KEYS.includes(body.repeatType)) update.repeat_type = body.repeatType;
 
     const sb = supabaseAdmin();
 
@@ -24,10 +27,10 @@ export async function PATCH(req, { params }) {
 
     const { error } = await sb.from('events').update(update).eq('id', params.id);
     if (error) {
-      // poster_path 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니 없이 재시도.
-      if ('poster_path' in update) {
-        const { poster_path, ...withoutPoster } = update;
-        const fallback = await sb.from('events').update(withoutPoster).eq('id', params.id);
+      // poster_path/repeat_type 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니 없이 재시도.
+      if ('poster_path' in update || 'repeat_type' in update) {
+        const { poster_path, repeat_type, ...withoutNew } = update;
+        const fallback = await sb.from('events').update(withoutNew).eq('id', params.id);
         if (fallback.error) throw fallback.error;
       } else {
         throw error;
