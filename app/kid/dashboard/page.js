@@ -925,12 +925,16 @@ function DashboardInner() {
           )}
           {events?.map((ev) => {
             const isPending = ev.myStatus === 'pending';
-            const isApprovedToday = ev.myStatus === 'approved';
-            const isDone = isPending || isApprovedToday;
+            const isApproved = ev.myStatus === 'approved';
+            const isDone = isPending || isApproved;
             return (
               <div key={ev.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
                 {ev.posterUrl && (
-                  <img src={ev.posterUrl} alt={ev.title} className="w-full rounded-xl mb-2 max-h-48 object-cover" />
+                  <img
+                    src={ev.posterUrl}
+                    alt={ev.title}
+                    className="w-full rounded-xl mb-2 max-h-64 object-contain bg-gray-50"
+                  />
                 )}
                 <div className="flex items-center justify-between gap-2">
                   <div>
@@ -945,11 +949,11 @@ function DashboardInner() {
                       isDone ? 'border-2 border-gray-200 text-gray-300' : 'btn-3d btn-3d-mint bg-mint text-white'
                     }`}
                   >
-                    {isPending ? '승인 대기 중' : isApprovedToday ? '오늘 완료' : completing === ev.id ? '처리 중...' : '완료했어요'}
+                    {isPending ? '승인 대기 중' : isApproved ? '완료됨' : completing === ev.id ? '처리 중...' : '완료했어요'}
                   </button>
                 </div>
                 {ev.myStatus === 'approved' && (
-                  <p className="text-[11px] text-mint-deep mt-1">오늘 승인되어 코인을 받았어요. 내일 다시 도전할 수 있어요.</p>
+                  <p className="text-[11px] text-mint-deep mt-1">이미 완료해서 코인을 받은 이벤트예요.</p>
                 )}
                 {ev.myStatus === 'rejected' && (
                   <p className="text-[11px] text-coral-deep mt-1">이전 완료 표시는 거절됐어요.</p>

@@ -300,7 +300,11 @@ export default async function Home() {
           {events.map((ev) => (
             <div key={ev.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
               {ev.posterUrl && (
-                <img src={ev.posterUrl} alt={ev.title} className="w-full rounded-xl mb-2 max-h-48 object-cover" />
+                <img
+                  src={ev.posterUrl}
+                  alt={ev.title}
+                  className="w-full rounded-xl mb-2 max-h-64 object-contain bg-gray-50"
+                />
               )}
               <div className="flex items-center justify-between">
                 <div className="font-bold text-sm">{ev.title}</div>

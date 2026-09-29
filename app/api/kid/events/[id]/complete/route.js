@@ -2,14 +2,6 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getKidId } from '@/lib/session';
 
-// 오늘(KST 기준) 자정의 UTC 시각 — "오늘 이미 완료했는지" 체크에 씁니다.
-const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-function todayStartUtcIso() {
-  const kst = new Date(Date.now() + KST_OFFSET_MS);
-  kst.setUTCHours(0, 0, 0, 0);
-  return new Date(kst.getTime() - KST_OFFSET_MS).toISOString();
-}
-
 export async function POST(_req, { params }) {
   const kidId = getKidId();
   if (!kidId) return NextResponse.json({ ok: false, error: '로그인이 필요해요.' }, { status: 401 });
@@ -25,21 +17,21 @@ export async function POST(_req, { params }) {
       return NextResponse.json({ ok: false, error: '진행 중인 이벤트가 아니에요.' }, { status: 400 });
     }
 
-    // 오늘 이미 승인 대기 중이거나 승인(코인 지급)된 요청이 있으면 다시 완료 신청을 막습니다.
-    // 관리자가 승인 여부를 매번 기억하지 않아도 중복 지급이 안 나게 하려는 안전장치예요.
-    const { data: existingToday, error: existingErr } = await sb
+    // 이 이벤트는 한 아이당 평생 한 번만 완료 신청할 수 있습니다(승인 대기 중이거나 이미
+    // 승인된 요청이 하나라도 있으면 막음). 하루 지나면 다시 신청하는 걸 막기 위한 정책이라
+    // 날짜로 제한을 풀지 않습니다 — 다시 하게 하고 싶으면 관리자가 새 이벤트를 등록해야 해요.
+    const { data: existing, error: existingErr } = await sb
       .from('event_submissions')
       .select('id, status')
       .eq('event_id', event.id)
       .eq('kid_id', kidId)
-      .gte('created_at', todayStartUtcIso())
       .in('status', ['pending', 'approved'])
       .limit(1);
     if (existingErr) throw existingErr;
-    if (existingToday.length > 0) {
-      const isApproved = existingToday[0].status === 'approved';
+    if (existing.length > 0) {
+      const isApproved = existing[0].status === 'approved';
       return NextResponse.json(
-        { ok: false, error: isApproved ? '오늘은 이미 완료해서 코인을 받았어요. 내일 다시 도전해주세요!' : '이미 승인 대기 중이에요.' },
+        { ok: false, error: isApproved ? '이미 완료해서 코인을 받은 이벤트예요.' : '이미 승인 대기 중이에요.' },
         { status: 400 }
       );
     }

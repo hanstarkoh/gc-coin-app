@@ -1136,7 +1136,11 @@ function EventsTab({ showToast, onPendingCountChange }) {
           />
           {uploadingPoster && <p className="text-[11px] text-gray-400 mt-1">업로드 중...</p>}
           {posterUrl && !uploadingPoster && (
-            <img src={posterUrl} alt="포스터 미리보기" className="w-full rounded-xl mt-2 max-h-40 object-cover" />
+            <img
+              src={posterUrl}
+              alt="포스터 미리보기"
+              className="w-full rounded-xl mt-2 max-h-64 object-contain bg-gray-50"
+            />
           )}
         </div>
         <button onClick={add} className="btn-3d btn-3d-gold w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm">
