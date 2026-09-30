@@ -346,6 +346,23 @@ alter table events add column if not exists poster_path text;
 alter table events add column if not exists repeat_type text not null default 'once'
   check (repeat_type in ('once', 'repeatable'));
 
+-- 성장 지표 1단계: 출석 코인 지급 순간(그 등원 회차)의 자산 상태를 한 줄 기록.
+-- balance는 그날 출석 코인을 더하기 "직전" 값이라, "지난 등원 때 자산 -> 이번 등원 때 자산"
+-- 비교가 가능해집니다. (kid_id, visit_date) unique라 같은 날 여러 번 지급을 눌러도 중복 행이
+-- 안 생기고(upsert ignoreDuplicates), 스냅샷 저장이 실패해도 출석 지급 자체는 막지 않습니다.
+create table if not exists kid_visit_snapshots (
+  id uuid primary key default gen_random_uuid(),
+  kid_id uuid not null references kids(id) on delete cascade,
+  visit_date date not null,
+  balance int not null,
+  deposit_principal int not null default 0,
+  stock_value int not null default 0,
+  created_at timestamptz not null default now(),
+  unique (kid_id, visit_date)
+);
+create index if not exists idx_kid_visit_snapshots_kid on kid_visit_snapshots(kid_id, visit_date);
+alter table kid_visit_snapshots enable row level security;
+
 -- 구인시장: 당일 실제로 도와줄 사람을 모집하는 용도(예: 매점 도우미). 정원이 있어서
 -- 관리자가 지원자 중 골라서 채용하고, 실제로 일을 끝내면 완료 처리해서 코인을 지급합니다.
 create table if not exists job_postings (

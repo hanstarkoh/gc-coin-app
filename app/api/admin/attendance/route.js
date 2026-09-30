@@ -36,6 +36,41 @@ export async function POST(req) {
       .in('id', targetIds);
     if (kidsErr) throw kidsErr;
 
+    // 성장 지표용: 출석 코인을 더하기 "직전" 자산 상태(잔액/예금 원금/주식 평가액)를 한 줄
+    // 기록해둡니다. 이 스냅샷이 실패해도 출석 지급 자체는 절대 막지 않아요(로그만 남김).
+    try {
+      const [{ data: deposits }, { data: holdings }, { data: allStocks }] = await Promise.all([
+        sb.from('kid_deposits').select('kid_id, principal').eq('claimed', false).in('kid_id', targetIds),
+        sb.from('stock_holdings').select('kid_id, stock_id, shares').in('kid_id', targetIds),
+        sb.from('stocks').select('id, price'),
+      ]);
+
+      const depositMap = new Map();
+      for (const d of deposits || []) depositMap.set(d.kid_id, (depositMap.get(d.kid_id) || 0) + d.principal);
+
+      const priceMap = new Map((allStocks || []).map((s) => [s.id, s.price]));
+      const stockMap = new Map();
+      for (const h of holdings || []) {
+        const price = priceMap.get(h.stock_id) || 0;
+        stockMap.set(h.kid_id, (stockMap.get(h.kid_id) || 0) + h.shares * price);
+      }
+
+      const snapshotRows = kids.map((kid) => ({
+        kid_id: kid.id,
+        visit_date: today,
+        balance: kid.balance,
+        deposit_principal: depositMap.get(kid.id) || 0,
+        stock_value: stockMap.get(kid.id) || 0,
+      }));
+
+      const { error: snapErr } = await sb
+        .from('kid_visit_snapshots')
+        .upsert(snapshotRows, { onConflict: 'kid_id,visit_date', ignoreDuplicates: true });
+      if (snapErr) console.error('kid_visit_snapshots insert failed:', snapErr.message);
+    } catch (snapErr) {
+      console.error('kid_visit_snapshots insert failed:', snapErr);
+    }
+
     for (const kid of kids) {
       const { error: updErr } = await sb
         .from('kids')

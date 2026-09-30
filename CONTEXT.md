@@ -169,6 +169,9 @@ PIN 변경, 간식 주문 오픈/마감)
 - **기부함**: `group_goals`(목표) · `group_goal_donations`(기부 내역)
 - **확성기**: `announcements`(메시지/만료시각/삭제여부)
 - **예측시장**: `predictions`(질문/상태/정답) · `prediction_bets`(베팅, prediction+kid당 1건)
+- **성장 지표**(결과보고서용, 진행 중): `kid_visit_snapshots`(출석 코인 지급 "직전" 시점의 잔액/
+  예금원금/주식평가액을 등원일마다 한 줄씩 기록. `app/api/admin/attendance/route.js`에서 출석
+  지급과 같은 흐름으로 적재, 실패해도 출석 지급 자체는 안 막음. `kid_id`+`visit_date` unique)
 
 ## 중요한 설계 원칙
 
