@@ -2939,6 +2939,7 @@ function GrowthTab({ kids, showToast }) {
   const [goalSummary, setGoalSummary] = useState(null);
   const [reach, setReach] = useState(null);
   const [sentences, setSentences] = useState(null);
+  const [overview, setOverview] = useState(null);
   const [expandedKidId, setExpandedKidId] = useState(null);
   const [anonymize, setAnonymize] = useState(true);
 
@@ -2954,12 +2955,13 @@ function GrowthTab({ kids, showToast }) {
       monthlyParams.set('from', fromDate.toISOString().slice(0, 10));
       monthlyParams.set('to', now.toISOString().slice(0, 10));
 
-      const [m, k, s, r, sent] = await Promise.all([
+      const [m, k, s, r, sent, ov] = await Promise.all([
         fetch(`/api/admin/growth/monthly?${monthlyParams}`).then((res) => res.json()),
         fetch(`/api/admin/growth/kids?${params}`).then((res) => res.json()),
         fetch(`/api/admin/growth/summary?${params}`).then((res) => res.json()),
         fetch(`/api/admin/growth/reach?${params}`).then((res) => res.json()),
         fetch(`/api/admin/growth/sentences?${params}`).then((res) => res.json()),
+        fetch(`/api/admin/growth/overview?${params}`).then((res) => res.json()),
       ]);
       if (m.ok) setMonthly(m);
       else showToast(m.error || '월별 지표를 불러오지 못했어요.');
@@ -2967,6 +2969,7 @@ function GrowthTab({ kids, showToast }) {
       if (s.ok) setGoalSummary(s.summary);
       if (r.ok) setReach(r);
       if (sent.ok) setSentences(sent.sentences);
+      if (ov.ok) setOverview(ov.summary);
     },
     [showToast]
   );
@@ -2978,7 +2981,8 @@ function GrowthTab({ kids, showToast }) {
 
   const copySentences = () => {
     if (!sentences) return;
-    navigator.clipboard.writeText(sentences.join('\n'));
+    const text = [overview, '', ...sentences].filter((s) => s != null).join('\n');
+    navigator.clipboard.writeText(text);
     showToast('복사했어요.');
   };
 
@@ -3196,6 +3200,11 @@ function GrowthTab({ kids, showToast }) {
             </div>
           );
         })}
+      </Card>
+
+      <Card title="총평">
+        {!overview && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
+        {overview && <p className="text-xs text-gray-700 leading-relaxed">{overview}</p>}
       </Card>
 
       <Card title="보고서 문장">

@@ -7,6 +7,7 @@ import {
   getGoalSummary,
   getCumulativeReach,
   buildReportSentences,
+  buildOverallSummary,
   getKidsMonthlySeries,
   getRawExportData,
 } from '@/lib/growthMetrics';
@@ -37,12 +38,13 @@ export async function GET(req) {
     const sb = supabaseAdmin();
     const filter = { kidId, scope };
 
-    const [monthly, kidProgress, goalSummary, reach, sentences, kidMonthlySeries, rawExport] = await Promise.all([
+    const [monthly, kidProgress, goalSummary, reach, sentences, overview, kidMonthlySeries, rawExport] = await Promise.all([
       getMonthlyGroupMetrics(sb, from, to, filter),
       getKidProgress(sb, filter),
       getGoalSummary(sb, filter),
       getCumulativeReach(sb, filter),
       buildReportSentences(sb, filter),
+      buildOverallSummary(sb, filter),
       getKidsMonthlySeries(sb, from, to, filter),
       getRawExportData(sb, filter),
     ]);
@@ -55,6 +57,7 @@ export async function GET(req) {
       goalSummary,
       reach,
       sentences,
+      overview,
       kidMonthlySeries,
       visitSnapshots: rawExport.visitSnapshots,
       stockOrders: rawExport.stockOrders,
