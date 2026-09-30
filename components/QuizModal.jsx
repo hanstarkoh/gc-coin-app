@@ -1,16 +1,32 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useToast } from './Toast';
+import { MIN_SECONDS_PER_QUESTION } from '@/lib/quiz';
 
 export default function QuizModal({ quiz, onClose, onSubmitted }) {
   const showToast = useToast();
   const [answers, setAnswers] = useState(() => quiz.questions.map(() => null));
   const [submitting, setSubmitting] = useState(false);
+  const startedAt = useRef(Date.now());
+  const requiredMs = quiz.questions.length * MIN_SECONDS_PER_QUESTION * 1000;
+  const [remainingSec, setRemainingSec] = useState(Math.ceil(requiredMs / 1000));
+
+  useEffect(() => {
+    const tick = () => {
+      const left = Math.ceil((requiredMs - (Date.now() - startedAt.current)) / 1000);
+      setRemainingSec(Math.max(0, left));
+    };
+    tick();
+    const id = setInterval(tick, 500);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const allAnswered = answers.every((a) => a != null);
+  const canSubmit = allAnswered && remainingSec <= 0;
 
   const submit = async () => {
-    if (!allAnswered || submitting) return;
+    if (!canSubmit || submitting) return;
     setSubmitting(true);
     const res = await fetch(`/api/kid/quiz/${quiz.id}/submit`, {
       method: 'POST',
@@ -44,7 +60,10 @@ export default function QuizModal({ quiz, onClose, onSubmitted }) {
             ✕
           </button>
         </div>
-        <p className="text-[11px] text-gray-400 mb-3">정답과 상관없이 성실하게 답하면 참여 보상을 받아요. 한 번 제출하면 다시 풀 수 없어요.</p>
+        <p className="text-[11.5px] text-navy bg-paper rounded-xl px-3 py-2 mb-3 leading-relaxed">
+          <b>맞고 틀리고는 전혀 상관없어요.</b> 점수는 평가에 쓰이지 않으니 아는 대로 편하게, 성실하게만 답해주세요.
+          한 번 제출하면 다시 풀 수 없어요.
+        </p>
 
         <div className="space-y-4">
           {quiz.questions.map((q, qi) => (
@@ -71,10 +90,10 @@ export default function QuizModal({ quiz, onClose, onSubmitted }) {
 
         <button
           onClick={submit}
-          disabled={!allAnswered || submitting}
+          disabled={!canSubmit || submitting}
           className="btn-3d btn-3d-gold mt-4 bg-gold text-navy-deep rounded-full px-6 py-2.5 text-sm font-display w-full disabled:opacity-50"
         >
-          {submitting ? '제출 중...' : '제출하기'}
+          {submitting ? '제출 중...' : remainingSec > 0 ? `천천히 읽어주세요 (${remainingSec}초)` : '제출하기'}
         </button>
       </div>
     </div>
