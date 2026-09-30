@@ -57,6 +57,8 @@ lib/
   stockEarnings.js     # 실적발표 헤드라인 뱅크 + 펀더멘털 라벨
   history.js          # 청소년 개인 통합 사용내역(transactions+stock_orders+kid_inventory 합침)
   menuCategories.js   # 금청수 상점 메뉴 소분류(간식/음료/완구/기타)
+  growthConfig.js     # 성장 지표 표본 부족 기준값(월 집단/개인 비교 최소 건수 등)
+  growthMetrics.js    # 성장 지표 계산 모듈(결과보고서용, 진행 중 — 화면/엑셀이 이 함수만 씀)
 
 components/
   TopBar, PinPad, Toast, LevelBar, BadgeGrid, Celebration(컨페티), MenuTabs,
@@ -171,7 +173,13 @@ PIN 변경, 간식 주문 오픈/마감)
 - **예측시장**: `predictions`(질문/상태/정답) · `prediction_bets`(베팅, prediction+kid당 1건)
 - **성장 지표**(결과보고서용, 진행 중): `kid_visit_snapshots`(출석 코인 지급 "직전" 시점의 잔액/
   예금원금/주식평가액을 등원일마다 한 줄씩 기록. `app/api/admin/attendance/route.js`에서 출석
-  지급과 같은 흐름으로 적재, 실패해도 출석 지급 자체는 안 막음. `kid_id`+`visit_date` unique)
+  지급과 같은 흐름으로 적재, 실패해도 출석 지급 자체는 안 막음. `kid_id`+`visit_date` unique).
+  계산은 `lib/growthMetrics.js`(청소년 개인은 "등원 회차"/매매 "건수" 기준 첫N vs 최근N 비교,
+  집단은 월별 합산 + 전월대비 %p, 표본부족은 `lib/growthConfig.js` 기준값 미달 시 값을 안 만들고
+  insufficient/pending 표시). 이 계산을 위해 `announcements.amount`(확성기 지출 금액, 예전엔
+  transactions에 안 남아서 저축률 계산에서 빠져있었음)와 `stock_orders.realized`(매도 건별
+  실현손익, 예전엔 kids.invest_realized_profit 누적합에만 반영되고 건별 기록이 없었음) 두
+  컬럼을 새로 추가함 — 둘 다 마이그레이션 이전/이후 값은 null이라 그 이전 기간은 근사치로만 계산됨
 
 ## 중요한 설계 원칙
 

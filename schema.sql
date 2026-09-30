@@ -363,6 +363,17 @@ create table if not exists kid_visit_snapshots (
 create index if not exists idx_kid_visit_snapshots_kid on kid_visit_snapshots(kid_id, visit_date);
 alter table kid_visit_snapshots enable row level security;
 
+-- 성장 지표 2단계 준비: 저축률(수입-소비) 계산에 확성기 지출이 빠져있었음(확성기는
+-- transactions에 안 남고 kids.balance만 깎아서 기록이 없었음). 이후 사용분부터는 그때
+-- 지불한 금액을 남겨서 정확히 집계되게 함(예전 사용분은 null로 남고, 계산 시 현재
+-- MEGAPHONE_PRICE로 근사).
+alter table announcements add column if not exists amount int;
+
+-- 성장 지표 2단계 준비: "수수료 대비 실현손익" 등 기간별 지표를 계산하려면 매도 건별
+-- 실현손익이 남아있어야 하는데, 지금까지는 kids.invest_realized_profit 누적 합계에만
+-- 반영되고 건별 기록이 없었음. 이후 매도분부터 건별로 남김(이전 매도 건은 null).
+alter table stock_orders add column if not exists realized int;
+
 -- 구인시장: 당일 실제로 도와줄 사람을 모집하는 용도(예: 매점 도우미). 정원이 있어서
 -- 관리자가 지원자 중 골라서 채용하고, 실제로 일을 끝내면 완료 처리해서 코인을 지급합니다.
 create table if not exists job_postings (

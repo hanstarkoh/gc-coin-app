@@ -81,12 +81,13 @@ export async function POST(req, { params }) {
       amount,
       fee,
       valuation_at_trade: valuation,
+      realized,
     };
     const { error: orderErr } = await sb.from('stock_orders').insert(orderRow);
     if (orderErr) {
-      // valuation_at_trade 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니, 잔액/보유
-      // 주식은 이미 반영된 뒤라 기록 자체가 안 남는 걸 막기 위해 그 컬럼 없이 재시도합니다.
-      const { valuation_at_trade, ...withoutValuation } = orderRow;
+      // valuation_at_trade/realized 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니, 잔액/보유
+      // 주식은 이미 반영된 뒤라 기록 자체가 안 남는 걸 막기 위해 그 컬럼들 없이 재시도합니다.
+      const { valuation_at_trade, realized: _realized, ...withoutValuation } = orderRow;
       const fallback = await sb.from('stock_orders').insert(withoutValuation);
       if (fallback.error) throw fallback.error;
     }

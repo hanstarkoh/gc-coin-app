@@ -25,13 +25,20 @@ export async function POST(req) {
     const { error: updErr } = await sb.from('kids').update({ balance: kid.balance - MEGAPHONE_PRICE }).eq('id', kid.id);
     if (updErr) throw updErr;
 
-    const { error: insErr } = await sb.from('announcements').insert({
+    const announcementRow = {
       kid_id: kid.id,
       kid_name: kid.name,
       message: trimmed,
       expires_at: kstEndOfTodayUTC().toISOString(),
-    });
-    if (insErr) throw insErr;
+      amount: MEGAPHONE_PRICE,
+    };
+    const { error: insErr } = await sb.from('announcements').insert(announcementRow);
+    if (insErr) {
+      // amount 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니 없이 재시도.
+      const { amount, ...withoutAmount } = announcementRow;
+      const fallback = await sb.from('announcements').insert(withoutAmount);
+      if (fallback.error) throw fallback.error;
+    }
 
     return NextResponse.json({ ok: true });
   } catch (e) {
