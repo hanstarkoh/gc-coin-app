@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getKidId } from '@/lib/session';
-import { quizTypeLabel, PRE_QUIZ_VISIT_LIMIT, isMissingTableError } from '@/lib/quiz';
+import { quizTypeLabel, isPreQuizEligible, isMissingTableError } from '@/lib/quiz';
 
 // 지금 이 청소년이 풀 수 있는(아직 안 푼) 퀴즈 하나를 돌려줍니다(사전 먼저, 그다음 사후).
 // 마이그레이션 전(퀴즈 테이블이 아직 없는 상태)이거나 활성 세트가 없으면 quiz:null로 조용히
@@ -22,23 +22,43 @@ export async function GET() {
     if (!wantsPre && !wantsPost) return NextResponse.json({ ok: true, quiz: null });
 
     let eligibleType = null;
+    let set = null;
     if (wantsPre) {
-      const { count, error: cntErr } = await sb
-        .from('transactions')
-        .select('id', { count: 'exact', head: true })
-        .eq('kid_id', kidId)
-        .eq('reason', '출석');
-      if (cntErr) throw cntErr;
-      if ((count || 0) <= PRE_QUIZ_VISIT_LIMIT) eligibleType = 'pre';
+      const { data: preSet, error: preSetErr } = await sb
+        .from('quiz_sets')
+        .select('id, type, title, reward, is_open, created_at')
+        .eq('type', 'pre')
+        .eq('is_active', true)
+        .maybeSingle();
+      if (preSetErr) throw preSetErr;
+      if (preSet) {
+        const [{ data: kid, error: kidErr }, { count, error: cntErr }] = await Promise.all([
+          sb.from('kids').select('created_at').eq('id', kidId).single(),
+          sb.from('transactions').select('id', { count: 'exact', head: true }).eq('kid_id', kidId).eq('reason', '출석'),
+        ]);
+        if (kidErr) throw kidErr;
+        if (cntErr) throw cntErr;
+        if (isPreQuizEligible({ kidCreatedAt: kid.created_at, quizSetCreatedAt: preSet.created_at, visitCount: count || 0 })) {
+          eligibleType = 'pre';
+          set = preSet;
+        }
+      }
     }
-    if (!eligibleType && wantsPost) eligibleType = 'post';
-    if (!eligibleType) return NextResponse.json({ ok: true, quiz: null });
-
-    let setQuery = sb.from('quiz_sets').select('id, type, title, reward, is_open').eq('type', eligibleType).eq('is_active', true);
-    if (eligibleType === 'post') setQuery = setQuery.eq('is_open', true);
-    const { data: set, error: setErr } = await setQuery.maybeSingle();
-    if (setErr) throw setErr;
-    if (!set) return NextResponse.json({ ok: true, quiz: null });
+    if (!eligibleType && wantsPost) {
+      const { data: postSet, error: postSetErr } = await sb
+        .from('quiz_sets')
+        .select('id, type, title, reward, is_open, created_at')
+        .eq('type', 'post')
+        .eq('is_active', true)
+        .eq('is_open', true)
+        .maybeSingle();
+      if (postSetErr) throw postSetErr;
+      if (postSet) {
+        eligibleType = 'post';
+        set = postSet;
+      }
+    }
+    if (!eligibleType || !set) return NextResponse.json({ ok: true, quiz: null });
 
     const { data: questions, error: qErr } = await sb
       .from('quiz_questions')

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getKidId } from '@/lib/session';
-import { scoreSubmission, PRE_QUIZ_VISIT_LIMIT, quizTypeLabel } from '@/lib/quiz';
+import { scoreSubmission, isPreQuizEligible, quizTypeLabel } from '@/lib/quiz';
 
 export async function POST(req, { params }) {
   const kidId = getKidId();
@@ -15,7 +15,7 @@ export async function POST(req, { params }) {
 
     const { data: set, error: setErr } = await sb
       .from('quiz_sets')
-      .select('id, type, title, reward, is_active, is_open')
+      .select('id, type, title, reward, is_active, is_open, created_at')
       .eq('id', params.id)
       .single();
     if (setErr || !set) return NextResponse.json({ ok: false, error: '퀴즈를 찾을 수 없어요.' }, { status: 404 });
@@ -33,13 +33,13 @@ export async function POST(req, { params }) {
     if (already) return NextResponse.json({ ok: false, error: '이미 응시했어요.' }, { status: 400 });
 
     if (set.type === 'pre') {
-      const { count, error: cntErr } = await sb
-        .from('transactions')
-        .select('id', { count: 'exact', head: true })
-        .eq('kid_id', kidId)
-        .eq('reason', '출석');
+      const [{ data: kidRow, error: kidRowErr }, { count, error: cntErr }] = await Promise.all([
+        sb.from('kids').select('created_at').eq('id', kidId).single(),
+        sb.from('transactions').select('id', { count: 'exact', head: true }).eq('kid_id', kidId).eq('reason', '출석'),
+      ]);
+      if (kidRowErr) throw kidRowErr;
       if (cntErr) throw cntErr;
-      if ((count || 0) > PRE_QUIZ_VISIT_LIMIT) {
+      if (!isPreQuizEligible({ kidCreatedAt: kidRow.created_at, quizSetCreatedAt: set.created_at, visitCount: count || 0 })) {
         return NextResponse.json({ ok: false, error: '사전 퀴즈 응시 기간(첫 3회 등원)이 지났어요.' }, { status: 400 });
       }
     }
