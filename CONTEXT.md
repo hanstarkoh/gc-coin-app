@@ -62,7 +62,8 @@ lib/
 
 components/
   TopBar, PinPad, Toast, LevelBar, BadgeGrid, Celebration(컨페티), MenuTabs,
-  Sparkline(주식 미니 그래프), StockNewsTicker, AnnouncementTicker, InvestGuideModal(가이드 팝업)
+  Sparkline(주식 미니 그래프), StockNewsTicker, AnnouncementTicker, InvestGuideModal(가이드 팝업),
+  GrowthTrendChart(성장 지표 탭 전용 월별 꺾은선, 표본부족 점 흐리게 표시)
 
 schema.sql   # Supabase 테이블 정의 — 전체 마이그레이션의 단일 소스. Supabase SQL Editor에서
              # 수동 실행 필요(Claude Code가 직접 DDL 실행 불가). 새로 추가되는 alter/create문은
@@ -104,13 +105,21 @@ schema.sql   # Supabase 테이블 정의 — 전체 마이그레이션의 단일
 ### 픽업 현황판 (`/pickup-board`)
 로그인 없는 공개 화면(태블릿 거치용). "준비완료" 상태인 주문을 이름/메뉴/장소와 함께 보여줌.
 
-### 관리자 대시보드 (`/admin/dashboard`, 탭 13개)
+### 관리자 대시보드 (`/admin/dashboard`, 탭 14개)
 출석·코인 지급 / 메뉴 관리 / 주문 현황(수령 처리) / 이벤트(포스터 업로드 포함, 완료 승인) /
 구인시장(공고 등록, 지원자 선발/선발취소/완료 처리, 정원 조절) / 종목 관리(등록·업종·펀더멘털·
 실적발표일 지정·수동 뉴스 발표·강제 시세 갱신) / 예측 시장(질문 등록·마감·정산) / 기부함(목표
 등록·달성 완료 처리) / 확성기(부적절한 글 내리기) / 청소년 관리(등록·PIN 초기화·삭제·성별 설정) /
-전체 현황 / 통계(참여율·지출 분석·투자 행동·추격매수 비율·누적 수수료·성별 비교) / 설정(관리자
-PIN 변경, 간식 주문 오픈/마감)
+전체 현황 / 통계(참여율·지출 분석·투자 행동·추격매수 비율·누적 수수료·성별 비교) / **성장 지표**
+(결과보고서용, 아래 참고) / 설정(관리자 PIN 변경, 간식 주문 오픈/마감)
+
+### 성장 지표 탭 (`/admin/dashboard`, 결과보고서용, 진행 중)
+`lib/growthMetrics.js` 계산 결과를 보여주는 탭. 전체/남자/여자/개인 필터 + 조회 개월수(3/6/12/24)
+선택 가능(기존 통계 탭과 같은 scope/kidId 규약). 목표별 "개선 N / 판단 M건" 요약 카드, 월별
+저축률·추격매수 비율 꺾은선(표본 부족 달은 점이 흐리게, `components/GrowthTrendChart.jsx`),
+예금/투자/기부/구인시장 누적 도달률 표, 청소년별 지표 카드(펼치면 지표마다 ▲▼/판단보류 표시),
+결과보고서에 붙여넣을 문장 + 복사 버튼. API: `app/api/admin/growth/{monthly,kids,summary,reach,
+sentences}/route.js` — 전부 `lib/growthMetrics.js`의 같은 이름 함수를 얇게 감싸기만 함.
 
 ### 모의투자 엔진 상세 (`lib/stocks.js`)
 - **가격 갱신 타이밍**: 트래픽에 얹혀 지연 갱신(`maybeUpdateStockPrices`). 토요일 9~18시는

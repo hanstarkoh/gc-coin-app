@@ -7,6 +7,7 @@ import { MENU_CATEGORIES, DEFAULT_MENU_CATEGORY, MENU_DESCRIPTION_MAX_LENGTH } f
 import { SECTORS, sectorLabel } from '@/lib/stockNews';
 import { FUNDAMENTAL_LABELS } from '@/lib/stockEarnings';
 import { EVENT_REPEAT_TYPES } from '@/lib/events';
+import GrowthTrendChart from '@/components/GrowthTrendChart';
 
 const TABS = [
   { key: 'attendance', label: '출석 · 코인 지급' },
@@ -21,6 +22,7 @@ const TABS = [
   { key: 'kids', label: '청소년 관리' },
   { key: 'history', label: '전체 현황' },
   { key: 'stats', label: '통계' },
+  { key: 'growth', label: '성장 지표' },
   { key: 'settings', label: '설정' },
 ];
 
@@ -166,6 +168,7 @@ function DashboardInner() {
         )}
         {tab === 'history' && <HistoryTab kids={kids} showToast={showToast} />}
         {tab === 'stats' && <StatsTab kids={kids} showToast={showToast} />}
+        {tab === 'growth' && <GrowthTab kids={kids} showToast={showToast} />}
         {tab === 'settings' && <SettingsTab showToast={showToast} />}
       </div>
     </div>
@@ -2887,6 +2890,307 @@ function StatsTab({ kids, showToast }) {
           </Card>
         </>
       )}
+    </>
+  );
+}
+
+/* ---------------- GROWTH(성장 지표) TAB ---------------- */
+const GROWTH_GOAL_LABELS = {
+  계획적_금융생활: '계획적 금융생활',
+  합리적_의사결정: '합리적 의사결정',
+  경제_흐름_이해: '경제 흐름 이해',
+  근로_나눔: '근로 · 나눔',
+};
+
+const GROWTH_KID_METRIC_LABELS = {
+  savingsRate: '저축률',
+  depositPrincipal: '예금 평균 원금',
+  assetMaintenanceRatio: '등원간 자산유지율',
+  chaseBuyRate: '추격매수 비율',
+  overvaluedBuyRate: '고평가매수 비율',
+  undervaluedBuyRate: '저평가매수 비율',
+  memoRate: '매수메모 작성률',
+  feeToProfitRatio: '수수료/손익 비율',
+  badNewsSellReactRate: '악재직후매도 비율',
+  goodNewsBuyReactRate: '호재직후매수 비율',
+  jobCompletionRate: '구인시장 완료율',
+  donationRate: '기부율',
+};
+
+function growthFormatValue(key, v) {
+  if (v == null) return '-';
+  if (key === 'depositPrincipal') return `${Math.round(v)} GC`;
+  return `${Math.round(v * 1000) / 10}%`;
+}
+
+function growthVerdict(v) {
+  if (v === 'improved') return { icon: '▲', color: 'text-mint-deep' };
+  if (v === 'worsened') return { icon: '▼', color: 'text-coral-deep' };
+  if (v === 'same') return { icon: '−', color: 'text-gray-400' };
+  return { icon: '?', color: 'text-gray-300' };
+}
+
+function GrowthTab({ kids, showToast }) {
+  const [scope, setScope] = useState('all');
+  const [kidId, setKidId] = useState('');
+  const [monthsBack, setMonthsBack] = useState(6);
+  const [monthly, setMonthly] = useState(null);
+  const [kidProgress, setKidProgress] = useState(null);
+  const [goalSummary, setGoalSummary] = useState(null);
+  const [reach, setReach] = useState(null);
+  const [sentences, setSentences] = useState(null);
+  const [expandedKidId, setExpandedKidId] = useState(null);
+
+  const load = useCallback(
+    async (currentScope, currentKidId, currentMonthsBack) => {
+      const params = new URLSearchParams();
+      if (currentScope === 'kid' && currentKidId) params.set('kidId', currentKidId);
+      else params.set('scope', currentScope);
+
+      const now = new Date();
+      const fromDate = new Date(now.getFullYear(), now.getMonth() - (currentMonthsBack - 1), 1);
+      const monthlyParams = new URLSearchParams(params);
+      monthlyParams.set('from', fromDate.toISOString().slice(0, 10));
+      monthlyParams.set('to', now.toISOString().slice(0, 10));
+
+      const [m, k, s, r, sent] = await Promise.all([
+        fetch(`/api/admin/growth/monthly?${monthlyParams}`).then((res) => res.json()),
+        fetch(`/api/admin/growth/kids?${params}`).then((res) => res.json()),
+        fetch(`/api/admin/growth/summary?${params}`).then((res) => res.json()),
+        fetch(`/api/admin/growth/reach?${params}`).then((res) => res.json()),
+        fetch(`/api/admin/growth/sentences?${params}`).then((res) => res.json()),
+      ]);
+      if (m.ok) setMonthly(m);
+      else showToast(m.error || '월별 지표를 불러오지 못했어요.');
+      if (k.ok) setKidProgress(k.kids);
+      if (s.ok) setGoalSummary(s.summary);
+      if (r.ok) setReach(r);
+      if (sent.ok) setSentences(sent.sentences);
+    },
+    [showToast]
+  );
+
+  useEffect(() => {
+    if (scope === 'kid' && !kidId) return;
+    load(scope, kidId, monthsBack);
+  }, [scope, kidId, monthsBack, load]);
+
+  const copySentences = () => {
+    if (!sentences) return;
+    navigator.clipboard.writeText(sentences.join('\n'));
+    showToast('복사했어요.');
+  };
+
+  return (
+    <>
+      <Card title="보기 범위">
+        <div className="flex gap-1.5 flex-wrap mb-2">
+          {[
+            ['all', '전체'],
+            ['male', '남자'],
+            ['female', '여자'],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => {
+                setScope(key);
+                setKidId('');
+              }}
+              className={`text-xs px-3.5 py-2 rounded-full border-[1.5px] ${
+                scope === key ? 'bg-navy border-navy text-white' : 'border-gray-200 text-gray-500'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <select
+          value={scope === 'kid' ? kidId : ''}
+          onChange={(e) => {
+            if (e.target.value) {
+              setScope('kid');
+              setKidId(e.target.value);
+            }
+          }}
+          className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm mb-2"
+        >
+          <option value="">개인 선택...</option>
+          {kids.map((k) => (
+            <option key={k.id} value={k.id}>
+              {k.name}
+            </option>
+          ))}
+        </select>
+        <div className="flex gap-1.5 flex-wrap">
+          {[
+            [3, '3개월'],
+            [6, '6개월'],
+            [12, '12개월'],
+            [24, '24개월'],
+          ].map(([n, label]) => (
+            <button
+              key={n}
+              onClick={() => setMonthsBack(n)}
+              className={`text-xs px-3 py-1.5 rounded-full border-[1.5px] ${
+                monthsBack === n ? 'bg-gold border-gold text-navy-deep font-bold' : 'border-gray-200 text-gray-500'
+              }`}
+            >
+              최근 {label}
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      <Card title="목표별 요약">
+        {!goalSummary && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
+        {goalSummary && (
+          <div className="grid grid-cols-2 gap-2">
+            {Object.entries(GROWTH_GOAL_LABELS).map(([key, label]) => {
+              const s = goalSummary[key];
+              return (
+                <div key={key} className="bg-paper rounded-xl p-3">
+                  <div className="text-xs font-bold text-navy mb-1">{label}</div>
+                  {!s || s.judgable === 0 ? (
+                    <div className="text-[11px] text-gray-400">표본 부족</div>
+                  ) : (
+                    <div className="text-xs">
+                      <span className="text-mint-deep font-bold">개선 {s.improved}</span>
+                      <span className="text-gray-400"> / 판단 {s.judgable}건</span>
+                      <div className="text-[11px] text-gray-500">{s.pct}%</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+
+      <Card title="월별 추이">
+        {!monthly && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
+        {monthly && (
+          <>
+            <div className="mb-4">
+              <div className="text-xs font-bold text-navy mb-1">평균 저축률</div>
+              <GrowthTrendChart
+                points={monthly.months.map((m) => ({
+                  month: m.month,
+                  value: m.savings?.avgSavingsRate ?? null,
+                  insufficient: m.insufficient || m.savings?.insufficient,
+                }))}
+                color="#3FB68B"
+                formatValue={(v) => `${Math.round(v * 100)}%`}
+              />
+            </div>
+            <div className="mb-2">
+              <div className="text-xs font-bold text-navy mb-1">추격매수 비율</div>
+              <GrowthTrendChart
+                points={monthly.months.map((m) => ({
+                  month: m.month,
+                  value: m.investing?.chaseBuyRate ?? null,
+                  insufficient: m.insufficient || m.investing?.insufficient,
+                }))}
+                color="#E2574C"
+                formatValue={(v) => `${Math.round(v * 100)}%`}
+              />
+            </div>
+            <p className="text-[10.5px] text-gray-400 mt-2">흐린 점은 그 달 표본이 부족해서 참고용이에요.</p>
+          </>
+        )}
+      </Card>
+
+      <Card title="누적 도달률(한 번이라도 해본 비율)">
+        {!reach && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
+        {reach && reach.months.length === 0 && <p className="text-xs text-gray-400 text-center py-4">데이터가 없어요.</p>}
+        {reach && reach.months.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="text-gray-400 text-left">
+                  <th className="py-1 pr-2">월</th>
+                  <th className="py-1 pr-2">예금</th>
+                  <th className="py-1 pr-2">투자</th>
+                  <th className="py-1 pr-2">기부</th>
+                  <th className="py-1">구인</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reach.months.map((m) => (
+                  <tr key={m.month} className="border-t border-dashed border-gray-100">
+                    <td className="py-1 pr-2 font-bold">{m.month}</td>
+                    <td className="py-1 pr-2">{m.deposit.pct}%</td>
+                    <td className="py-1 pr-2">{m.investing.pct}%</td>
+                    <td className="py-1 pr-2">{m.donation.pct}%</td>
+                    <td className="py-1">{m.job.pct}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      <Card title="청소년별 성장">
+        {!kidProgress && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
+        {kidProgress?.map((kid) => {
+          const isOpen = expandedKidId === kid.kidId;
+          return (
+            <div key={kid.kidId} className="py-2 border-b border-dashed border-gray-200 last:border-0">
+              <button
+                onClick={() => setExpandedKidId(isOpen ? null : kid.kidId)}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <span className="text-sm font-bold">{kid.kidName}</span>
+                <span className="text-[10.5px] text-gray-400">
+                  등원 {kid.totalVisits}회 {isOpen ? '▲' : '▼'}
+                </span>
+              </button>
+              {isOpen && (
+                <div className="mt-2 grid grid-cols-2 gap-1.5">
+                  {Object.entries(GROWTH_KID_METRIC_LABELS).map(([key, label]) => {
+                    const m = kid.metrics[key];
+                    if (!m || m.pending) {
+                      return (
+                        <div key={key} className="text-[10.5px] text-gray-300 bg-gray-50 rounded-lg px-2 py-1.5">
+                          {label}: 판단 보류
+                        </div>
+                      );
+                    }
+                    const { icon, color } = growthVerdict(m.verdict);
+                    return (
+                      <div key={key} className="text-[10.5px] bg-paper rounded-lg px-2 py-1.5">
+                        <div className="text-gray-500">{label}</div>
+                        <div className={`font-bold ${color}`}>
+                          {icon} {growthFormatValue(key, m.first)} → {growthFormatValue(key, m.last)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </Card>
+
+      <Card title="보고서 문장">
+        {!sentences && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
+        {sentences && (
+          <>
+            <ul className="text-xs text-gray-600 space-y-1.5 mb-3">
+              {sentences.map((s, i) => (
+                <li key={i}>· {s}</li>
+              ))}
+            </ul>
+            <button
+              onClick={copySentences}
+              className="btn-3d btn-3d-navy w-full bg-navy text-white font-display rounded-xl py-2.5 text-sm"
+            >
+              복사하기
+            </button>
+          </>
+        )}
+      </Card>
     </>
   );
 }
