@@ -154,9 +154,12 @@ API: `app/api/admin/growth/{monthly,kids,summary,reach,sentences,overview}/route
 **청소년 응시**(`app/api/kid/quiz/route.js`, `components/QuizModal.jsx`): 로그인 시 자동으로
 응시 가능한 퀴즈를 확인해서 대시보드 상단에 "📝 미응시 퀴즈 알림" 배너로 보여줌(사전 우선,
 그다음 사후). **사전 퀴즈는 그 청소년의 등원(출석) 기록이 3회 이하일 때까지만** 응시 가능
-(`PRE_QUIZ_VISIT_LIMIT`, `lib/quiz.js`) — 이미 3회를 넘겨 등원한 청소년은 사전 퀴즈를 영영
-못 보므로, 학기 초에 미리 세트를 활성화해두는 게 중요함. 사후 퀴즈는 관리자가 "응시 기간"을
-열어둔 동안 아무 때나 가능. 유형별로 평생 딱 1번만 응시 가능(`quiz_submissions`에
+(`PRE_QUIZ_VISIT_LIMIT`, `lib/quiz.js`) — 단, **그 사전 세트가 생기기 전부터 있던 청소년은
+등원 횟수와 무관하게 1회 허용**하는 구제 규칙(`isPreQuizEligible()`, `kids.created_at` <
+`quiz_sets.created_at`이면 통과)이 있어서, 이미 몇 회 등원한 상태로 사전 퀴즈를 처음 여는
+경우도 문제없음. 이 구제는 "세트 생성 시점"을 기준으로 자동 적용되므로, 이후 새로 등록되는
+청소년은 별도 조치 없이 원래 규칙(첫 3회 등원)이 그대로 적용됨. 사후 퀴즈는 관리자가 "응시
+기간"을 열어둔 동안 아무 때나 가능. 유형별로 평생 딱 1번만 응시 가능(`quiz_submissions`에
 kid_id+quiz_type unique 제약, 재응시 불가). 제출하면 정답 여부와 무관하게 보상 지급(`transactions`
 type='quiz'), 점수(정답 개수)는 별도로 기록만 되고 청소년에게 공개되지 않음.
 
