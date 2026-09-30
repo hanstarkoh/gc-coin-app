@@ -14,6 +14,7 @@
 ## 기술 스택
 
 - Next.js 14 (App Router), JavaScript (TypeScript 아님)
+- ExcelJS — 성장 지표 결과보고서 `.xlsx` 생성(서버 라우트 전용, 네이티브 차트 생성은 미지원)
 - Supabase(Postgres) — 서버(API 라우트)에서 `SUPABASE_SERVICE_ROLE_KEY`로만 접근, 클라이언트는
   직접 DB 접근 안 함. Supabase Storage(버킷 `event-posters`)도 같은 키로 사용
 - Tailwind CSS, 폰트 Jua(제목)/Noto Sans KR(본문)
@@ -30,7 +31,7 @@ app/
   kid/dashboard/page.js          # 청소년 대시보드 (아래 "청소년 대시보드" 기능 전부 여기 모여있음)
   kid/room/page.js, room/[id]/page.js, room/friends/page.js   # 마이룸 배치·친구 구경
   admin/page.js                  # 관리자 PIN 로그인
-  admin/dashboard/page.js        # 관리자 대시보드 (탭 13개, 아래 "관리자 대시보드" 참고)
+  admin/dashboard/page.js        # 관리자 대시보드 (탭 14개, 아래 "관리자 대시보드" 참고)
   pickup-board/page.js           # 로그인 없는 픽업 현황판(태블릿용 공개 화면)
 
   api/kids/route.js                          # GET 이름 목록(공개, 로그인 화면용) + 기부왕/투자왕 계산
@@ -59,6 +60,7 @@ lib/
   menuCategories.js   # 금청수 상점 메뉴 소분류(간식/음료/완구/기타)
   growthConfig.js     # 성장 지표 표본 부족 기준값(월 집단/개인 비교 최소 건수 등)
   growthMetrics.js    # 성장 지표 계산 모듈(결과보고서용, 진행 중 — 화면/엑셀이 이 함수만 씀)
+  growthExcel.js      # 성장 지표 엑셀(.xlsx) 시트 6개 조립(ExcelJS, 서식만 담당·계산 로직 없음)
 
 components/
   TopBar, PinPad, Toast, LevelBar, BadgeGrid, Celebration(컨페티), MenuTabs,
@@ -113,13 +115,26 @@ schema.sql   # Supabase 테이블 정의 — 전체 마이그레이션의 단일
 전체 현황 / 통계(참여율·지출 분석·투자 행동·추격매수 비율·누적 수수료·성별 비교) / **성장 지표**
 (결과보고서용, 아래 참고) / 설정(관리자 PIN 변경, 간식 주문 오픈/마감)
 
-### 성장 지표 탭 (`/admin/dashboard`, 결과보고서용, 진행 중)
+### 성장 지표 탭 (`/admin/dashboard`, 결과보고서용, 1~4단계 완료 · 5단계(경제 퀴즈)는 대기 중)
 `lib/growthMetrics.js` 계산 결과를 보여주는 탭. 전체/남자/여자/개인 필터 + 조회 개월수(3/6/12/24)
 선택 가능(기존 통계 탭과 같은 scope/kidId 규약). 목표별 "개선 N / 판단 M건" 요약 카드, 월별
 저축률·추격매수 비율 꺾은선(표본 부족 달은 점이 흐리게, `components/GrowthTrendChart.jsx`),
 예금/투자/기부/구인시장 누적 도달률 표, 청소년별 지표 카드(펼치면 지표마다 ▲▼/판단보류 표시),
-결과보고서에 붙여넣을 문장 + 복사 버튼. API: `app/api/admin/growth/{monthly,kids,summary,reach,
-sentences}/route.js` — 전부 `lib/growthMetrics.js`의 같은 이름 함수를 얇게 감싸기만 함.
+결과보고서에 붙여넣을 문장 + 복사 버튼, **엑셀 다운로드**(이름 익명화 체크박스, 기본 체크).
+API: `app/api/admin/growth/{monthly,kids,summary,reach,sentences}/route.js` — 전부
+`lib/growthMetrics.js`의 같은 이름 함수를 얇게 감싸기만 함.
+
+**엑셀 다운로드**(`app/api/admin/growth/export/route.js`, `lib/growthExcel.js`, ExcelJS 사용):
+현재 탭에서 고른 범위/개월수 그대로 `.xlsx`로 내려받음. 시트 6개 — ① 요약(목표·지표×월, 전월
+대비를 셀 자체의 아이콘+색으로 표시 — ▲/▼는 그 값이 실제로 올랐는지/내렸는지, 초록/빨강은
+그게 지표 방향상 좋은 신호인지를 나타냄, 비교 불가 달은 회색 "표본 부족") ② 보고서 문장
+③ 청소년별(지표마다 처음/최근/변화/판정 + 오른쪽에 월별 저축률·추격매수 참고값)
+④ 누적 도달률 ⑤ 퀴즈(5단계 전까지는 빈 자리만 만들어둠) ⑥ 원자료(`kid_visit_snapshots`,
+`stock_orders` 원본 행). 이름 익명화 체크 시 "청소년A, B…"로 치환(이름 가나다순으로 라벨
+배정, 모든 시트에서 동일 매핑 사용). 금액·비율 추이 행에는 엑셀 네이티브 데이터 막대(dataBar
+조건부서식) 적용. **ExcelJS는 엑셀 네이티브 차트(꺾은선 등) 생성 기능이 없어서(값/스타일만
+지원) 1차 범위에선 차트 없이 서식만으로 처리함 — 필요해지면 "차트 있는 템플릿에 값만 채우기"
+방식을 2차로 검토.**
 
 ### 모의투자 엔진 상세 (`lib/stocks.js`)
 - **가격 갱신 타이밍**: 트래픽에 얹혀 지연 갱신(`maybeUpdateStockPrices`). 토요일 9~18시는

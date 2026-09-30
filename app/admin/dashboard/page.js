@@ -2940,6 +2940,7 @@ function GrowthTab({ kids, showToast }) {
   const [reach, setReach] = useState(null);
   const [sentences, setSentences] = useState(null);
   const [expandedKidId, setExpandedKidId] = useState(null);
+  const [anonymize, setAnonymize] = useState(true);
 
   const load = useCallback(
     async (currentScope, currentKidId, currentMonthsBack) => {
@@ -2979,6 +2980,18 @@ function GrowthTab({ kids, showToast }) {
     if (!sentences) return;
     navigator.clipboard.writeText(sentences.join('\n'));
     showToast('복사했어요.');
+  };
+
+  const downloadExcel = () => {
+    const params = new URLSearchParams();
+    if (scope === 'kid' && kidId) params.set('kidId', kidId);
+    else params.set('scope', scope);
+    const now = new Date();
+    const fromDate = new Date(now.getFullYear(), now.getMonth() - (monthsBack - 1), 1);
+    params.set('from', fromDate.toISOString().slice(0, 10));
+    params.set('to', now.toISOString().slice(0, 10));
+    params.set('anonymize', anonymize ? '1' : '0');
+    window.open(`/api/admin/growth/export?${params}`, '_blank');
   };
 
   return (
@@ -3038,6 +3051,18 @@ function GrowthTab({ kids, showToast }) {
               최근 {label}
             </button>
           ))}
+        </div>
+        <div className="border-t border-dashed border-gray-200 mt-3 pt-3">
+          <label className="flex items-center gap-2 text-xs text-gray-600 mb-2">
+            <input type="checkbox" checked={anonymize} onChange={(e) => setAnonymize(e.target.checked)} className="w-4 h-4" />
+            이름 익명화 (청소년A, B... 로 표시)
+          </label>
+          <button
+            onClick={downloadExcel}
+            className="btn-3d btn-3d-gold w-full bg-gold text-navy-deep font-display rounded-xl py-2.5 text-sm"
+          >
+            📊 엑셀 다운로드
+          </button>
         </div>
       </Card>
 
