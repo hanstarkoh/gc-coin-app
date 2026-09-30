@@ -7,6 +7,7 @@ import LevelBar from '@/components/LevelBar';
 import BadgeGrid from '@/components/BadgeGrid';
 import Celebration from '@/components/Celebration';
 import InvestGuideModal from '@/components/InvestGuideModal';
+import QuizModal from '@/components/QuizModal';
 import Sparkline from '@/components/Sparkline';
 import StockNewsTicker from '@/components/StockNewsTicker';
 import { sectorLabel } from '@/lib/stockNews';
@@ -93,6 +94,8 @@ function DashboardInner() {
   const [orderQty, setOrderQty] = useState('1');
   const [announceText, setAnnounceText] = useState('');
   const [announcing, setAnnouncing] = useState(false);
+  const [quiz, setQuiz] = useState(null);
+  const [showQuizModal, setShowQuizModal] = useState(false);
 
   const loadMe = useCallback(async () => {
     const res = await fetch('/api/kid/me');
@@ -151,6 +154,12 @@ function DashboardInner() {
     if (data.ok) setStockNews(data.news);
   }, []);
 
+  const loadQuiz = useCallback(async () => {
+    const res = await fetch('/api/kid/quiz');
+    const data = await res.json();
+    if (data.ok) setQuiz(data.quiz);
+  }, []);
+
   useEffect(() => {
     (async () => {
       const meData = await loadMe();
@@ -160,6 +169,7 @@ function DashboardInner() {
       await loadStocks();
       await loadStockNews();
       await loadGoals();
+      await loadQuiz();
       const tx = await loadHistory();
       if (meData?.ok) checkCelebrations(meData, tx);
     })();
@@ -493,6 +503,23 @@ function DashboardInner() {
                 {o.quantity > 1 ? ` × ${o.quantity}` : ''} — <span className="font-bold">{o.pickup_location || '사무실'}</span>로 받으러 오세요!
               </div>
             ))}
+          </div>
+        )}
+
+        {quiz && (
+          <div className="bg-navy border-2 border-navy-deep rounded-2xl p-4 animate-popIn flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="font-display text-sm text-white mb-0.5">📝 미응시 퀴즈 알림</div>
+              <div className="text-[11.5px] text-white/70 truncate">
+                {quiz.typeLabel} 경제 퀴즈 "{quiz.title}"{quiz.reward > 0 ? ` · 참여하면 ${quiz.reward} GC` : ''}
+              </div>
+            </div>
+            <button
+              onClick={() => setShowQuizModal(true)}
+              className="btn-3d btn-3d-gold shrink-0 bg-gold text-navy-deep font-display rounded-xl px-4 py-2 text-xs"
+            >
+              지금 풀기
+            </button>
           </div>
         )}
 
@@ -1257,6 +1284,18 @@ function DashboardInner() {
         />
       )}
       {showInvestGuide && <InvestGuideModal onClose={() => setShowInvestGuide(false)} />}
+      {showQuizModal && quiz && (
+        <QuizModal
+          quiz={quiz}
+          onClose={() => setShowQuizModal(false)}
+          onSubmitted={(result) => {
+            setShowQuizModal(false);
+            setQuiz(null);
+            if (result.reward > 0) setCelebration({ type: 'earn', amount: result.reward });
+            loadMe();
+          }}
+        />
+      )}
     </div>
   );
 }

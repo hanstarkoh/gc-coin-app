@@ -7,6 +7,7 @@ import { MENU_CATEGORIES, DEFAULT_MENU_CATEGORY, MENU_DESCRIPTION_MAX_LENGTH } f
 import { SECTORS, sectorLabel } from '@/lib/stockNews';
 import { FUNDAMENTAL_LABELS } from '@/lib/stockEarnings';
 import { EVENT_REPEAT_TYPES } from '@/lib/events';
+import { QUIZ_TYPES, MIN_CHOICES, MAX_CHOICES, MIN_QUESTIONS, MAX_QUESTIONS } from '@/lib/quiz';
 import GrowthTrendChart from '@/components/GrowthTrendChart';
 
 const TABS = [
@@ -23,6 +24,7 @@ const TABS = [
   { key: 'history', label: '전체 현황' },
   { key: 'stats', label: '통계' },
   { key: 'growth', label: '성장 지표' },
+  { key: 'quiz', label: '경제 퀴즈' },
   { key: 'settings', label: '설정' },
 ];
 
@@ -169,6 +171,7 @@ function DashboardInner() {
         {tab === 'history' && <HistoryTab kids={kids} showToast={showToast} />}
         {tab === 'stats' && <StatsTab kids={kids} showToast={showToast} />}
         {tab === 'growth' && <GrowthTab kids={kids} showToast={showToast} />}
+        {tab === 'quiz' && <QuizTab showToast={showToast} />}
         {tab === 'settings' && <SettingsTab showToast={showToast} />}
       </div>
     </div>
@@ -2915,6 +2918,7 @@ const GROWTH_KID_METRIC_LABELS = {
   goodNewsBuyReactRate: '호재직후매수 비율',
   jobCompletionRate: '구인시장 완료율',
   donationRate: '기부율',
+  quizScoreChange: '경제 퀴즈 점수(사전→사후)',
 };
 
 function growthFormatValue(key, v) {
@@ -3224,6 +3228,263 @@ function GrowthTab({ kids, showToast }) {
             </button>
           </>
         )}
+      </Card>
+    </>
+  );
+}
+
+/* ---------------- 경제 퀴즈 탭 ---------------- */
+function blankQuestion() {
+  return { question: '', choices: ['', '', '', ''], correctIndex: 0 };
+}
+
+function QuizTab({ showToast }) {
+  const [sets, setSets] = useState(null);
+  const [type, setType] = useState('pre');
+  const [title, setTitle] = useState('');
+  const [reward, setReward] = useState('10');
+  const [questions, setQuestions] = useState([blankQuestion()]);
+  const [activateNow, setActivateNow] = useState(true);
+  const [creating, setCreating] = useState(false);
+
+  const load = useCallback(async () => {
+    const res = await fetch('/api/admin/quiz');
+    const data = await res.json();
+    if (data.ok) setSets(data.sets);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const updateQuestion = (qi, patch) => {
+    setQuestions((qs) => qs.map((q, i) => (i === qi ? { ...q, ...patch } : q)));
+  };
+  const updateChoice = (qi, ci, value) => {
+    setQuestions((qs) => qs.map((q, i) => (i !== qi ? q : { ...q, choices: q.choices.map((c, j) => (j === ci ? value : c)) })));
+  };
+  const addChoice = (qi) => {
+    setQuestions((qs) => qs.map((q, i) => (i !== qi || q.choices.length >= MAX_CHOICES ? q : { ...q, choices: [...q.choices, ''] })));
+  };
+  const removeChoice = (qi, ci) => {
+    setQuestions((qs) =>
+      qs.map((q, i) => {
+        if (i !== qi || q.choices.length <= MIN_CHOICES) return q;
+        const choices = q.choices.filter((_, j) => j !== ci);
+        const correctIndex = q.correctIndex >= choices.length ? 0 : q.correctIndex === ci ? 0 : q.correctIndex > ci ? q.correctIndex - 1 : q.correctIndex;
+        return { ...q, choices, correctIndex };
+      })
+    );
+  };
+  const addQuestion = () => {
+    if (questions.length >= MAX_QUESTIONS) return;
+    setQuestions((qs) => [...qs, blankQuestion()]);
+  };
+  const removeQuestion = (qi) => {
+    if (questions.length <= MIN_QUESTIONS) return;
+    setQuestions((qs) => qs.filter((_, i) => i !== qi));
+  };
+
+  const resetForm = () => {
+    setTitle('');
+    setReward('10');
+    setQuestions([blankQuestion()]);
+    setActivateNow(true);
+  };
+
+  const submit = async () => {
+    if (!title.trim()) return showToast('제목을 입력해주세요.');
+    const rewardNum = Number(reward);
+    if (!Number.isInteger(rewardNum) || rewardNum < 0) return showToast('보상은 0 이상 정수로 입력해주세요.');
+    for (const q of questions) {
+      if (!q.question.trim()) return showToast('모든 문항에 질문을 입력해주세요.');
+      if (q.choices.some((c) => !c.trim())) return showToast('모든 보기를 입력해주세요.');
+    }
+    setCreating(true);
+    const res = await fetch('/api/admin/quiz', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, title, reward: rewardNum, questions, isActive: activateNow }),
+    });
+    const data = await res.json();
+    setCreating(false);
+    if (!data.ok) return showToast(data.error || '등록에 실패했어요.');
+    showToast('퀴즈를 등록했어요.');
+    resetForm();
+    load();
+  };
+
+  const patchSet = async (id, patch, successMsg) => {
+    const res = await fetch(`/api/admin/quiz/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    const data = await res.json();
+    if (!data.ok) return showToast(data.error || '변경에 실패했어요.');
+    if (successMsg) showToast(successMsg);
+    load();
+  };
+
+  const deleteSet = async (set) => {
+    if (!confirm(`"${set.title}" 퀴즈를 정말 삭제할까요?`)) return;
+    const res = await fetch(`/api/admin/quiz/${set.id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!data.ok) return showToast(data.error || '삭제에 실패했어요.');
+    showToast('삭제했어요.');
+    load();
+  };
+
+  return (
+    <>
+      <Card title="퀴즈 세트 등록">
+        <div className="flex gap-1.5 mb-3">
+          {QUIZ_TYPES.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setType(t.key)}
+              className={`flex-1 text-sm px-3 py-2.5 rounded-xl border-[1.5px] font-display ${
+                type === t.key ? 'bg-navy border-navy text-white' : 'border-gray-200 text-gray-500'
+              }`}
+            >
+              {t.label} 퀴즈
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-gray-400 mb-3">
+          {type === 'pre' ? '사전 퀴즈는 청소년의 첫 3회 등원 안에만 응시할 수 있어요.' : '사후 퀴즈는 아래에서 "열기"로 기간을 켜둔 동안 응시할 수 있어요.'}
+        </p>
+
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="퀴즈 제목 (예: 2026년 2학기 사전 경제 퀴즈)"
+          className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm mb-2"
+        />
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xs text-gray-500 shrink-0">참여 보상(정답 여부 무관)</span>
+          <input
+            type="number"
+            value={reward}
+            onChange={(e) => setReward(e.target.value)}
+            className="w-24 border-[1.5px] border-gray-200 rounded-lg px-3 py-2 text-sm"
+          />
+          <span className="text-xs text-gray-500">GC</span>
+        </div>
+
+        <div className="space-y-3 mb-3">
+          {questions.map((q, qi) => (
+            <div key={qi} className="bg-paper rounded-xl p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-navy">문항 {qi + 1}</span>
+                {questions.length > MIN_QUESTIONS && (
+                  <button onClick={() => removeQuestion(qi)} className="text-[11px] text-coral-deep">
+                    문항 삭제
+                  </button>
+                )}
+              </div>
+              <input
+                value={q.question}
+                onChange={(e) => updateQuestion(qi, { question: e.target.value })}
+                placeholder="질문을 입력하세요"
+                className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2 text-sm mb-2"
+              />
+              <div className="space-y-1.5">
+                {q.choices.map((c, ci) => (
+                  <div key={ci} className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => updateQuestion(qi, { correctIndex: ci })}
+                      className={`shrink-0 w-6 h-6 rounded-full border-[1.5px] text-[10px] font-bold ${
+                        q.correctIndex === ci ? 'bg-mint border-mint text-white' : 'border-gray-300 text-gray-400'
+                      }`}
+                      title="정답으로 표시"
+                    >
+                      {q.correctIndex === ci ? '✓' : ci + 1}
+                    </button>
+                    <input
+                      value={c}
+                      onChange={(e) => updateChoice(qi, ci, e.target.value)}
+                      placeholder={`보기 ${ci + 1}`}
+                      className="flex-1 border-[1.5px] border-gray-200 rounded-lg px-2.5 py-1.5 text-xs"
+                    />
+                    {q.choices.length > MIN_CHOICES && (
+                      <button onClick={() => removeChoice(qi, ci)} className="text-[11px] text-gray-300 shrink-0">
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {q.choices.length < MAX_CHOICES && (
+                <button onClick={() => addChoice(qi)} className="text-[11px] text-navy mt-1.5">
+                  + 보기 추가
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {questions.length < MAX_QUESTIONS && (
+          <button onClick={addQuestion} className="text-xs text-navy border-[1.5px] border-dashed border-gray-300 rounded-xl w-full py-2 mb-3">
+            + 문항 추가
+          </button>
+        )}
+
+        <label className="flex items-center gap-2 text-xs text-gray-600 mb-2">
+          <input type="checkbox" checked={activateNow} onChange={(e) => setActivateNow(e.target.checked)} className="w-4 h-4" />
+          등록하고 바로 활성화하기(같은 유형의 기존 활성 세트는 자동으로 꺼져요)
+        </label>
+        <button
+          onClick={submit}
+          disabled={creating}
+          className="btn-3d btn-3d-navy w-full bg-navy text-white font-display rounded-xl py-2.5 text-sm disabled:opacity-50"
+        >
+          {creating ? '등록 중...' : '퀴즈 등록'}
+        </button>
+      </Card>
+
+      <Card title="등록된 퀴즈">
+        {!sets && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
+        {sets && sets.length === 0 && <p className="text-xs text-gray-400 text-center py-4">아직 등록된 퀴즈가 없어요.</p>}
+        {sets?.map((s) => (
+          <div key={s.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-bold">
+                {QUIZ_TYPES.find((t) => t.key === s.type)?.label} · {s.title}
+              </span>
+              {s.is_active && <span className="text-[10.5px] bg-mint text-white rounded-full px-2 py-0.5">활성</span>}
+            </div>
+            <div className="text-[11px] text-gray-400 mb-2">
+              문항 {s.questions.length}개 · 보상 {s.reward} GC · 응시 {s.submissionCount}명
+              {s.avgCorrectRate != null && ` · 평균 정답률 ${s.avgCorrectRate}%`}
+            </div>
+            <div className="flex gap-1.5 flex-wrap">
+              <button
+                onClick={() => patchSet(s.id, { isActive: !s.is_active }, s.is_active ? '비활성화했어요.' : '활성화했어요.')}
+                className={`text-xs px-3 py-1.5 rounded-full border-[1.5px] ${
+                  s.is_active ? 'border-gray-200 text-gray-500' : 'bg-navy border-navy text-white'
+                }`}
+              >
+                {s.is_active ? '비활성화' : '활성화'}
+              </button>
+              {s.type === 'post' && (
+                <button
+                  onClick={() => patchSet(s.id, { isOpen: !s.is_open }, s.is_open ? '응시 기간을 닫았어요.' : '응시 기간을 열었어요.')}
+                  className={`text-xs px-3 py-1.5 rounded-full border-[1.5px] ${
+                    s.is_open ? 'bg-gold border-gold text-navy-deep' : 'border-gray-200 text-gray-500'
+                  }`}
+                >
+                  {s.is_open ? '응시 기간 열림' : '응시 기간 닫힘'}
+                </button>
+              )}
+              {s.submissionCount === 0 && (
+                <button onClick={() => deleteSet(s)} className="text-xs px-3 py-1.5 rounded-full border-[1.5px] border-coral text-coral-deep">
+                  삭제
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
       </Card>
     </>
   );

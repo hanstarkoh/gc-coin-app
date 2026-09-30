@@ -61,6 +61,7 @@ lib/
   growthConfig.js     # 성장 지표 표본 부족 기준값(월 집단/개인 비교 최소 건수 등)
   growthMetrics.js    # 성장 지표 계산 모듈(결과보고서용, 진행 중 — 화면/엑셀이 이 함수만 씀)
   growthExcel.js      # 성장 지표 엑셀(.xlsx) 시트 6개 조립(ExcelJS, 서식만 담당·계산 로직 없음)
+  quiz.js             # 경제 퀴즈 공용 상수(사전/사후, 문항·보기 개수 제한, 채점 헬퍼)
 
 components/
   TopBar, PinPad, Toast, LevelBar, BadgeGrid, Celebration(컨페티), MenuTabs,
@@ -107,15 +108,16 @@ schema.sql   # Supabase 테이블 정의 — 전체 마이그레이션의 단일
 ### 픽업 현황판 (`/pickup-board`)
 로그인 없는 공개 화면(태블릿 거치용). "준비완료" 상태인 주문을 이름/메뉴/장소와 함께 보여줌.
 
-### 관리자 대시보드 (`/admin/dashboard`, 탭 14개)
+### 관리자 대시보드 (`/admin/dashboard`, 탭 15개)
 출석·코인 지급 / 메뉴 관리 / 주문 현황(수령 처리) / 이벤트(포스터 업로드 포함, 완료 승인) /
 구인시장(공고 등록, 지원자 선발/선발취소/완료 처리, 정원 조절) / 종목 관리(등록·업종·펀더멘털·
 실적발표일 지정·수동 뉴스 발표·강제 시세 갱신) / 예측 시장(질문 등록·마감·정산) / 기부함(목표
 등록·달성 완료 처리) / 확성기(부적절한 글 내리기) / 청소년 관리(등록·PIN 초기화·삭제·성별 설정) /
 전체 현황 / 통계(참여율·지출 분석·투자 행동·추격매수 비율·누적 수수료·성별 비교) / **성장 지표**
-(결과보고서용, 아래 참고) / 설정(관리자 PIN 변경, 간식 주문 오픈/마감)
+(결과보고서용, 아래 참고) / **경제 퀴즈**(사전/사후 세트 등록·활성화, 아래 참고) / 설정(관리자
+PIN 변경, 간식 주문 오픈/마감)
 
-### 성장 지표 탭 (`/admin/dashboard`, 결과보고서용, 1~4단계 완료 · 5단계(경제 퀴즈)는 대기 중)
+### 성장 지표 탭 (`/admin/dashboard`, 결과보고서용, 1~5단계 완료)
 `lib/growthMetrics.js` 계산 결과를 보여주는 탭. 전체/남자/여자/개인 필터 + 조회 개월수(3/6/12/24)
 선택 가능(기존 통계 탭과 같은 scope/kidId 규약). 목표별 "개선 N / 판단 M건" 요약 카드, 월별
 저축률·추격매수 비율 꺾은선(표본 부족 달은 점이 흐리게, `components/GrowthTrendChart.jsx`),
@@ -136,12 +138,33 @@ API: `app/api/admin/growth/{monthly,kids,summary,reach,sentences,overview}/route
 그게 지표 방향상 좋은 신호인지를 나타냄, 비교 불가 달은 회색 "표본 부족") ② 보고서 문장(맨
 위에 총평 문단, 그 아래 개별 문장들) ③ 청소년별(지표마다 처음/최근/변화/판정 + 오른쪽에 월별
 저축률·추격매수 참고값)
-④ 누적 도달률 ⑤ 퀴즈(5단계 전까지는 빈 자리만 만들어둠) ⑥ 원자료(`kid_visit_snapshots`,
-`stock_orders` 원본 행). 이름 익명화 체크 시 "청소년A, B…"로 치환(이름 가나다순으로 라벨
-배정, 모든 시트에서 동일 매핑 사용). 금액·비율 추이 행에는 엑셀 네이티브 데이터 막대(dataBar
-조건부서식) 적용. **ExcelJS는 엑셀 네이티브 차트(꺾은선 등) 생성 기능이 없어서(값/스타일만
-지원) 1차 범위에선 차트 없이 서식만으로 처리함 — 필요해지면 "차트 있는 템플릿에 값만 채우기"
-방식을 2차로 검토.**
+④ 누적 도달률 ⑤ 퀴즈(활성 세트 기준 청소년별 사전→사후 점수 + 문항별 정답률, 활성 세트가
+없으면 빈 시트) ⑥ 원자료(`kid_visit_snapshots`, `stock_orders` 원본 행). 이름 익명화 체크 시
+"청소년A, B…"로 치환(이름 가나다순으로 라벨 배정, 모든 시트에서 동일 매핑 사용). 금액·비율
+추이 행에는 엑셀 네이티브 데이터 막대(dataBar 조건부서식) 적용. **ExcelJS는 엑셀 네이티브
+차트(꺾은선 등) 생성 기능이 없어서(값/스타일만 지원) 1차 범위에선 차트 없이 서식만으로 처리함
+— 필요해지면 "차트 있는 템플릿에 값만 채우기" 방식을 2차로 검토.**
+
+### 경제 퀴즈 탭 (`/admin/dashboard`, 성장 지표 5단계 — `lib/quiz.js`)
+사전/사후 두 유형으로 문제 세트(문항 1~10개, 문항당 보기 2~5개)를 등록·활성화. 유형별로 동시에
+하나만 활성화됨(새로 활성화하면 같은 유형의 기존 활성 세트는 자동으로 꺼짐). 참여 보상은 정답
+여부와 무관하게 지급(추측 응시를 줄이려고 정답 보상이 아니라 참여 보상으로 설계). 사후 세트는
+"응시 기간 열기/닫기" 토글 추가 보유. 세트 삭제는 응시 기록이 없을 때만 가능(있으면 비활성화만).
+
+**청소년 응시**(`app/api/kid/quiz/route.js`, `components/QuizModal.jsx`): 로그인 시 자동으로
+응시 가능한 퀴즈를 확인해서 대시보드 상단에 "📝 미응시 퀴즈 알림" 배너로 보여줌(사전 우선,
+그다음 사후). **사전 퀴즈는 그 청소년의 등원(출석) 기록이 3회 이하일 때까지만** 응시 가능
+(`PRE_QUIZ_VISIT_LIMIT`, `lib/quiz.js`) — 이미 3회를 넘겨 등원한 청소년은 사전 퀴즈를 영영
+못 보므로, 학기 초에 미리 세트를 활성화해두는 게 중요함. 사후 퀴즈는 관리자가 "응시 기간"을
+열어둔 동안 아무 때나 가능. 유형별로 평생 딱 1번만 응시 가능(`quiz_submissions`에
+kid_id+quiz_type unique 제약, 재응시 불가). 제출하면 정답 여부와 무관하게 보상 지급(`transactions`
+type='quiz'), 점수(정답 개수)는 별도로 기록만 되고 청소년에게 공개되지 않음.
+
+**성장 지표 연동**: `lib/growthMetrics.js`의 `getKidProgress()`가 청소년별 사전→사후 점수를
+`metrics.quizScoreChange`로 계산해서 "경제 흐름 이해" 목표에 포함(`GOAL_METRIC_MAP`). 사전·사후
+둘 다 응시해야 값이 나오고, 하나라도 없으면 pending. 퀴즈 테이블이 마이그레이션 전이라 아직
+없어도(Postgres 42P01 / PostgREST PGRST205) 나머지 지표 계산은 그대로 진행됨
+(`lib/quiz.js`의 `isMissingTableError()`로 이 두 에러 코드를 함께 체크).
 
 ### 모의투자 엔진 상세 (`lib/stocks.js`)
 - **가격 갱신 타이밍**: 트래픽에 얹혀 지연 갱신(`maybeUpdateStockPrices`). 토요일 9~18시는
@@ -202,15 +225,19 @@ API: `app/api/admin/growth/{monthly,kids,summary,reach,sentences,overview}/route
 - **기부함**: `group_goals`(목표) · `group_goal_donations`(기부 내역)
 - **확성기**: `announcements`(메시지/만료시각/삭제여부)
 - **예측시장**: `predictions`(질문/상태/정답) · `prediction_bets`(베팅, prediction+kid당 1건)
-- **성장 지표**(결과보고서용, 진행 중): `kid_visit_snapshots`(출석 코인 지급 "직전" 시점의 잔액/
-  예금원금/주식평가액을 등원일마다 한 줄씩 기록. `app/api/admin/attendance/route.js`에서 출석
-  지급과 같은 흐름으로 적재, 실패해도 출석 지급 자체는 안 막음. `kid_id`+`visit_date` unique).
+- **성장 지표**(결과보고서용, 1~5단계 완료): `kid_visit_snapshots`(출석 코인 지급 "직전" 시점의
+  잔액/예금원금/주식평가액을 등원일마다 한 줄씩 기록. `app/api/admin/attendance/route.js`에서
+  출석 지급과 같은 흐름으로 적재, 실패해도 출석 지급 자체는 안 막음. `kid_id`+`visit_date` unique).
   계산은 `lib/growthMetrics.js`(청소년 개인은 "등원 회차"/매매 "건수" 기준 첫N vs 최근N 비교,
   집단은 월별 합산 + 전월대비 %p, 표본부족은 `lib/growthConfig.js` 기준값 미달 시 값을 안 만들고
   insufficient/pending 표시). 이 계산을 위해 `announcements.amount`(확성기 지출 금액, 예전엔
   transactions에 안 남아서 저축률 계산에서 빠져있었음)와 `stock_orders.realized`(매도 건별
   실현손익, 예전엔 kids.invest_realized_profit 누적합에만 반영되고 건별 기록이 없었음) 두
-  컬럼을 새로 추가함 — 둘 다 마이그레이션 이전/이후 값은 null이라 그 이전 기간은 근사치로만 계산됨
+  컬럼을 새로 추가함 — 둘 다 마이그레이션 이전/이후 값은 null이라 그 이전 기간은 근사치로만 계산됨.
+  `quiz_sets`(사전/사후 문제 세트, 유형별 동시 활성 1개) · `quiz_questions`(문항/보기/정답
+  인덱스) · `quiz_submissions`(응시 결과 — 점수, 보상, `kid_id`+`quiz_type` unique로 유형별
+  평생 1회만 응시되게 강제). 퀴즈 참여 보상은 `transactions` type='quiz'로 기록(체크 제약에
+  추가됨)
 
 ## 중요한 설계 원칙
 

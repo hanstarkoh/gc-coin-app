@@ -10,6 +10,7 @@ import {
   buildOverallSummary,
   getKidsMonthlySeries,
   getRawExportData,
+  getQuizExportData,
 } from '@/lib/growthMetrics';
 import { buildGrowthWorkbook } from '@/lib/growthExcel';
 
@@ -38,7 +39,7 @@ export async function GET(req) {
     const sb = supabaseAdmin();
     const filter = { kidId, scope };
 
-    const [monthly, kidProgress, goalSummary, reach, sentences, overview, kidMonthlySeries, rawExport] = await Promise.all([
+    const [monthly, kidProgress, goalSummary, reach, sentences, overview, kidMonthlySeries, rawExport, quiz] = await Promise.all([
       getMonthlyGroupMetrics(sb, from, to, filter),
       getKidProgress(sb, filter),
       getGoalSummary(sb, filter),
@@ -47,6 +48,7 @@ export async function GET(req) {
       buildOverallSummary(sb, filter),
       getKidsMonthlySeries(sb, from, to, filter),
       getRawExportData(sb, filter),
+      getQuizExportData(sb, filter),
     ]);
 
     const scopeLabel = scopeLabelOf(scope, kidId, kidProgress, anonymize);
@@ -61,6 +63,7 @@ export async function GET(req) {
       kidMonthlySeries,
       visitSnapshots: rawExport.visitSnapshots,
       stockOrders: rawExport.stockOrders,
+      quiz,
       scopeLabel,
       anonymize,
     });

@@ -425,3 +425,51 @@ alter table group_goals enable row level security;
 alter table group_goal_donations enable row level security;
 alter table announcements enable row level security;
 -- (정책을 추가하지 않으면 anon 키로는 아무것도 읽고 쓸 수 없고, service role 키는 항상 통과합니다.)
+
+-- 성장 지표 5단계: 앱 안 경제 퀴즈(사전/사후). 관리자가 유형별(사전/사후)로 문제 세트를 만들고
+-- 활성화해두면, 청소년은 조건에 맞을 때(사전: 등원 3회 이내, 사후: 관리자가 열어둔 동안) 로그인
+-- 시 응시 알림을 보고 풀 수 있음. 정답 여부와 무관하게 응시만 하면 보상 지급, 유형별로 평생 1회만
+-- (재응시 불가 — quiz_submissions에 kid_id+quiz_type unique).
+create table if not exists quiz_sets (
+  id uuid primary key default gen_random_uuid(),
+  type text not null check (type in ('pre', 'post')),
+  title text not null,
+  reward int not null default 0,
+  is_active boolean not null default false,
+  is_open boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists quiz_questions (
+  id uuid primary key default gen_random_uuid(),
+  quiz_set_id uuid not null references quiz_sets(id) on delete cascade,
+  order_index int not null default 0,
+  question text not null,
+  choices jsonb not null,
+  correct_index int not null
+);
+create index if not exists idx_quiz_questions_set on quiz_questions(quiz_set_id, order_index);
+
+create table if not exists quiz_submissions (
+  id uuid primary key default gen_random_uuid(),
+  kid_id uuid not null references kids(id) on delete cascade,
+  kid_name text not null,
+  quiz_set_id uuid not null references quiz_sets(id) on delete cascade,
+  quiz_type text not null check (quiz_type in ('pre', 'post')),
+  answers jsonb not null,
+  correct_count int not null,
+  total_count int not null,
+  reward int not null default 0,
+  submitted_at timestamptz not null default now(),
+  unique (kid_id, quiz_type)
+);
+create index if not exists idx_quiz_submissions_kid on quiz_submissions(kid_id);
+
+alter table quiz_sets enable row level security;
+alter table quiz_questions enable row level security;
+alter table quiz_submissions enable row level security;
+
+-- 퀴즈 참여 보상도 이력 구분을 위해 'quiz' 타입으로 기록.
+alter table transactions drop constraint if exists transactions_type_check;
+alter table transactions add constraint transactions_type_check
+  check (type in ('earn', 'bonus', 'spend', 'event', 'job', 'quiz'));
