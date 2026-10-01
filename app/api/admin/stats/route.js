@@ -134,8 +134,8 @@ export async function GET(req) {
       .filter((i) => i.item);
     const buyOrders = stockOrders.filter((o) => o.type === 'buy');
     const sellOrders = stockOrders.filter((o) => o.type === 'sell');
-    // calcFee의 "최소 1GC" 바닥 처리 때문에 소액 거래는 기본 수수료여도 반올림값보다 커서
-    // 전부 추격매수로 오분류되던 문제가 있었음 — calcFee로 기준선을 다시 계산해서 비교.
+    // 실제로 낸 수수료가 "기본 2%만 적용했을 때" 수수료보다 크면 추격매수 할증이 붙었던
+    // 거래로 봅니다(calcFee로 기준선을 다시 계산해서 비교).
     const chaseBuys = buyOrders.filter((o) => o.fee > calcFee(o.amount, TRADE_FEE_RATE));
     const overBuys = buyOrders.filter((o) => o.valuation_at_trade === 'over');
     const underBuys = buyOrders.filter((o) => o.valuation_at_trade === 'under');

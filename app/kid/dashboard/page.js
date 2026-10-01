@@ -784,7 +784,7 @@ function DashboardInner() {
                   const qty = Math.max(0, parseInt(tradeQty, 10) || 0);
                   const subtotal = s.price * qty;
                   const feeRate = tradeMode === 'buy' ? s.buyFeeRate : TRADE_FEE_RATE;
-                  const fee = subtotal > 0 ? Math.max(1, Math.round(subtotal * feeRate)) : 0;
+                  const fee = subtotal > 0 ? Math.round(subtotal * feeRate) : 0;
                   const total = tradeMode === 'buy' ? subtotal + fee : subtotal - fee;
                   const overBalance = tradeMode === 'buy' && qty > 0 && total > kid.balance;
                   return (
