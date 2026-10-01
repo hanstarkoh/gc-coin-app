@@ -27,7 +27,8 @@
 ```
 app/
   page.js                       # 홈 — 로그인 없이 메뉴/이벤트/구인/모의투자/기부함 미리보기 + 랭킹
-  kid/page.js                    # 이름 선택 → PIN 설정/로그인 (기부왕/투자왕 이펙트가 여기 뜸)
+  kid/page.js                    # 이름 선택 → PIN 설정/로그인 (기부왕/투자왕 이펙트,
+                                  # 상점 테마 착용 시 카드 배경도 그 테마색으로 바뀜, 여기서 뜸)
   kid/dashboard/page.js          # 청소년 대시보드 (아래 "청소년 대시보드" 기능 전부 여기 모여있음)
   kid/room/page.js, room/[id]/page.js, room/friends/page.js   # 마이룸 배치·친구 구경
   admin/page.js                  # 관리자 PIN 로그인
