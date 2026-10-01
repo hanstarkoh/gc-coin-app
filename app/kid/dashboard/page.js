@@ -8,6 +8,7 @@ import BadgeGrid from '@/components/BadgeGrid';
 import Celebration from '@/components/Celebration';
 import InvestGuideModal from '@/components/InvestGuideModal';
 import QuizModal from '@/components/QuizModal';
+import PolicyNoticeModal from '@/components/PolicyNoticeModal';
 import Sparkline from '@/components/Sparkline';
 import StockNewsTicker from '@/components/StockNewsTicker';
 import { sectorLabel } from '@/lib/stockNews';
@@ -96,6 +97,7 @@ function DashboardInner() {
   const [announcing, setAnnouncing] = useState(false);
   const [quiz, setQuiz] = useState(null);
   const [showQuizModal, setShowQuizModal] = useState(false);
+  const [showPolicyNotice, setShowPolicyNotice] = useState(false);
 
   const loadMe = useCallback(async () => {
     const res = await fetch('/api/kid/me');
@@ -171,7 +173,11 @@ function DashboardInner() {
       await loadGoals();
       await loadQuiz();
       const tx = await loadHistory();
-      if (meData?.ok) checkCelebrations(meData, tx);
+      if (meData?.ok) {
+        checkCelebrations(meData, tx);
+        const noticeKey = `gc_seen_reform202610_${meData.kid.id}`;
+        if (!localStorage.getItem(noticeKey)) setShowPolicyNotice(true);
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1275,7 +1281,7 @@ function DashboardInner() {
         </Collapsible>
       </div>
 
-      {celebration && (
+      {celebration && !showPolicyNotice && (
         <Celebration
           type={celebration.type}
           amount={celebration.amount}
@@ -1284,6 +1290,14 @@ function DashboardInner() {
         />
       )}
       {showInvestGuide && <InvestGuideModal onClose={() => setShowInvestGuide(false)} />}
+      {showPolicyNotice && (
+        <PolicyNoticeModal
+          onClose={() => {
+            setShowPolicyNotice(false);
+            if (me?.kid?.id) localStorage.setItem(`gc_seen_reform202610_${me.kid.id}`, '1');
+          }}
+        />
+      )}
       {showQuizModal && quiz && (
         <QuizModal
           quiz={quiz}
