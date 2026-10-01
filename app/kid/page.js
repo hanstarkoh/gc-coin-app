@@ -71,11 +71,17 @@ function KidLoginInner() {
             {kids?.map((k) => {
               const fallback = DEFAULT_AVATAR;
               const emoji = k.avatarEmoji || fallback.emoji;
+              const themeStyle = k.theme
+                ? { background: `linear-gradient(165deg, ${k.theme.from} 0%, ${k.theme.mid} 55%, ${k.theme.to} 100%)`, borderColor: k.theme.to }
+                : undefined;
               return (
                 <button
                   key={k.id}
                   onClick={() => setSelected(k)}
-                  className="btn-3d btn-3d-white bg-white border-[1.5px] border-gray-200 rounded-2xl py-3.5 px-1 flex flex-col items-center gap-1.5 hover:border-gold transition"
+                  style={themeStyle}
+                  className={`btn-3d btn-3d-white rounded-2xl py-3.5 px-1 flex flex-col items-center gap-1.5 transition border-[1.5px] ${
+                    k.theme ? '' : 'bg-white border-gray-200 hover:border-gold'
+                  }`}
                 >
                   <div className="relative">
                     <div
@@ -103,7 +109,10 @@ function KidLoginInner() {
                     </span>
                   </div>
                   {k.title && (
-                    <span className="text-[9.5px] font-bold text-gold-deep leading-none">
+                    <span
+                      className={`text-[9.5px] font-bold leading-none ${k.theme ? 'text-white' : 'text-gold-deep'}`}
+                      style={k.theme ? { textShadow: '0 1px 2px rgba(0,0,0,0.55)' } : undefined}
+                    >
                       {k.title.icon} {k.title.name}
                     </span>
                   )}
@@ -115,8 +124,11 @@ function KidLoginInner() {
                         ? 'name-neon font-bold'
                         : k.nameGlow
                         ? 'text-gold-deep font-bold'
+                        : k.theme
+                        ? 'text-white'
                         : 'text-navy'
                     } ${k.shakeName ? 'name-shake' : ''}`}
+                    style={k.theme ? { textShadow: '0 1px 3px rgba(0,0,0,0.55)' } : undefined}
                   >
                     {k.stickerEmoji && <span className="text-xs">{k.stickerEmoji}</span>}
                     {k.name}

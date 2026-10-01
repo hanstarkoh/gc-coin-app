@@ -11,7 +11,7 @@ async function loadCustomization(sb) {
   try {
     const nowIso = new Date().toISOString();
     const [{ data: equippedRows, error: eqErr }, { data: specialRows, error: specErr }] = await Promise.all([
-      sb.from('kid_equipped').select('kid_id, avatar_key, accessory_key, sticker_key'),
+      sb.from('kid_equipped').select('kid_id, avatar_key, accessory_key, sticker_key, theme_key'),
       sb
         .from('kid_inventory')
         .select('kid_id, item_key')
@@ -70,6 +70,7 @@ export async function GET() {
       const avatarItem = eq ? findShopItem('avatar', eq.avatar_key) : null;
       const accessoryItem = eq ? findShopItem('accessory', eq.accessory_key) : null;
       const stickerItem = eq ? findShopItem('sticker', eq.sticker_key) : null;
+      const themeItem = eq ? findShopItem('theme', eq.theme_key) : null;
       const specials = specialMap.get(k.id) || new Set();
 
       const isDonationKing = donationMax > 0 && (k.total_donated || 0) === donationMax;
@@ -89,6 +90,7 @@ export async function GET() {
         avatarEmoji: avatarItem?.emoji || null,
         accessoryEmoji: accessoryItem?.emoji || null,
         stickerEmoji: stickerItem?.emoji || null,
+        theme: themeItem ? { from: themeItem.from, mid: themeItem.mid, to: themeItem.to } : null,
         nameGlow: specials.has('name_glow'),
         rainbowName: specials.has('rainbow_name'),
         neonName: specials.has('neon_name'),
