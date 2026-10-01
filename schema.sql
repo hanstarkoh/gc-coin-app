@@ -473,3 +473,34 @@ alter table quiz_submissions enable row level security;
 alter table transactions drop constraint if exists transactions_type_check;
 alter table transactions add constraint transactions_type_check
   check (type in ('earn', 'bonus', 'spend', 'event', 'job', 'quiz'));
+
+-- 2026-10 화폐개혁(×10, 실행 완료): "최소 1GC" 바닥규칙이 가격 변동에도 있어서(싼 종목일수록
+-- 변동성이 왜곡되게 커짐 — 실데이터로 확인: 최저가 종목이 최고가 종목보다 틱당 변동성 2배+)
+-- 전체 금액 단위를 ×10으로 올림. 코드 상수(출석코인/상점가/레벨기준/뱃지·칭호 임계값/예금
+-- 최소액/마이룸확장비/확성기가)도 같은 배수로 같이 바뀜(lib/*.js). 아래 UPDATE는 이미
+-- 실행됐고(2026-10-01), 참고용으로만 남겨둠 — 다시 실행하면 안 됨(또 ×10 되어버림).
+update kids set
+  balance = balance * 10,
+  total_earned = total_earned * 10,
+  total_spent = total_spent * 10,
+  invest_realized_profit = invest_realized_profit * 10,
+  total_donated = total_donated * 10;
+update transactions set amount = amount * 10;
+update menu_items set price = price * 10;
+update events set reward = reward * 10;
+update event_submissions set reward = reward * 10;
+update job_postings set reward = reward * 10;
+update stocks set price = price * 10;
+update stock_price_history set price = price * 10;
+update stock_holdings set avg_price = avg_price * 10;
+update stock_orders set price = price * 10, amount = amount * 10, fee = fee * 10, realized = realized * 10;
+update kid_deposits set principal = principal * 10, payout = payout * 10;
+update group_goals set target = target * 10, current = current * 10;
+update group_goal_donations set amount = amount * 10;
+update prediction_bets set amount = amount * 10, payout = payout * 10;
+update stock_news set old_price = old_price * 10, new_price = new_price * 10;
+update stock_earnings set old_price = old_price * 10, new_price = new_price * 10;
+update kid_visit_snapshots set balance = balance * 10, deposit_principal = deposit_principal * 10, stock_value = stock_value * 10;
+update announcements set amount = amount * 10;
+update quiz_sets set reward = reward * 10;
+update quiz_submissions set reward = reward * 10;
