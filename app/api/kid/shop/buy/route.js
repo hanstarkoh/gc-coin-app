@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getKidId } from '@/lib/session';
-import { findShopItem } from '@/lib/shop';
+import { findShopItem, activeSeasonalItems } from '@/lib/shop';
 
 export async function POST(req) {
   const kidId = getKidId();
@@ -11,6 +11,10 @@ export async function POST(req) {
     const { category, key } = await req.json();
     const item = findShopItem(category, key);
     if (!item) return NextResponse.json({ ok: false, error: '존재하지 않는 아이템이에요.' }, { status: 400 });
+    // 시즌 코스튬은 기간 안일 때만 "새로" 살 수 있음(findShopItem은 표시용이라 기간을 안 봄).
+    if (item.availableFrom && !activeSeasonalItems().some((s) => s.key === key)) {
+      return NextResponse.json({ ok: false, error: '지금은 구매할 수 없는 한정 아이템이에요.' }, { status: 400 });
+    }
 
     const sb = supabaseAdmin();
     const { data: existing, error: existingErr } = await sb

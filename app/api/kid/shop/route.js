@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getKidId } from '@/lib/session';
-import { SHOP_CATEGORIES } from '@/lib/shop';
+import { SHOP_CATEGORIES, activeSeasonalItems } from '@/lib/shop';
 
 export async function GET() {
   const kidId = getKidId();
@@ -30,14 +30,18 @@ export async function GET() {
     if (eqErr) throw eqErr;
 
     const categories = Object.fromEntries(
-      Object.entries(SHOP_CATEGORIES).map(([cat, items]) => [
-        cat,
-        items.map((it) => ({
-          ...it,
-          owned: activeMap.has(it.key),
-          expiresAt: activeMap.get(it.key) || null,
-        })),
-      ])
+      Object.entries(SHOP_CATEGORIES).map(([cat, items]) => {
+        // 시즌 코스튬은 accessory 탭에 기간 안일 때만 같이 노출(평소엔 안 보임).
+        const list = cat === 'accessory' ? [...items, ...activeSeasonalItems()] : items;
+        return [
+          cat,
+          list.map((it) => ({
+            ...it,
+            owned: activeMap.has(it.key),
+            expiresAt: activeMap.get(it.key) || null,
+          })),
+        ];
+      })
     );
 
     return NextResponse.json({

@@ -16,6 +16,7 @@ import { ToastProvider, useToast } from '@/components/Toast';
 import { TRADE_FEE_RATE } from '@/lib/stocks';
 import { calcPayout } from '@/lib/deposits';
 import { MEGAPHONE_PRICE, MESSAGE_MAX_LENGTH } from '@/lib/announcements';
+import { FORTUNE_PRICE } from '@/lib/fortunes';
 import { MENU_CATEGORIES } from '@/lib/menuCategories';
 
 function fmtDate(d) {
@@ -95,6 +96,8 @@ function DashboardInner() {
   const [orderQty, setOrderQty] = useState('1');
   const [announceText, setAnnounceText] = useState('');
   const [announcing, setAnnouncing] = useState(false);
+  const [drawingFortune, setDrawingFortune] = useState(false);
+  const [fortuneResult, setFortuneResult] = useState(null);
   const [quiz, setQuiz] = useState(null);
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [showPolicyNotice, setShowPolicyNotice] = useState(false);
@@ -275,6 +278,24 @@ function DashboardInner() {
       showToast('네트워크 오류가 발생했어요.');
     } finally {
       setAnnouncing(false);
+    }
+  };
+
+  const handleDrawFortune = async () => {
+    setDrawingFortune(true);
+    try {
+      const res = await fetch('/api/kid/fortune', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        setFortuneResult(data.fortune);
+        await loadMe();
+      } else {
+        showToast(data.error || '뽑기에 실패했어요.');
+      }
+    } catch (e) {
+      showToast('네트워크 오류가 발생했어요.');
+    } finally {
+      setDrawingFortune(false);
     }
   };
 
@@ -949,6 +970,22 @@ function DashboardInner() {
               {announcing ? '전송 중...' : `전하기 (${MEGAPHONE_PRICE} GC)`}
             </button>
           </div>
+        </Collapsible>
+
+        <Collapsible icon="🔮" badgeColor="grape" title="오늘의 운세 뽑기" defaultOpen={false}>
+          <p className="text-xs text-gray-500 mb-2">
+            {FORTUNE_PRICE} GC를 내면 오늘의 한마디를 랜덤으로 하나 뽑아줘요. 몇 번이고 다시 뽑을 수 있어요.
+          </p>
+          {fortuneResult && (
+            <div className="bg-paper rounded-xl p-3 mb-2 text-sm text-navy font-medium text-center">{fortuneResult}</div>
+          )}
+          <button
+            disabled={drawingFortune}
+            onClick={handleDrawFortune}
+            className="btn-3d btn-3d-grape w-full bg-grape text-white font-display rounded-xl py-2.5 text-sm disabled:opacity-40"
+          >
+            {drawingFortune ? '뽑는 중...' : `운세 뽑기 (${FORTUNE_PRICE} GC)`}
+          </button>
         </Collapsible>
 
         <Collapsible icon="🎯" badgeColor="grape" title="진행 중인 이벤트" defaultOpen={true}>

@@ -172,6 +172,53 @@ html, body {
   50% { opacity: 1; transform: scale(1.15); }
 }
 
+/* ---- 상점 특별효과: 움직이는 아바타(2주 전용) ---- */
+.avatar-anim-bounce {
+  display: inline-block;
+  animation: avatarBounce 0.8s ease-in-out infinite;
+}
+@keyframes avatarBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.avatar-anim-spin {
+  display: inline-block;
+  animation: avatarSpin 2.2s linear infinite;
+}
+@keyframes avatarSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.avatar-anim-pulse {
+  display: inline-block;
+  animation: avatarPulse 1s ease-in-out infinite;
+}
+@keyframes avatarPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+}
+
+.avatar-anim-wiggle {
+  display: inline-block;
+  animation: avatarWiggle 0.5s ease-in-out infinite;
+}
+@keyframes avatarWiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-10deg); }
+  75% { transform: rotate(10deg); }
+}
+
+.avatar-anim-shimmer {
+  display: inline-block;
+  animation: avatarShimmer 1.4s ease-in-out infinite;
+}
+@keyframes avatarShimmer {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.6) drop-shadow(0 0 6px rgba(255, 255, 255, 0.8)); }
+}
+
 /* ---- 상점 특별효과: 네온 이름 ---- */
 .name-neon {
   color: #0ea5e9;

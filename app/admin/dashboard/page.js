@@ -2731,6 +2731,7 @@ function StatsTab({ kids, showToast }) {
     ['예금(원금)', 'deposit'],
     ['주식 매수', 'stockBuy'],
     ['예측 베팅', 'predictionBet'],
+    ['오늘의 운세', 'fortune'],
   ];
   const spendTotal = stats?.spendBreakdown
     ? spendRows.reduce((s, [, key]) => s + (stats.spendBreakdown[key] || 0), 0)

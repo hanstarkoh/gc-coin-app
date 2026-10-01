@@ -97,7 +97,19 @@ function KidLoginInner() {
                           : k.avatarRing
                           ? 'avatar-ring'
                           : ''
-                      } ${k.starTrail ? 'avatar-star-trail' : ''}`}
+                      } ${k.starTrail ? 'avatar-star-trail' : ''} ${
+                        k.avatarBounce
+                          ? 'avatar-anim-bounce'
+                          : k.avatarSpin
+                          ? 'avatar-anim-spin'
+                          : k.avatarPulse
+                          ? 'avatar-anim-pulse'
+                          : k.avatarWiggle
+                          ? 'avatar-anim-wiggle'
+                          : k.avatarShimmer
+                          ? 'avatar-anim-shimmer'
+                          : ''
+                      }`}
                     >
                       {emoji}
                     </div>

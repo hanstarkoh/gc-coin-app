@@ -13,6 +13,7 @@ function categorizeTx(t) {
   if (t.reason && t.reason.startsWith('🏦')) return 'deposit';
   if (t.reason && t.reason.startsWith('🏠')) return 'room_expand';
   if (t.reason && t.reason.startsWith('🎲')) return 'prediction';
+  if (t.reason && t.reason.startsWith('🔮')) return 'fortune';
   if (t.type === 'spend') return 'snack';
   return 'other';
 }
@@ -158,6 +159,7 @@ export async function GET(req) {
       deposit: deposits.reduce((s, d) => s + d.principal, 0),
       stockBuy: buyOrders.reduce((s, o) => s + o.amount + (o.fee || 0), 0),
       predictionBet: bets.reduce((s, b) => s + b.amount, 0),
+      fortune: txs.filter((t) => categorizeTx(t) === 'fortune').reduce((s, t) => s + t.amount, 0),
     };
 
     const resolvedBets = bets.filter((b) => b.payout !== null);
