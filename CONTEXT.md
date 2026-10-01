@@ -68,7 +68,8 @@ lib/
 components/
   TopBar, PinPad, Toast, LevelBar, BadgeGrid, Celebration(컨페티), MenuTabs,
   Sparkline(주식 미니 그래프), StockNewsTicker, AnnouncementTicker, InvestGuideModal(가이드 팝업),
-  GrowthTrendChart(성장 지표 탭 전용 월별 꺾은선, 표본부족 점 흐리게 표시)
+  GrowthTrendChart(성장 지표 탭 전용 월별 꺾은선, 표본부족 점 흐리게 표시),
+  FortuneWheel(오늘의 운세 룰렛 — 서버가 미리 뽑아준 결과에 멈추는 연출 + 등급별 이펙트)
 
 schema.sql   # Supabase 테이블 정의 — 전체 마이그레이션의 단일 소스. Supabase SQL Editor에서
              # 수동 실행 필요(Claude Code가 직접 DDL 실행 불가). 새로 추가되는 alter/create문은
@@ -129,7 +130,11 @@ PIN 변경, 간식 주문 오픈/마감)
 청소년 데이터 없이 검증해볼 때 유용). "체험하기" 버튼(`app/api/admin/kids/[id]/impersonate/
 route.js`)을 누르면 PIN 없이 그 계정의 청소년 세션이 바로 심어지고 `/kid/dashboard`가 새
 탭에서 열림(서버에서 `is_test=true`인 계정만 허용하도록 재확인해서, 실제 청소년 세션을
-가로채는 사고를 방지함).
+가로채는 사고를 방지함). 다만 `/kid`(이름 선택 화면) 자체는 공개 화면이라 테스트 계정이
+상점에서 산 효과·테마가 실제로 어떻게 보이는지 확인할 방법이 없었음 — "청소년 관리" 탭의
+"이름 선택 화면 미리보기" 버튼(`/kid?preview=1`)을 누르면, 관리자 세션이 있을 때만(`isAdmin()`
+재확인) 테스트 계정도 같이 보여줌(🧪 표시 붙음). 관리자 쿠키 없이 그 URL로 들어가면 테스트
+계정은 그대로 안 보임.
 
 ### 성장 지표 탭 (`/admin/dashboard`, 결과보고서용, 1~5단계 완료)
 `lib/growthMetrics.js` 계산 결과를 보여주는 탭. 전체/남자/여자/개인 필터 + 조회 개월수(3/6/12/24)
@@ -237,7 +242,7 @@ type='quiz'), 점수(정답 개수)는 별도로 기록만 되고 청소년에�
 | 상점 - 특수효과 | 30일 100~250GC(9종) + 2주 40~100GC(같은 효과 9종, 더 싸게) + 움직이는 아바타 2주 60~70GC(5종, 신규) | 〃 |
 | 상점 - 가구 | 80~300 GC (20종) | 〃 |
 | 상점 - 시즌 한정 코스튬 | 할로윈 호박모자 80GC, 21일 기간제(10/15~11/2에만 구매 가능) | `lib/shop.js` (`SEASONAL_CATALOG`) |
-| 오늘의 운세 뽑기 | 15 GC, 뽑을 때마다 랜덤 문구(재구매 제한 없음) | `lib/fortunes.js` |
+| 오늘의 운세 뽑기 | 20 GC, 하루 1회만(대길~대흉 7단계 + 등급별 문구·이펙트) | `lib/fortunes.js` |
 | 뱃지/칭호 코인 임계값 | 코인 컬렉터 500 / 마스터 1000, 용돈벌이 300 / 주식왕(뱃지+칭호) 1000, 기부왕 500 GC | `lib/badges.js`, `lib/titles.js` |
 
 ## DB 테이블 (schema.sql 기준, 기능별)

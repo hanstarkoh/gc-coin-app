@@ -1,6 +1,6 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import TopBar from '@/components/TopBar';
 import PinPad from '@/components/PinPad';
 import { ToastProvider, useToast } from '@/components/Toast';
@@ -11,6 +11,8 @@ const DEFAULT_AVATAR = { emoji: '👤', color: 'gray' };
 
 function KidLoginInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preview = searchParams.get('preview') === '1';
   const showToast = useToast();
   const [kids, setKids] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -19,10 +21,11 @@ function KidLoginInner() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch('/api/kids')
+    fetch(preview ? '/api/kids?preview=1' : '/api/kids')
       .then((r) => r.json())
       .then((d) => setKids(d.ok ? d.kids : []))
       .catch(() => setKids([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -116,6 +119,11 @@ function KidLoginInner() {
                     {k.accessoryEmoji && (
                       <span className="absolute -top-1.5 -right-1.5 text-base leading-none">{k.accessoryEmoji}</span>
                     )}
+                    {preview && k.isTest && (
+                      <span className="absolute -top-2 -left-2 text-[9px] bg-navy text-white rounded-full px-1 leading-tight">
+                        🧪
+                      </span>
+                    )}
                     <span className="icon-badge icon-badge-grape absolute -bottom-1 -left-1 w-5 h-5 rounded-full text-[8.5px] font-display text-white">
                       {k.level}
                     </span>
@@ -181,7 +189,9 @@ function KidLoginInner() {
 export default function KidLoginPage() {
   return (
     <ToastProvider>
-      <KidLoginInner />
+      <Suspense fallback={null}>
+        <KidLoginInner />
+      </Suspense>
     </ToastProvider>
   );
 }

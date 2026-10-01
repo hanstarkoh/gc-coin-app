@@ -219,6 +219,52 @@ html, body {
   50% { filter: brightness(1.6) drop-shadow(0 0 6px rgba(255, 255, 255, 0.8)); }
 }
 
+/* ---- 오늘의 운세 결과 이펙트 ---- */
+.fortune-sparkle {
+  animation: fortuneSparkle 1.6s ease-in-out infinite;
+}
+@keyframes fortuneSparkle {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(78, 161, 242, 0); }
+  50% { box-shadow: 0 0 24px 6px rgba(78, 161, 242, 0.35); }
+}
+
+.fortune-wobble {
+  animation: fortuneWobble 0.4s ease-in-out 3;
+}
+@keyframes fortuneWobble {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-3deg); }
+  75% { transform: rotate(3deg); }
+}
+
+.fortune-shake {
+  animation: fortuneShake 0.4s ease-in-out 3;
+}
+@keyframes fortuneShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+.fortune-rain {
+  position: relative;
+}
+.fortune-rain::before,
+.fortune-rain::after {
+  content: '💧';
+  position: absolute;
+  font-size: 14px;
+  animation: fortuneRainDrop 1.2s ease-in infinite;
+  pointer-events: none;
+}
+.fortune-rain::before { left: 20%; top: -10px; animation-delay: 0s; }
+.fortune-rain::after { left: 70%; top: -10px; animation-delay: 0.5s; }
+@keyframes fortuneRainDrop {
+  0% { opacity: 0; transform: translateY(-10px); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(60px); }
+}
+
 /* ---- 상점 특별효과: 네온 이름 ---- */
 .name-neon {
   color: #0ea5e9;

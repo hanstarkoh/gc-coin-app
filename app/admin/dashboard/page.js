@@ -2558,6 +2558,12 @@ function KidsTab({ kids, reload, showToast }) {
           <p className="text-[11px] text-gray-400 -mt-2 mb-2.5">
             이름 선택 화면에 안 보이고, 통계·순위·성장 지표 전부에서 제외돼요. 지우지 않고 계속 재사용하셔도 돼요.
           </p>
+          <button
+            onClick={() => window.open('/kid?preview=1', '_blank')}
+            className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-3 py-1.5 mb-3"
+          >
+            👀 이름 선택 화면 미리보기(테스트 계정도 같이 보임)
+          </button>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-gray-400 border-b-2 border-gray-100">

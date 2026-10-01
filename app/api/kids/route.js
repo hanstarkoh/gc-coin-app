@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getActiveTitle } from '@/lib/titles';
 import { findShopItem } from '@/lib/shop';
 import { calcLevel } from '@/lib/level';
+import { isAdmin } from '@/lib/session';
 
 // 상점 착용 정보(kid_equipped/kid_inventory)는 아직 마이그레이션 전일 수 있으니
 // 실패해도 기본 목록 응답 자체는 막지 않도록 별도로 조회합니다.
@@ -34,16 +35,22 @@ async function loadCustomization(sb) {
   }
 }
 
-export async function GET() {
+export async function GET(req) {
   noStore();
   try {
+    // 관리자가 ?preview=1로 보면 테스트 계정도 같이 보여줌(상점에서 산 효과가 이름 선택
+    // 화면에 실제로 어떻게 보이는지 확인할 방법이 없었어서). 일반 청소년은 admin 쿠키가
+    // 없어서 이 파라미터를 붙여도 테스트 계정이 안 보임.
+    const { searchParams } = new URL(req.url);
+    const showTest = searchParams.get('preview') === '1' && isAdmin();
+
     const sb = supabaseAdmin();
     const { data: rawData, error } = await sb
       .from('kids')
       .select('id, name, pin, total_earned, invest_realized_profit, total_donated, is_test')
       .order('name', { ascending: true });
-    // 테스트 계정은 실제 청소년이 보는 이름 선택 화면에 안 보이게 함.
-    const data = rawData ? rawData.filter((k) => !k.is_test) : rawData;
+    // 테스트 계정은 실제 청소년이 보는 이름 선택 화면에 안 보이게 함(관리자 미리보기 때는 보여줌).
+    const data = rawData ? (showTest ? rawData : rawData.filter((k) => !k.is_test)) : rawData;
 
     if (error) {
       // invest_realized_profit 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니
@@ -85,6 +92,7 @@ export async function GET() {
         id: k.id,
         name: k.name,
         hasPin: !!k.pin,
+        isTest: !!k.is_test,
         title,
         isDonationKing,
         isInvestKing,
