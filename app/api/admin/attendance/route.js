@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { isAdmin } from '@/lib/session';
 
-const ATTENDANCE_COIN = 2;
+const ATTENDANCE_COIN = 20; // 2026-10 화폐개혁(×10)
 
 export async function POST(req) {
   if (!isAdmin()) return NextResponse.json({ ok: false, error: '관리자 로그인이 필요해요.' }, { status: 401 });

@@ -311,7 +311,7 @@ function AttendanceTab({ kids, attendedTodaySet, reload, showToast }) {
         </table>
       </Card>
 
-      <Card title="오늘 출석 코인 지급 (+2 GC)">
+      <Card title="오늘 출석 코인 지급 (+20 GC)">
         <p className="text-xs text-gray-500 -mt-2 mb-2.5">
           선택된 청소년에게 출석 코인을 지급합니다. 이미 지급받은 청소년은 자동으로 제외돼요.
         </p>
@@ -3242,7 +3242,7 @@ function QuizTab({ showToast }) {
   const [sets, setSets] = useState(null);
   const [type, setType] = useState('pre');
   const [title, setTitle] = useState('');
-  const [reward, setReward] = useState('10');
+  const [reward, setReward] = useState('100');
   const [questions, setQuestions] = useState([blankQuestion()]);
   const [activateNow, setActivateNow] = useState(true);
   const [creating, setCreating] = useState(false);
