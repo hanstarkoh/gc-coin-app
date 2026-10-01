@@ -119,7 +119,7 @@ function DashboardInner() {
       <TopBar title="관리자 화면" sub={fmtDate(todayStr())} onExit={handleLogout} />
       <div className="flex-1 max-w-[920px] w-full mx-auto px-4 py-5">
         <div className="grid grid-cols-4 gap-2.5 mb-5">
-          <StatBox icon="🧒" badge="navy" num={kids.length} label="전체 청소년" />
+          <StatBox icon="🧒" badge="navy" num={kids.filter((k) => !k.is_test).length} label="전체 청소년" />
           <StatBox icon="✅" badge="mint" num={attendedTodaySet.size} label="오늘 출석" />
           <StatBox icon="🪙" badge="gold" num={`+${earnedToday}`} label="오늘 지급 GC" />
           <StatBox icon="🛍️" badge="grape" num={`-${spentToday}`} label="오늘 사용 GC" />
@@ -2392,6 +2392,10 @@ function KidsTab({ kids, reload, showToast }) {
   const [name, setName] = useState('');
   const [startBalance, setStartBalance] = useState('');
   const [gender, setGender] = useState('');
+  const [isTest, setIsTest] = useState(false);
+
+  const realKids = kids.filter((k) => !k.is_test);
+  const testKids = kids.filter((k) => k.is_test);
 
   const add = async () => {
     if (!name.trim()) return showToast('이름을 입력해주세요.');
@@ -2402,6 +2406,7 @@ function KidsTab({ kids, reload, showToast }) {
         name,
         startBalance: startBalance ? parseInt(startBalance, 10) : 0,
         gender: gender || null,
+        isTest,
       }),
     });
     const data = await res.json();
@@ -2410,9 +2415,20 @@ function KidsTab({ kids, reload, showToast }) {
       setName('');
       setStartBalance('');
       setGender('');
+      setIsTest(false);
       await reload();
     } else {
       showToast(data.error || '추가에 실패했어요.');
+    }
+  };
+
+  const impersonate = async (k) => {
+    const res = await fetch(`/api/admin/kids/${k.id}/impersonate`, { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      window.open('/kid/dashboard', '_blank');
+    } else {
+      showToast(data.error || '체험 로그인에 실패했어요.');
     }
   };
 
@@ -2483,13 +2499,17 @@ function KidsTab({ kids, reload, showToast }) {
             <option value="female">여자</option>
           </select>
         </div>
+        <label className="flex items-center gap-2 text-xs text-gray-600 mb-3">
+          <input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} className="w-4 h-4" />
+          🧪 테스트 계정으로 만들기 (이름 선택 화면엔 안 보이고, 통계·순위·성장 지표에서 제외돼요)
+        </label>
         <button onClick={add} className="btn-3d btn-3d-gold w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm">
           청소년 추가
         </button>
       </Card>
-      <Card title={`전체 청소년 (${kids.length}명)`}>
-        {kids.length === 0 && <p className="text-xs text-gray-400 text-center py-4">등록된 청소년이 없어요.</p>}
-        {kids.length > 0 && (
+      <Card title={`전체 청소년 (${realKids.length}명)`}>
+        {realKids.length === 0 && <p className="text-xs text-gray-400 text-center py-4">등록된 청소년이 없어요.</p>}
+        {realKids.length > 0 && (
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-gray-400 border-b-2 border-gray-100">
@@ -2501,7 +2521,7 @@ function KidsTab({ kids, reload, showToast }) {
               </tr>
             </thead>
             <tbody>
-              {kids.map((k) => (
+              {realKids.map((k) => (
                 <tr key={k.id} className="border-b border-gray-50">
                   <td className="py-2">{k.name}</td>
                   <td className="py-2">{k.balance} GC</td>
@@ -2533,6 +2553,45 @@ function KidsTab({ kids, reload, showToast }) {
           </table>
         )}
       </Card>
+      {testKids.length > 0 && (
+        <Card title={`🧪 테스트 계정 (${testKids.length}개)`}>
+          <p className="text-[11px] text-gray-400 -mt-2 mb-2.5">
+            이름 선택 화면에 안 보이고, 통계·순위·성장 지표 전부에서 제외돼요. 지우지 않고 계속 재사용하셔도 돼요.
+          </p>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-gray-400 border-b-2 border-gray-100">
+                <th className="py-1.5">이름</th>
+                <th className="py-1.5">코인</th>
+                <th className="py-1.5">PIN</th>
+                <th className="py-1.5"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {testKids.map((k) => (
+                <tr key={k.id} className="border-b border-gray-50">
+                  <td className="py-2">{k.name}</td>
+                  <td className="py-2">{k.balance} GC</td>
+                  <td className="py-2">{k.hasPin ? '설정됨' : '미설정'}</td>
+                  <td className="py-2 text-right space-x-1.5 whitespace-nowrap">
+                    <button onClick={() => impersonate(k)} className="btn-3d btn-3d-navy text-xs bg-navy text-white rounded-lg px-2.5 py-1">
+                      체험하기
+                    </button>
+                    {k.hasPin && (
+                      <button onClick={() => resetPin(k)} className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1">
+                        PIN 초기화
+                      </button>
+                    )}
+                    <button onClick={() => del(k)} className="btn-3d btn-3d-coral text-xs bg-coral text-white rounded-lg px-2.5 py-1">
+                      삭제
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
     </>
   );
 }

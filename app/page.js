@@ -183,12 +183,22 @@ async function getActiveAnnouncements() {
 async function getDonationRanking() {
   noStore();
   const sb = supabaseAdmin();
-  const { data, error } = await sb
+  // is_test 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니, 그때는 없이 재시도.
+  let { data, error } = await sb
     .from('kids')
     .select('name, total_donated')
+    .eq('is_test', false)
     .gt('total_donated', 0)
     .order('total_donated', { ascending: false })
     .limit(5);
+  if (error) {
+    ({ data, error } = await sb
+      .from('kids')
+      .select('name, total_donated')
+      .gt('total_donated', 0)
+      .order('total_donated', { ascending: false })
+      .limit(5));
+  }
   if (error) return [];
   return data;
 }
@@ -196,12 +206,21 @@ async function getDonationRanking() {
 async function getProfitRanking() {
   noStore();
   const sb = supabaseAdmin();
-  const { data, error } = await sb
+  let { data, error } = await sb
     .from('kids')
     .select('name, invest_realized_profit')
+    .eq('is_test', false)
     .gt('invest_realized_profit', 0)
     .order('invest_realized_profit', { ascending: false })
     .limit(5);
+  if (error) {
+    ({ data, error } = await sb
+      .from('kids')
+      .select('name, invest_realized_profit')
+      .gt('invest_realized_profit', 0)
+      .order('invest_realized_profit', { ascending: false })
+      .limit(5));
+  }
   if (error) return [];
   return data;
 }

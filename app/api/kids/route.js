@@ -38,10 +38,12 @@ export async function GET() {
   noStore();
   try {
     const sb = supabaseAdmin();
-    const { data, error } = await sb
+    const { data: rawData, error } = await sb
       .from('kids')
-      .select('id, name, pin, total_earned, invest_realized_profit, total_donated')
+      .select('id, name, pin, total_earned, invest_realized_profit, total_donated, is_test')
       .order('name', { ascending: true });
+    // 테스트 계정은 실제 청소년이 보는 이름 선택 화면에 안 보이게 함.
+    const data = rawData ? rawData.filter((k) => !k.is_test) : rawData;
 
     if (error) {
       // invest_realized_profit 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니

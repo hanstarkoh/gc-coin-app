@@ -47,19 +47,28 @@ export async function GET(req) {
     const to = searchParams.get('to') || null;
 
     const sb = supabaseAdmin();
-    const { data: allKids, error: kidsErr } = await sb
+    let { data: allKids, error: kidsErr } = await sb
       .from('kids')
-      .select('id, name, gender, balance, invest_realized_profit, invest_trade_count, total_donated')
+      .select('id, name, gender, balance, invest_realized_profit, invest_trade_count, total_donated, is_test')
       .order('name', { ascending: true });
-    if (kidsErr) throw kidsErr;
+    if (kidsErr) {
+      // is_test 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니 그때는 없이 재시도.
+      const fallback = await sb
+        .from('kids')
+        .select('id, name, gender, balance, invest_realized_profit, invest_trade_count, total_donated')
+        .order('name', { ascending: true });
+      if (fallback.error) throw fallback.error;
+      allKids = fallback.data.map((k) => ({ ...k, is_test: false }));
+    }
 
+    // 테스트 계정은 "전체/남자/여자" 집계에서는 제외하되, 관리자가 그 계정을 직접
+    // kidId로 선택했을 때는(테스트 데이터 자체를 확인하고 싶을 수 있어서) 보여줌.
     let scopeKids;
     if (kidId) {
       scopeKids = allKids.filter((k) => k.id === kidId);
-    } else if (scope === 'male' || scope === 'female') {
-      scopeKids = allKids.filter((k) => k.gender === scope);
     } else {
-      scopeKids = allKids;
+      const real = allKids.filter((k) => !k.is_test);
+      scopeKids = scope === 'male' || scope === 'female' ? real.filter((k) => k.gender === scope) : real;
     }
     const scopeIds = scopeKids.map((k) => k.id);
     const kidCount = scopeKids.length;

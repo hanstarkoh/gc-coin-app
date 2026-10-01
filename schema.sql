@@ -504,3 +504,9 @@ update kid_visit_snapshots set balance = balance * 10, deposit_principal = depos
 update announcements set amount = amount * 10;
 update quiz_sets set reward = reward * 10;
 update quiz_submissions set reward = reward * 10;
+
+-- 테스트 계정: 관리자가 기능 테스트용으로 만들어두고 계속 재사용하는 청소년 계정.
+-- 청소년이 보는 이름 선택 화면(/kid)에는 안 보이고, 통계/순위/성장 지표 전부에서 제외됨
+-- (단, 성장 지표에서 관리자가 그 계정을 "개인"으로 직접 선택하면 계산 결과를 볼 수 있음 —
+-- 계산 로직 자체를 검증해보고 싶을 때 실제 청소년 데이터를 안 건드리고 확인 가능).
+alter table kids add column if not exists is_test boolean not null default false;
