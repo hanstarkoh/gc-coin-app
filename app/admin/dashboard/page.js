@@ -8,6 +8,8 @@ import { SECTORS, sectorLabel } from '@/lib/stockNews';
 import { FUNDAMENTAL_LABELS } from '@/lib/stockEarnings';
 import { EVENT_REPEAT_TYPES } from '@/lib/events';
 import { QUIZ_TYPES, MIN_CHOICES, MAX_CHOICES, MIN_QUESTIONS, MAX_QUESTIONS } from '@/lib/quiz';
+import { FORTUNE_TIERS } from '@/lib/fortunes';
+import FortuneWheel from '@/components/FortuneWheel';
 import GrowthTrendChart from '@/components/GrowthTrendChart';
 
 const TABS = [
@@ -2397,6 +2399,7 @@ function KidsTab({ kids, reload, showToast }) {
   const [startBalance, setStartBalance] = useState('');
   const [gender, setGender] = useState('');
   const [isTest, setIsTest] = useState(false);
+  const [previewFortune, setPreviewFortune] = useState(null);
 
   const realKids = kids.filter((k) => !k.is_test);
   const testKids = kids.filter((k) => k.is_test);
@@ -2602,6 +2605,33 @@ function KidsTab({ kids, reload, showToast }) {
           </table>
         </Card>
       )}
+
+      <Card title="🔮 오늘의 운세 이펙트 미리보기">
+        <p className="text-[11px] text-gray-400 -mt-2 mb-2.5">
+          실제 뽑기(하루 1회 제한, 코인 차감)와 무관하게, 등급별 이펙트만 바로 볼 수 있어요.
+        </p>
+        <div className="flex gap-1.5 flex-wrap">
+          {FORTUNE_TIERS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() =>
+                setPreviewFortune({
+                  tier: t.key,
+                  label: t.label,
+                  emoji: t.emoji,
+                  color: t.color,
+                  effect: t.effect,
+                  phrase: '(미리보기용 샘플 문구예요)',
+                })
+              }
+              className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-3 py-1.5"
+            >
+              {t.emoji} {t.label}
+            </button>
+          ))}
+        </div>
+      </Card>
+      {previewFortune && <FortuneWheel result={previewFortune} onClose={() => setPreviewFortune(null)} />}
     </>
   );
 }
