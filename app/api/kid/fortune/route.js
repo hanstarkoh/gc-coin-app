@@ -49,7 +49,10 @@ export async function POST() {
       return NextResponse.json({ ok: false, error: '코인이 부족해요.' }, { status: 400 });
     }
 
-    const result = drawFortune();
+    // 관리자가 등급별 확률을 조절해뒀을 수 있으니 불러와서 사용(없거나 컬럼이 아직
+    // 없으면(마이그레이션 전) 기본값으로 자동 처리됨 — drawFortune이 null도 안전하게 받음).
+    const { data: settings } = await sb.from('settings').select('fortune_weights').eq('id', 1).maybeSingle();
+    const result = drawFortune(settings?.fortune_weights);
 
     const newBalance = kid.balance - FORTUNE_PRICE;
     const { error: updErr } = await sb

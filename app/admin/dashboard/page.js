@@ -2400,6 +2400,36 @@ function KidsTab({ kids, reload, showToast }) {
   const [gender, setGender] = useState('');
   const [isTest, setIsTest] = useState(false);
   const [previewFortune, setPreviewFortune] = useState(null);
+  const [fortuneWeights, setFortuneWeights] = useState(null);
+  const [savingWeights, setSavingWeights] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/admin/settings/fortune-weights')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.ok) setFortuneWeights(d.weights);
+      });
+  }, []);
+
+  const setWeight = (key, value) => {
+    setFortuneWeights((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const saveWeights = async () => {
+    setSavingWeights(true);
+    try {
+      const res = await fetch('/api/admin/settings/fortune-weights', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weights: fortuneWeights }),
+      });
+      const data = await res.json();
+      if (data.ok) showToast('확률을 저장했어요.');
+      else showToast(data.error || '저장에 실패했어요.');
+    } finally {
+      setSavingWeights(false);
+    }
+  };
 
   const realKids = kids.filter((k) => !k.is_test);
   const testKids = kids.filter((k) => k.is_test);
@@ -2606,11 +2636,11 @@ function KidsTab({ kids, reload, showToast }) {
         </Card>
       )}
 
-      <Card title="🔮 오늘의 운세 이펙트 미리보기">
+      <Card title="🔮 오늘의 운세 — 이펙트 미리보기 · 등급별 확률">
         <p className="text-[11px] text-gray-400 -mt-2 mb-2.5">
-          실제 뽑기(하루 1회 제한, 코인 차감)와 무관하게, 등급별 이펙트만 바로 볼 수 있어요.
+          버튼을 누르면 실제 뽑기(하루 1회 제한, 코인 차감)와 무관하게 이펙트만 바로 볼 수 있어요.
         </p>
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex gap-1.5 flex-wrap mb-3.5">
           {FORTUNE_TIERS.map((t) => (
             <button
               key={t.key}
@@ -2629,6 +2659,42 @@ function KidsTab({ kids, reload, showToast }) {
               {t.emoji} {t.label}
             </button>
           ))}
+        </div>
+
+        <div className="border-t border-dashed border-gray-200 pt-3">
+          <p className="text-[11px] text-gray-400 mb-2">등급별 확률(숫자가 클수록 자주 나와요). 합계 비율로 자동 환산돼요.</p>
+          {!fortuneWeights && <p className="text-xs text-gray-400 text-center py-2">불러오는 중...</p>}
+          {fortuneWeights && (
+            <>
+              {(() => {
+                const total = FORTUNE_TIERS.reduce((s, t) => s + (Number(fortuneWeights[t.key]) || 0), 0) || 1;
+                return FORTUNE_TIERS.map((t) => (
+                  <div key={t.key} className="flex items-center gap-2 mb-1.5">
+                    <span className="text-xs w-16 shrink-0">
+                      {t.emoji} {t.label}
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={fortuneWeights[t.key]}
+                      onChange={(e) => setWeight(t.key, e.target.value === '' ? '' : Number(e.target.value))}
+                      className="w-16 border-[1.5px] border-gray-200 rounded-lg px-2 py-1 text-xs"
+                    />
+                    <span className="text-[11px] text-gray-400 w-12">
+                      {Math.round(((Number(fortuneWeights[t.key]) || 0) / total) * 1000) / 10}%
+                    </span>
+                  </div>
+                ));
+              })()}
+              <button
+                onClick={saveWeights}
+                disabled={savingWeights}
+                className="btn-3d btn-3d-navy w-full bg-navy text-white font-display rounded-xl py-2 text-xs mt-2 disabled:opacity-40"
+              >
+                {savingWeights ? '저장 중...' : '확률 저장'}
+              </button>
+            </>
+          )}
         </div>
       </Card>
       {previewFortune && <FortuneWheel result={previewFortune} onClose={() => setPreviewFortune(null)} />}

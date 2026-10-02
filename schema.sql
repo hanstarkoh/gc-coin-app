@@ -510,3 +510,7 @@ update quiz_submissions set reward = reward * 10;
 -- (단, 성장 지표에서 관리자가 그 계정을 "개인"으로 직접 선택하면 계산 결과를 볼 수 있음 —
 -- 계산 로직 자체를 검증해보고 싶을 때 실제 청소년 데이터를 안 건드리고 확인 가능).
 alter table kids add column if not exists is_test boolean not null default false;
+
+-- 오늘의 운세 등급별 확률(가중치)을 관리자가 화면에서 조절할 수 있게. null이면
+-- lib/fortunes.js의 기본값을 씀(마이그레이션 전에도 안전하게 동작).
+alter table settings add column if not exists fortune_weights jsonb;
