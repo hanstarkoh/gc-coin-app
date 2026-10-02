@@ -8,16 +8,30 @@ const BY_KEY = Object.fromEntries(FORTUNE_TIERS.map((t) => [t.key, t]));
 const CELL_H = 64;
 const CYCLES = 4;
 
-const EFFECT_CLASS = {
+// 카드에 입히는 클래스(반짝임/글로우/흔들림 등). 양 극단(mega-gold/mega-storm)일수록
+// 훨씬 크고 분명한 연출, 평운에 가까울수록 차분해지는 단계로 설계함.
+const CARD_CLASS = {
+  'mega-gold': 'fortune-mega-gold',
+  'confetti-mint': 'fortune-glow-mint',
   sparkle: 'fortune-sparkle',
   wobble: 'fortune-wobble',
-  shake: 'fortune-shake',
-  rain: 'fortune-shake fortune-rain',
+  storm: 'fortune-storm',
+  'mega-storm': 'fortune-mega-storm',
+};
+
+const FLASH_CLASS = {
+  'mega-gold': 'fortune-flash-gold',
+  'mega-storm': 'fortune-flash-dark',
 };
 
 function fireConfetti(effect) {
-  if (effect === 'confetti-gold') {
-    confetti({ particleCount: 150, spread: 100, origin: { y: 0.4 }, colors: ['#F2AC1E', '#FFE8B8', '#C98A0E'] });
+  if (effect === 'mega-gold') {
+    // 대길: 여러 번 터뜨려서 불꽃놀이처럼 — 가장 화려한 등급.
+    const fire = (originX) =>
+      confetti({ particleCount: 160, spread: 110, startVelocity: 55, origin: { x: originX, y: 0.4 }, colors: ['#F2AC1E', '#FFE8B8', '#C98A0E', '#FFFFFF'] });
+    fire(0.5);
+    setTimeout(() => fire(0.25), 220);
+    setTimeout(() => fire(0.75), 420);
   } else if (effect === 'confetti-mint') {
     confetti({ particleCount: 90, spread: 80, origin: { y: 0.4 }, colors: ['#3FB68B', '#82E4BE'] });
   }
@@ -54,11 +68,24 @@ export default function FortuneWheel({ result, onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const effectClass = revealed ? EFFECT_CLASS[result.effect] || '' : '';
+  const cardClass = revealed ? CARD_CLASS[result.effect] || '' : '';
+  const flashClass = revealed ? FLASH_CLASS[result.effect] || '' : '';
+  const isMegaStorm = revealed && result.effect === 'mega-storm';
 
   return (
-    <div className="fixed inset-0 z-50 bg-navy-deep/60 flex items-center justify-center p-4">
-      <div className={`bg-white rounded-3xl p-5 max-w-xs w-full text-center ${effectClass}`}>
+    <div className={`fixed inset-0 z-50 bg-navy-deep/60 flex items-center justify-center p-4 ${flashClass}`}>
+      <div className={`relative bg-white rounded-3xl p-5 max-w-xs w-full text-center overflow-visible ${cardClass}`}>
+        {isMegaStorm &&
+          [0, 1, 2, 3, 4, 5].map((i) => (
+            <span
+              key={i}
+              className="fortune-raindrop"
+              style={{ left: `${10 + i * 15}%`, animationDelay: `${i * 0.13}s` }}
+            >
+              💧
+            </span>
+          ))}
+
         <div className="font-display text-base text-navy mb-3">오늘의 운세</div>
 
         <div

@@ -219,7 +219,11 @@ html, body {
   50% { filter: brightness(1.6) drop-shadow(0 0 6px rgba(255, 255, 255, 0.8)); }
 }
 
-/* ---- 오늘의 운세 결과 이펙트 ---- */
+/* ---- 오늘의 운세 결과 이펙트 ----
+   양 극단(대길/대흉)일수록 훨씬 더 크고 분명하게, 평운에 가까울수록 차분하게.
+   등급별로 "조금씩 다른 흔들림" 정도가 아니라 서로 완전히 다른 연출을 쓰게 설계함. */
+
+/* 소길: 약한 반짝임(테두리 글로우만) */
 .fortune-sparkle {
   animation: fortuneSparkle 1.6s ease-in-out infinite;
 }
@@ -228,6 +232,25 @@ html, body {
   50% { box-shadow: 0 0 24px 6px rgba(78, 161, 242, 0.35); }
 }
 
+/* 중길: 민트빛 글로우(소길보다 뚜렷하게) */
+.fortune-glow-mint {
+  animation: fortuneGlowMint 1.3s ease-in-out infinite;
+}
+@keyframes fortuneGlowMint {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(63, 182, 139, 0); }
+  50% { box-shadow: 0 0 36px 10px rgba(63, 182, 139, 0.55); }
+}
+
+/* 대길: 카드가 금빛으로 환하게 숨쉬듯 커졌다 작아짐(가장 화려한 등급) */
+.fortune-mega-gold {
+  animation: fortuneMegaGold 1s ease-in-out infinite;
+}
+@keyframes fortuneMegaGold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(242, 172, 30, 0.5); transform: scale(1); }
+  50% { box-shadow: 0 0 55px 16px rgba(242, 172, 30, 0.8); transform: scale(1.045); }
+}
+
+/* 소흉: 약한 흔들림 한 번만 */
 .fortune-wobble {
   animation: fortuneWobble 0.4s ease-in-out 3;
 }
@@ -237,32 +260,64 @@ html, body {
   75% { transform: rotate(3deg); }
 }
 
-.fortune-shake {
-  animation: fortuneShake 0.4s ease-in-out 3;
+/* 중흉: 더 센 흔들림 + 살짝 어두워짐(소흉보다 뚜렷하게 나쁜 느낌) */
+.fortune-storm {
+  animation: fortuneStormShake 0.3s ease-in-out 4, fortuneStormDim 1.8s ease-in-out 1;
 }
-@keyframes fortuneShake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-6px); }
-  75% { transform: translateX(6px); }
+@keyframes fortuneStormShake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  25% { transform: translateX(-8px) rotate(-2deg); }
+  75% { transform: translateX(8px) rotate(2deg); }
+}
+@keyframes fortuneStormDim {
+  0%, 100% { filter: brightness(1); }
+  30% { filter: brightness(0.8); }
 }
 
-.fortune-rain {
+/* 대흉: 가장 격렬하게 흔들리고 화면이 어두워지며 빗방울이 쏟아짐(가장 극적인 등급) */
+.fortune-mega-storm {
   position: relative;
+  animation: fortuneMegaShake 0.22s ease-in-out 7, fortuneMegaDim 2.2s ease-in-out 1;
 }
-.fortune-rain::before,
-.fortune-rain::after {
-  content: '💧';
+@keyframes fortuneMegaShake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  20% { transform: translateX(-14px) rotate(-3deg); }
+  40% { transform: translateX(13px) rotate(3deg); }
+  60% { transform: translateX(-11px) rotate(-2deg); }
+  80% { transform: translateX(11px) rotate(2deg); }
+}
+@keyframes fortuneMegaDim {
+  0%, 100% { filter: brightness(1) saturate(1); }
+  15% { filter: brightness(0.5) saturate(0.5); }
+}
+
+.fortune-raindrop {
   position: absolute;
-  font-size: 14px;
-  animation: fortuneRainDrop 1.2s ease-in infinite;
+  top: -16px;
+  font-size: 15px;
+  animation: fortuneRainDrop 1s ease-in infinite;
   pointer-events: none;
 }
-.fortune-rain::before { left: 20%; top: -10px; animation-delay: 0s; }
-.fortune-rain::after { left: 70%; top: -10px; animation-delay: 0.5s; }
 @keyframes fortuneRainDrop {
-  0% { opacity: 0; transform: translateY(-10px); }
-  30% { opacity: 1; }
-  100% { opacity: 0; transform: translateY(60px); }
+  0% { opacity: 0; transform: translateY(-16px); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(70px); }
+}
+
+/* 대길/대흉 전용 화면 전체 플래시(한 번만) */
+.fortune-flash-gold {
+  animation: fortuneFlashGold 0.7s ease-out 1;
+}
+@keyframes fortuneFlashGold {
+  0% { background: rgba(242, 172, 30, 0.55); }
+  100% { background: rgba(0, 0, 0, 0); }
+}
+.fortune-flash-dark {
+  animation: fortuneFlashDark 0.6s ease-out 1;
+}
+@keyframes fortuneFlashDark {
+  0% { background: rgba(122, 31, 23, 0.6); }
+  100% { background: rgba(0, 0, 0, 0); }
 }
 
 /* ---- 상점 특별효과: 네온 이름 ---- */
