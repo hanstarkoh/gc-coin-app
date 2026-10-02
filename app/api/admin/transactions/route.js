@@ -30,7 +30,18 @@ export async function GET(req) {
 
     const { data, error } = await query;
     if (error) throw error;
-    return NextResponse.json({ ok: true, transactions: data });
+
+    // kidId 없이(전체 요약용, 예: "오늘 사용 GC") 조회할 때는 테스트 계정 거래를 빼서
+    // 테스트 데이터가 실제 통계에 안 섞이게 함. kidId로 특정 학생을 직접 볼 땐 그대로 둠.
+    let transactions = data;
+    if (!kidId) {
+      const { data: testKids, error: testErr } = await sb.from('kids').select('id').eq('is_test', true);
+      if (!testErr && testKids?.length) {
+        const testIds = new Set(testKids.map((k) => k.id));
+        transactions = data.filter((t) => !testIds.has(t.kid_id));
+      }
+    }
+    return NextResponse.json({ ok: true, transactions });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
   }

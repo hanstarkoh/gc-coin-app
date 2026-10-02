@@ -136,6 +136,15 @@ route.js`)을 누르면 PIN 없이 그 계정의 청소년 세션이 바로 심�
 재확인) 테스트 계정도 같이 보여줌(🧪 표시 붙음). 관리자 쿠키 없이 그 URL로 들어가면 테스트
 계정은 그대로 안 보임.
 
+제외 처리를 해둔 곳(실수로 놓쳤다가 나중에 추가한 것들도 포함 — 비슷한 "전체 집계" 코드를
+새로 만들 때마다 테스트 계정 제외를 빠뜨리기 쉬우니 항상 챙길 것):
+`app/api/kids/route.js`(공개 목록) · `app/api/admin/stats/route.js`(통계 탭) ·
+`app/page.js`(홈 화면 기부/수익 랭킹) · `lib/growthMetrics.js`(성장 지표) ·
+`app/api/admin/transactions/route.js`(`kidId` 없이 날짜로만 조회할 때 — "오늘 사용/지급 GC"
+요약에 쓰임) · `lib/goals.js`의 `getTopDonors()`(기부함 탭 1등 결정용 순위) ·
+관리자 대시보드 `AttendanceTab`(출석·보너스 지급 대상 목록 — 전체선택할 때마다 테스트 계정을
+수동으로 빼야 하는 번거로움 때문에 목록 자체에서 제외).
+
 ### 성장 지표 탭 (`/admin/dashboard`, 결과보고서용, 1~5단계 완료)
 `lib/growthMetrics.js` 계산 결과를 보여주는 탭. 전체/남자/여자/개인 필터 + 조회 개월수(3/6/12/24)
 선택 가능(기존 통계 탭과 같은 scope/kidId 규약). 목표별 "개선 N / 판단 M건" 요약 카드, 월별

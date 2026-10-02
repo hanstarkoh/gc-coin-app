@@ -205,7 +205,11 @@ function AttendanceTab({ kids, attendedTodaySet, reload, showToast }) {
   const [giving, setGiving] = useState(false);
   const [givingBonus, setGivingBonus] = useState(false);
 
-  if (kids.length === 0) {
+  // 테스트 계정은 실제로 출석하지 않으니 코인 지급 목록에서 빼둠(전체선택할 때마다 따로
+  // 빼야 하는 번거로움 방지).
+  const realKids = kids.filter((k) => !k.is_test);
+
+  if (realKids.length === 0) {
     return <Card>등록된 청소년이 없어요. 먼저 &apos;청소년 관리&apos; 탭에서 추가해주세요.</Card>;
   }
 
@@ -216,7 +220,7 @@ function AttendanceTab({ kids, attendedTodaySet, reload, showToast }) {
       return next;
     });
   };
-  const selectAll = () => setSelected(new Set(kids.map((k) => k.id)));
+  const selectAll = () => setSelected(new Set(realKids.map((k) => k.id)));
   const selectNone = () => setSelected(new Set());
 
   const giveAttendance = async () => {
@@ -288,7 +292,7 @@ function AttendanceTab({ kids, attendedTodaySet, reload, showToast }) {
             </tr>
           </thead>
           <tbody>
-            {kids.map((k) => {
+            {realKids.map((k) => {
               const done = attendedTodaySet.has(k.id);
               return (
                 <tr key={k.id} className="border-b border-gray-50">
