@@ -117,7 +117,12 @@ schema.sql   # Supabase 테이블 정의 — 전체 마이그레이션의 단일
   정확히 이 문제였음 — balance만 깎고 transactions/total_spent 둘 다 안 남겨서 "쓴 돈"으로
   전혀 집계가 안 되고 있었음(2026-10, 전부 수정). 상점 구매(`shop/buy`)는 kid_inventory 합성이
   이미 있어서 transactions에 또 남기면 "내 사용 내역"에 중복으로 두 번 찍힘 — total_spent만
-  올리는 걸로 수정)
+  올리는 걸로 수정. **이 수정 전에 이미 있던 기부 내역(당시 기준 9명, 12건)은 수정만으로는
+  안 보여서, 일회성 스크립트로 `group_goal_donations`를 기준으로 누락된 `transactions`
+  행(원래 `created_at` 그대로 유지해서 시간순서 보존)과 `kids.total_spent`를 직접
+  채워넣었음 — 당시 확성기 사용 내역은 0건이라 백필 대상 없었음. 앞으로 비슷하게
+  "이미 썼지만 기록이 없던" 과거분이 발견되면 같은 방식(원본 테이블 기준으로 누락된
+  transactions 행 + total_spent를 직접 추가)으로 처리.**)
 
 ### 픽업 현황판 (`/pickup-board`)
 로그인 없는 공개 화면(태블릿 거치용). "준비완료" 상태인 주문을 이름/메뉴/장소와 함께 보여줌.
