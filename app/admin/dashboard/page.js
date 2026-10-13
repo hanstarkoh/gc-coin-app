@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import TopBar from '@/components/TopBar';
 import { ToastProvider, useToast } from '@/components/Toast';
@@ -3124,8 +3124,16 @@ function GrowthTab({ kids, showToast }) {
   const [expandedKidId, setExpandedKidId] = useState(null);
   const [anonymize, setAnonymize] = useState(true);
 
+  // 보기 범위(전체/남자/여자/개인)를 빠르게 연달아 바꾸면 이전 요청과 새 요청이 동시에
+  // 떠 있다가 이전 것이 나중에 도착해서 최신 선택 결과를 덮어쓸 수 있음(예: "전체" 조회가
+  // 아직 안 끝났는데 바로 특정 청소년을 고르면, 늦게 도착한 "전체" 응답이 그 청소년 데이터를
+  // 덮어써서 화면에 잘못된 범위가 보임). 매 호출마다 번호를 매겨서, 응답이 왔을 때 그게
+  // "가장 최근에 시작한 요청"이 아니면 결과를 버리는 방식으로 막습니다.
+  const requestIdRef = useRef(0);
+
   const load = useCallback(
     async (currentScope, currentKidId, currentMonthsBack) => {
+      const myRequestId = ++requestIdRef.current;
       const params = new URLSearchParams();
       if (currentScope === 'kid' && currentKidId) params.set('kidId', currentKidId);
       else params.set('scope', currentScope);
@@ -3146,6 +3154,11 @@ function GrowthTab({ kids, showToast }) {
         fetch(`/api/admin/growth/participation?${params}`).then((res) => res.json()),
         fetch(`/api/admin/growth/quiz-stats?${params}`).then((res) => res.json()),
       ]);
+
+      // 기다리는 동안 더 최신 요청이 이미 시작됐으면(= 사용자가 그 사이 필터를 또 바꿨으면)
+      // 이 오래된 응답은 화면에 반영하지 않고 버립니다.
+      if (requestIdRef.current !== myRequestId) return;
+
       if (m.ok) setMonthly(m);
       else showToast(m.error || '월별 지표를 불러오지 못했어요.');
       if (k.ok) setKidProgress(k.kids);
