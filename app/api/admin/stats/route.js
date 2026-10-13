@@ -3,9 +3,12 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { isAdmin } from '@/lib/session';
 import { findShopItem } from '@/lib/shop';
 import { TRADE_FEE_RATE, calcFee } from '@/lib/stocks';
+import { MEGAPHONE_PRICE } from '@/lib/announcements';
 
 // transactions.reason에 카테고리별로 이모지 접두사를 붙여온 기존 관례를 이용해서
-// (🏦=예금, 🏠=마이룸 확장, 🎲=예측 시장) 어떤 소비인지 나눕니다.
+// (🏦=예금, 🏠=마이룸 확장, 🎲=예측 시장, 🔮=운세, 💝=기부, 📢=확성기) 어떤 소비인지
+// 나눕니다. 기부는 group_goal_donations에서 이미 따로 집계하므로(아래 spendBreakdown),
+// 여기서는 'snack'으로 잘못 묻히지 않게만 구분해내고 별도 합산하지는 않습니다.
 function categorizeTx(t) {
   if (t.type === 'earn' && t.reason === '출석') return 'attendance';
   if (t.type === 'bonus') return 'bonus';
@@ -14,6 +17,8 @@ function categorizeTx(t) {
   if (t.reason && t.reason.startsWith('🏠')) return 'room_expand';
   if (t.reason && t.reason.startsWith('🎲')) return 'prediction';
   if (t.reason && t.reason.startsWith('🔮')) return 'fortune';
+  if (t.reason && t.reason.startsWith('💝')) return 'donation';
+  if (t.reason && t.reason.startsWith('📢')) return 'megaphone';
   if (t.type === 'spend') return 'snack';
   return 'other';
 }
@@ -160,6 +165,7 @@ export async function GET(req) {
       stockBuy: buyOrders.reduce((s, o) => s + o.amount + (o.fee || 0), 0),
       predictionBet: bets.reduce((s, b) => s + b.amount, 0),
       fortune: txs.filter((t) => categorizeTx(t) === 'fortune').reduce((s, t) => s + t.amount, 0),
+      megaphone: announcements.length * MEGAPHONE_PRICE,
     };
 
     const resolvedBets = bets.filter((b) => b.payout !== null);

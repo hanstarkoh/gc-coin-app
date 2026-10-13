@@ -16,7 +16,7 @@ export async function POST(req, { params }) {
     const sb = supabaseAdmin();
     const { data: goal, error: goalErr } = await sb
       .from('group_goals')
-      .select('id, current, target, achieved_at, is_active')
+      .select('id, title, current, target, achieved_at, is_active')
       .eq('id', params.id)
       .single();
     if (goalErr || !goal || !goal.is_active) {
@@ -25,7 +25,7 @@ export async function POST(req, { params }) {
 
     const { data: kid, error: kidErr } = await sb
       .from('kids')
-      .select('id, name, balance, total_donated')
+      .select('id, name, balance, total_donated, total_spent')
       .eq('id', kidId)
       .single();
     if (kidErr || !kid) return NextResponse.json({ ok: false, error: '학생 정보를 찾을 수 없어요.' }, { status: 404 });
@@ -35,7 +35,11 @@ export async function POST(req, { params }) {
 
     const { error: updKidErr } = await sb
       .from('kids')
-      .update({ balance: kid.balance - amt, total_donated: (kid.total_donated || 0) + amt })
+      .update({
+        balance: kid.balance - amt,
+        total_donated: (kid.total_donated || 0) + amt,
+        total_spent: (kid.total_spent || 0) + amt,
+      })
       .eq('id', kid.id);
     if (updKidErr) throw updKidErr;
 
@@ -54,6 +58,17 @@ export async function POST(req, { params }) {
       amount: amt,
     });
     if (donationErr) throw donationErr;
+
+    // 거래 내역(transactions)에도 남겨야 관리자 화면에서 "쓴 돈"으로 보임.
+    const { error: txErr } = await sb.from('transactions').insert({
+      kid_id: kid.id,
+      kid_name: kid.name,
+      type: 'spend',
+      amount: amt,
+      reason: `💝 기부(${goal.title})`,
+      tx_date: new Date().toISOString().slice(0, 10),
+    });
+    if (txErr) throw txErr;
 
     return NextResponse.json({ ok: true, achieved: newCurrent >= goal.target });
   } catch (e) {

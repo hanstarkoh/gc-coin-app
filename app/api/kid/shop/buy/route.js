@@ -29,13 +29,23 @@ export async function POST(req) {
     const isActive = existing && (existing.expires_at === null || new Date(existing.expires_at) > now);
     if (isActive) return NextResponse.json({ ok: false, error: '이미 보유하고 있어요.' }, { status: 400 });
 
-    const { data: kid, error: kidErr } = await sb.from('kids').select('id, balance').eq('id', kidId).single();
+    const { data: kid, error: kidErr } = await sb
+      .from('kids')
+      .select('id, balance, total_spent')
+      .eq('id', kidId)
+      .single();
     if (kidErr || !kid) return NextResponse.json({ ok: false, error: '학생 정보를 찾을 수 없어요.' }, { status: 404 });
     if (kid.balance < item.price) {
       return NextResponse.json({ ok: false, error: '코인이 부족해요.' }, { status: 400 });
     }
 
-    const { error: updErr } = await sb.from('kids').update({ balance: kid.balance - item.price }).eq('id', kidId);
+    // 꾸미기 상점 구매는 lib/history.js(loadKidHistory)가 kid_inventory에서 직접 읽어와
+    // "🛍️ ○○ 구매"로 이미 합쳐서 보여주고 있어서, 여기서 transactions에 따로 남기면
+    // 관리자 화면에 같은 구매가 두 번 찍힘 — total_spent만 갱신합니다.
+    const { error: updErr } = await sb
+      .from('kids')
+      .update({ balance: kid.balance - item.price, total_spent: (kid.total_spent || 0) + item.price })
+      .eq('id', kidId);
     if (updErr) throw updErr;
 
     if (item.durationDays) {

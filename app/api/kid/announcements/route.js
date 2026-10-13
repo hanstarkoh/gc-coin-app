@@ -16,14 +16,32 @@ export async function POST(req) {
     }
 
     const sb = supabaseAdmin();
-    const { data: kid, error: kidErr } = await sb.from('kids').select('id, name, balance').eq('id', kidId).single();
+    const { data: kid, error: kidErr } = await sb
+      .from('kids')
+      .select('id, name, balance, total_spent')
+      .eq('id', kidId)
+      .single();
     if (kidErr || !kid) return NextResponse.json({ ok: false, error: '학생 정보를 찾을 수 없어요.' }, { status: 404 });
     if (kid.balance < MEGAPHONE_PRICE) {
       return NextResponse.json({ ok: false, error: '코인이 부족해요.' }, { status: 400 });
     }
 
-    const { error: updErr } = await sb.from('kids').update({ balance: kid.balance - MEGAPHONE_PRICE }).eq('id', kid.id);
+    const { error: updErr } = await sb
+      .from('kids')
+      .update({ balance: kid.balance - MEGAPHONE_PRICE, total_spent: (kid.total_spent || 0) + MEGAPHONE_PRICE })
+      .eq('id', kid.id);
     if (updErr) throw updErr;
+
+    // 거래 내역(transactions)에도 남겨야 관리자 화면에서 "쓴 돈"으로 보임.
+    const { error: txErr } = await sb.from('transactions').insert({
+      kid_id: kid.id,
+      kid_name: kid.name,
+      type: 'spend',
+      amount: MEGAPHONE_PRICE,
+      reason: '📢 확성기',
+      tx_date: new Date().toISOString().slice(0, 10),
+    });
+    if (txErr) throw txErr;
 
     const announcementRow = {
       kid_id: kid.id,

@@ -2552,6 +2552,7 @@ function KidsTab({ kids, reload, showToast }) {
               <tr className="text-left text-xs text-gray-400 border-b-2 border-gray-100">
                 <th className="py-1.5">이름</th>
                 <th className="py-1.5">코인</th>
+                <th className="py-1.5">사용한 코인</th>
                 <th className="py-1.5">PIN</th>
                 <th className="py-1.5">성별</th>
                 <th className="py-1.5"></th>
@@ -2562,6 +2563,7 @@ function KidsTab({ kids, reload, showToast }) {
                 <tr key={k.id} className="border-b border-gray-50">
                   <td className="py-2">{k.name}</td>
                   <td className="py-2">{k.balance} GC</td>
+                  <td className="py-2 text-gray-500">{k.total_spent ?? 0} GC</td>
                   <td className="py-2">{k.hasPin ? '설정됨' : '미설정'}</td>
                   <td className="py-2">
                     <select
@@ -2838,6 +2840,7 @@ function StatsTab({ kids, showToast }) {
     ['주식 매수', 'stockBuy'],
     ['예측 베팅', 'predictionBet'],
     ['오늘의 운세', 'fortune'],
+    ['확성기', 'megaphone'],
   ];
   const spendTotal = stats?.spendBreakdown
     ? spendRows.reduce((s, [, key]) => s + (stats.spendBreakdown[key] || 0), 0)
