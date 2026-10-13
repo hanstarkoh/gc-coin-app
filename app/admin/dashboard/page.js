@@ -3120,6 +3120,7 @@ function GrowthTab({ kids, showToast }) {
   const [sentences, setSentences] = useState(null);
   const [overview, setOverview] = useState(null);
   const [participation, setParticipation] = useState(null);
+  const [quizStats, setQuizStats] = useState(null);
   const [expandedKidId, setExpandedKidId] = useState(null);
   const [anonymize, setAnonymize] = useState(true);
 
@@ -3135,7 +3136,7 @@ function GrowthTab({ kids, showToast }) {
       monthlyParams.set('from', fromDate.toISOString().slice(0, 10));
       monthlyParams.set('to', now.toISOString().slice(0, 10));
 
-      const [m, k, s, r, sent, ov, p] = await Promise.all([
+      const [m, k, s, r, sent, ov, p, qs] = await Promise.all([
         fetch(`/api/admin/growth/monthly?${monthlyParams}`).then((res) => res.json()),
         fetch(`/api/admin/growth/kids?${params}`).then((res) => res.json()),
         fetch(`/api/admin/growth/summary?${params}`).then((res) => res.json()),
@@ -3143,6 +3144,7 @@ function GrowthTab({ kids, showToast }) {
         fetch(`/api/admin/growth/sentences?${params}`).then((res) => res.json()),
         fetch(`/api/admin/growth/overview?${params}`).then((res) => res.json()),
         fetch(`/api/admin/growth/participation?${params}`).then((res) => res.json()),
+        fetch(`/api/admin/growth/quiz-stats?${params}`).then((res) => res.json()),
       ]);
       if (m.ok) setMonthly(m);
       else showToast(m.error || '월별 지표를 불러오지 못했어요.');
@@ -3152,6 +3154,7 @@ function GrowthTab({ kids, showToast }) {
       if (sent.ok) setSentences(sent.sentences);
       if (ov.ok) setOverview(ov.summary);
       if (p.ok) setParticipation(p.profile);
+      if (qs.ok) setQuizStats(qs.stats);
     },
     [showToast]
   );
@@ -3250,6 +3253,73 @@ function GrowthTab({ kids, showToast }) {
             📊 엑셀 다운로드
           </button>
         </div>
+      </Card>
+
+      <Card title="② 경제이해 성장 — 통계 (핵심 지표)">
+        {!quizStats && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
+        {quizStats && quizStats.n === 0 && (
+          <p className="text-xs text-gray-400 text-center py-4">
+            사전·사후 퀴즈를 모두 응시한 청소년이 아직 없어요(표본 부족).
+          </p>
+        )}
+        {quizStats && quizStats.n > 0 && (
+          <>
+            <div className="grid grid-cols-4 gap-1.5 mb-3 text-center">
+              <div className="bg-paper rounded-xl py-2">
+                <div className="text-[10px] text-gray-500">응시 인원(N)</div>
+                <div className="font-display text-base text-navy">{quizStats.n}명</div>
+              </div>
+              <div className="bg-paper rounded-xl py-2">
+                <div className="text-[10px] text-gray-500">상승</div>
+                <div className="font-display text-base text-mint-deep">{quizStats.upCount}명</div>
+              </div>
+              <div className="bg-paper rounded-xl py-2">
+                <div className="text-[10px] text-gray-500">동일</div>
+                <div className="font-display text-base text-gray-400">{quizStats.sameCount}명</div>
+              </div>
+              <div className="bg-paper rounded-xl py-2">
+                <div className="text-[10px] text-gray-500">하락</div>
+                <div className="font-display text-base text-coral-deep">{quizStats.downCount}명</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5 mb-3 text-center">
+              <div className="bg-paper rounded-xl py-2">
+                <div className="text-[10px] text-gray-500">평균 변화</div>
+                <div className="font-display text-sm text-navy">
+                  {quizStats.avgDelta >= 0 ? '+' : ''}
+                  {Math.round(quizStats.avgDelta * 1000) / 10}%p
+                </div>
+              </div>
+              <div className="bg-paper rounded-xl py-2">
+                <div className="text-[10px] text-gray-500">중앙값 변화</div>
+                <div className="font-display text-sm text-navy">
+                  {quizStats.medianDelta >= 0 ? '+' : ''}
+                  {Math.round(quizStats.medianDelta * 1000) / 10}%p
+                </div>
+              </div>
+            </div>
+            {quizStats.wilcoxon.insufficient ? (
+              <p className="text-[11px] text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
+                윌콕슨 부호순위 검정: 표본이 작아(n&lt;5) 아직 의미 없음.
+              </p>
+            ) : (
+              <div
+                className={`text-[11px] rounded-lg px-3 py-2 ${
+                  quizStats.wilcoxon.significant ? 'bg-[#DCFCE7] text-mint-deep' : 'bg-gray-50 text-gray-500'
+                }`}
+              >
+                윌콕슨 부호순위 검정({quizStats.wilcoxon.method === 'exact' ? '정확계산' : '근사'}): p=
+                {quizStats.wilcoxon.p} —{' '}
+                <b>{quizStats.wilcoxon.significant ? '유의미함' : '유의미하다고 보기 어려움'}</b>
+                {quizStats.wilcoxon.smallSample && ` (인원 n=${quizStats.wilcoxon.n}명으로 적어 참고용)`}
+              </div>
+            )}
+            <p className="text-[10.5px] text-gray-400 mt-2 leading-relaxed">
+              ※ 비교집단이 없어 이 변화를 "금청코인 때문"이라고 단정할 수 없고, "참여 기간 중
+              경제 이해가 향상됨" 수준으로 해석해야 해요.
+            </p>
+          </>
+        )}
       </Card>
 
       <Card title="목표별 요약">
