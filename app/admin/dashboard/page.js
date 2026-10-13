@@ -3295,20 +3295,24 @@ function GrowthTab({ kids, showToast }) {
               ['quiz', '퀴즈'],
             ].map(([key, label]) => {
               const c = participation.categoryParticipation[key];
+              const gated = key === 'job' || key === 'event';
               return (
                 <div key={key} className="mb-2.5 last:mb-0">
                   <div className="flex justify-between text-xs mb-1">
-                    <span>{label}</span>
+                    <span>
+                      {label}
+                      {gated && <span className="text-gray-400 text-[10px]"> (기회 있었던 인원 기준)</span>}
+                    </span>
                     <span className="text-gray-500">
-                      {c.count}/{participation.totalKids}명 ({c.pct}%)
+                      {c.count}/{gated ? c.applicable : participation.totalKids}명 ({c.pct == null ? '-' : `${c.pct}%`})
                     </span>
                   </div>
-                  <StatBar pct={c.pct} barClassName="bg-navy" />
+                  <StatBar pct={c.pct ?? 0} barClassName="bg-navy" />
                 </div>
               );
             })}
             <div className="border-t border-dashed border-gray-200 mt-3 pt-3">
-              <div className="text-xs font-bold text-navy mb-2">경험 다양성(0~6개 영역)</div>
+              <div className="text-xs font-bold text-navy mb-2">경험 다양성(해당 영역 중 해본 개수)</div>
               <div className="grid grid-cols-7 gap-1 text-center">
                 {Object.entries(participation.breadthHistogram).map(([n, count]) => (
                   <div key={n} className="bg-paper rounded-lg py-1.5">
@@ -3319,8 +3323,23 @@ function GrowthTab({ kids, showToast }) {
               </div>
               <p className="text-[10.5px] text-gray-400 mt-2">
                 0개({participation.noActivityCount}명, {participation.noActivityPct}%)는 간식·상점·이벤트
-                이용 자체를 즐기고 있을 수 있어요.
+                이용 자체를 즐기고 있을 수 있어요. 구인시장·이벤트는 기회가 없었던 아이는 제외하고
+                계산했어요.
               </p>
+            </div>
+            <div className="border-t border-dashed border-gray-200 mt-3 pt-3">
+              <div className="text-xs font-bold text-navy mb-2">
+                참여 유형(규칙 기반 — 한 영역이 활동의 40% 이상이면 그 유형, 군집분석 아님)
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(participation.typeDistribution)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([type, n]) => (
+                    <span key={type} className="text-[11px] bg-paper rounded-full px-2.5 py-1">
+                      {type} <b className="text-navy">{n}</b>
+                    </span>
+                  ))}
+              </div>
             </div>
           </>
         )}
@@ -3410,7 +3429,12 @@ function GrowthTab({ kids, showToast }) {
                   {Object.entries(GROWTH_KID_METRIC_LABELS).map(([key, label]) => {
                     const m = kid.metrics[key];
                     if (!m || m.pending) {
-                      const reasonLabel = m?.reasonCode === 'no_activity' ? '참여 안 함' : '표본 부족';
+                      const reasonLabel =
+                        m?.reasonCode === 'no_opportunity'
+                          ? '기회 없음'
+                          : m?.reasonCode === 'no_activity'
+                            ? '참여 안 함'
+                            : '표본 부족';
                       return (
                         <div key={key} className="text-[10.5px] text-gray-300 bg-gray-50 rounded-lg px-2 py-1.5">
                           {label}: {reasonLabel}
@@ -3581,6 +3605,11 @@ function QuizTab({ showToast }) {
         </div>
         <p className="text-[11px] text-gray-400 mb-3">
           {type === 'pre' ? '사전 퀴즈는 청소년의 첫 3회 등원 안에만 응시할 수 있어요.' : '사후 퀴즈는 아래에서 "열기"로 기간을 켜둔 동안 응시할 수 있어요.'}
+        </p>
+        <p className="text-[11px] text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-3 leading-relaxed">
+          ⚠️ {type === 'pre'
+            ? '사전 퀴즈와 똑같은 문항을 사후에 그대로 쓰면, 나중에 점수가 올라도 "실력이 늘어서"인지 "문제를 외워서"인지 구분이 안 돼요. 사후 퀴즈는 비슷한 난이도의 다른 문항으로 만들어주세요.'
+            : '앱을 집에서도 쓸 수 있어서, 사후 퀴즈를 집에서 보면 검색하면서 풀 수 있어요. 가능하면 수련관에서(출석 중에만) 응시하도록 안내해주세요.'}
         </p>
 
         <input
