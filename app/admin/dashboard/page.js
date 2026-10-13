@@ -3067,14 +3067,19 @@ function StatsTab({ kids, showToast }) {
 }
 
 /* ---------------- GROWTH(성장 지표) TAB ---------------- */
+// 3층 구조(lib/growthMetrics.js GROWTH_STRUCTURE와 동일) — 2026-10 재구성: 투자 참여를
+// 전제로 하는 지표가 예전엔 13개 중 7개(54%)라서 투자 안 하는 청소년이 "효과 없음"처럼
+// 보이던 걸 바로잡음. ①참여·정착 ②경제이해 성장(핵심, 전원 측정 가능) ③영역별 행동 변화.
 const GROWTH_GOAL_LABELS = {
-  계획적_금융생활: '계획적 금융생활',
-  합리적_의사결정: '합리적 의사결정',
-  경제_흐름_이해: '경제 흐름 이해',
-  근로_나눔: '근로 · 나눔',
+  참여_정착: '① 참여 · 정착',
+  경제이해_성장: '② 경제이해 성장 (핵심 지표)',
+  계획적_소비: '③ 계획적 소비',
+  합리적_투자판단: '③ 합리적 투자판단',
+  나눔_책임: '③ 나눔 · 책임',
 };
 
 const GROWTH_KID_METRIC_LABELS = {
+  attendanceGapDays: '등원 간격(일, 짧을수록 꾸준함)',
   savingsRate: '저축률',
   depositPrincipal: '예금 평균 원금',
   assetMaintenanceRatio: '등원간 자산유지율',
@@ -3093,6 +3098,7 @@ const GROWTH_KID_METRIC_LABELS = {
 function growthFormatValue(key, v) {
   if (v == null) return '-';
   if (key === 'depositPrincipal') return `${Math.round(v)} GC`;
+  if (key === 'attendanceGapDays') return `${Math.round(v * 10) / 10}일`;
   return `${Math.round(v * 1000) / 10}%`;
 }
 
@@ -3113,6 +3119,7 @@ function GrowthTab({ kids, showToast }) {
   const [reach, setReach] = useState(null);
   const [sentences, setSentences] = useState(null);
   const [overview, setOverview] = useState(null);
+  const [participation, setParticipation] = useState(null);
   const [expandedKidId, setExpandedKidId] = useState(null);
   const [anonymize, setAnonymize] = useState(true);
 
@@ -3128,13 +3135,14 @@ function GrowthTab({ kids, showToast }) {
       monthlyParams.set('from', fromDate.toISOString().slice(0, 10));
       monthlyParams.set('to', now.toISOString().slice(0, 10));
 
-      const [m, k, s, r, sent, ov] = await Promise.all([
+      const [m, k, s, r, sent, ov, p] = await Promise.all([
         fetch(`/api/admin/growth/monthly?${monthlyParams}`).then((res) => res.json()),
         fetch(`/api/admin/growth/kids?${params}`).then((res) => res.json()),
         fetch(`/api/admin/growth/summary?${params}`).then((res) => res.json()),
         fetch(`/api/admin/growth/reach?${params}`).then((res) => res.json()),
         fetch(`/api/admin/growth/sentences?${params}`).then((res) => res.json()),
         fetch(`/api/admin/growth/overview?${params}`).then((res) => res.json()),
+        fetch(`/api/admin/growth/participation?${params}`).then((res) => res.json()),
       ]);
       if (m.ok) setMonthly(m);
       else showToast(m.error || '월별 지표를 불러오지 못했어요.');
@@ -3143,6 +3151,7 @@ function GrowthTab({ kids, showToast }) {
       if (r.ok) setReach(r);
       if (sent.ok) setSentences(sent.sentences);
       if (ov.ok) setOverview(ov.summary);
+      if (p.ok) setParticipation(p.profile);
     },
     [showToast]
   );
@@ -3268,6 +3277,55 @@ function GrowthTab({ kids, showToast }) {
         )}
       </Card>
 
+      <Card title="참여 유형 분포 (① 참여·정착 보조 지표)">
+        <p className="text-[11px] text-gray-400 -mt-2 mb-2.5">
+          투자에 열심인 애와 그렇지 않은 애 사이의 격차 때문에 평균이 왜곡될 수 있다는 걸
+          투명하게 보여주는 현황이에요 — "저조"가 아니라 "다른 방식의 참여"일 수 있어요.
+        </p>
+        {!participation && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
+        {participation && participation.totalKids === 0 && <p className="text-xs text-gray-400 text-center py-4">대상이 없어요.</p>}
+        {participation && participation.totalKids > 0 && (
+          <>
+            {[
+              ['investing', '투자'],
+              ['saving', '예금'],
+              ['donation', '기부'],
+              ['job', '구인시장'],
+              ['event', '이벤트'],
+              ['quiz', '퀴즈'],
+            ].map(([key, label]) => {
+              const c = participation.categoryParticipation[key];
+              return (
+                <div key={key} className="mb-2.5 last:mb-0">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>{label}</span>
+                    <span className="text-gray-500">
+                      {c.count}/{participation.totalKids}명 ({c.pct}%)
+                    </span>
+                  </div>
+                  <StatBar pct={c.pct} barClassName="bg-navy" />
+                </div>
+              );
+            })}
+            <div className="border-t border-dashed border-gray-200 mt-3 pt-3">
+              <div className="text-xs font-bold text-navy mb-2">경험 다양성(0~6개 영역)</div>
+              <div className="grid grid-cols-7 gap-1 text-center">
+                {Object.entries(participation.breadthHistogram).map(([n, count]) => (
+                  <div key={n} className="bg-paper rounded-lg py-1.5">
+                    <div className="text-[10px] text-gray-400">{n}개</div>
+                    <div className="text-xs font-bold text-navy">{count}</div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10.5px] text-gray-400 mt-2">
+                0개({participation.noActivityCount}명, {participation.noActivityPct}%)는 간식·상점·이벤트
+                이용 자체를 즐기고 있을 수 있어요.
+              </p>
+            </div>
+          </>
+        )}
+      </Card>
+
       <Card title="월별 추이">
         {!monthly && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
         {monthly && (
@@ -3344,7 +3402,7 @@ function GrowthTab({ kids, showToast }) {
               >
                 <span className="text-sm font-bold">{kid.kidName}</span>
                 <span className="text-[10.5px] text-gray-400">
-                  등원 {kid.totalVisits}회 {isOpen ? '▲' : '▼'}
+                  등원 {kid.totalVisits}회 · 다양성 {kid.breadth?.count ?? 0}/{kid.breadth?.total ?? 6} {isOpen ? '▲' : '▼'}
                 </span>
               </button>
               {isOpen && (
@@ -3352,9 +3410,10 @@ function GrowthTab({ kids, showToast }) {
                   {Object.entries(GROWTH_KID_METRIC_LABELS).map(([key, label]) => {
                     const m = kid.metrics[key];
                     if (!m || m.pending) {
+                      const reasonLabel = m?.reasonCode === 'no_activity' ? '참여 안 함' : '표본 부족';
                       return (
                         <div key={key} className="text-[10.5px] text-gray-300 bg-gray-50 rounded-lg px-2 py-1.5">
-                          {label}: 판단 보류
+                          {label}: {reasonLabel}
                         </div>
                       );
                     }
