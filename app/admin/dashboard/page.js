@@ -2481,6 +2481,8 @@ function KidsTab({ kids, reload, showToast }) {
     ring: '',
     anim: '',
   });
+  const [testCoinInputs, setTestCoinInputs] = useState({});
+  const [addingTestCoins, setAddingTestCoins] = useState(null);
 
   useEffect(() => {
     fetch('/api/admin/settings/fortune-weights')
@@ -2575,6 +2577,29 @@ function KidsTab({ kids, reload, showToast }) {
     if (data.ok) {
       showToast(`${k.name}님의 PIN을 초기화했어요.`);
       await reload();
+    }
+  };
+
+  const adjustTestCoins = async (k, sign) => {
+    const raw = parseInt(testCoinInputs[k.id], 10);
+    if (!raw) return showToast('조정할 코인을 입력해주세요.');
+    setAddingTestCoins(k.id);
+    try {
+      const res = await fetch(`/api/admin/kids/${k.id}/test-balance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: raw * sign }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast(`${k.name}님 코인을 ${sign > 0 ? '+' : '-'}${raw} 조정했어요. (현재 ${data.balance} GC)`);
+        setTestCoinInputs((prev) => ({ ...prev, [k.id]: '' }));
+        await reload();
+      } else {
+        showToast(data.error || '조정에 실패했어요.');
+      }
+    } finally {
+      setAddingTestCoins(null);
     }
   };
 
@@ -2698,6 +2723,27 @@ function KidsTab({ kids, reload, showToast }) {
                   <td className="py-2">{k.balance} GC</td>
                   <td className="py-2">{k.hasPin ? '설정됨' : '미설정'}</td>
                   <td className="py-2 text-right space-x-1.5 whitespace-nowrap">
+                    <input
+                      type="number"
+                      value={testCoinInputs[k.id] || ''}
+                      onChange={(e) => setTestCoinInputs((prev) => ({ ...prev, [k.id]: e.target.value }))}
+                      placeholder="코인"
+                      className="w-16 border-[1.5px] border-gray-200 rounded-lg px-1.5 py-1 text-xs"
+                    />
+                    <button
+                      disabled={addingTestCoins === k.id}
+                      onClick={() => adjustTestCoins(k, 1)}
+                      className="btn-3d btn-3d-gold text-xs bg-gold text-navy-deep rounded-lg px-2 py-1 disabled:opacity-40"
+                    >
+                      +지급
+                    </button>
+                    <button
+                      disabled={addingTestCoins === k.id}
+                      onClick={() => adjustTestCoins(k, -1)}
+                      className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-2 py-1 disabled:opacity-40"
+                    >
+                      -차감
+                    </button>
                     <button onClick={() => impersonate(k)} className="btn-3d btn-3d-navy text-xs bg-navy text-white rounded-lg px-2.5 py-1">
                       체험하기
                     </button>

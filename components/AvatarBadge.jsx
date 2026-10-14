@@ -9,6 +9,16 @@
 // "완전한 생물" 이모지라 아바타 자체가 그걸로 바뀐 것처럼 보이는 문제가 있었음(2026-10,
 // 실제 스크린샷으로 확인). 지금은 양옆에 작게 한 쌍(왼쪽은 좌우반전)으로 띄워서 "어깨에서
 // 날개가 돋아난" 느낌만 내고 아바타 본체는 안 가리게 함.
+//
+// 머리/얼굴/목 배지는 실제 위치에 맞게 배치: 머리=윗부분 중앙(크라운처럼 위에 얹힘),
+// 얼굴=정중앙(안경처럼 얼굴 위에 겹쳐짐), 목=아랫부분 중앙(목걸이처럼 아래에 걸림).
+// 전엔 머리/얼굴을 좌우 상단 코너에 나눠 두고 목만 하단에 둬서 "위아래로만 붙고 머리·
+// 얼굴·목 구분이 안 된다"는 피드백이 있었음(2026-10) — 전부 세로로 재배치해서 해결.
+//
+// 테두리 효과(ring)와 움직임 효과(anim)를 같은 엘리먼트에 같이 걸면 둘 다 CSS
+// `animation` 단축 속성을 쓰기 때문에 나중에 선언된 쪽이 앞의 걸 완전히 덮어써서 테두리가
+// 사라지는 버그가 있었음(2026-10, 실제로 재현 확인) — 움직임 효과는 바깥 래퍼 div로
+// 분리해서 테두리의 `animation`과 서로 안 겹치게 함.
 
 // 아바타를 아직 안 산 청소년은 전부 이 흰색 실루엣으로 통일해서 보여줍니다(동물 아바타는
 // 상점에서 사서 착용하는 것이므로, 안 산 상태가 "기본값"처럼 예뻐 보이면 안 돼요).
@@ -49,27 +59,31 @@ export default function AvatarBadge({ kid, showTestBadge = false, showLevel = tr
           <span className="absolute top-1 -right-3 text-xl opacity-90 pointer-events-none">{kid.wingEmoji}</span>
         </>
       )}
-      <div
-        className={`icon-badge icon-badge-gray w-12 h-12 rounded-full text-2xl ${ringClass(kid)} ${
-          kid.starTrail ? 'avatar-star-trail' : ''
-        } ${animClass(kid)}`}
-      >
-        {emoji}
+      <div className={animClass(kid)}>
+        <div
+          className={`icon-badge icon-badge-gray w-12 h-12 rounded-full text-2xl ${ringClass(kid)} ${
+            kid.starTrail ? 'avatar-star-trail' : ''
+          }`}
+        >
+          {emoji}
+        </div>
       </div>
       {kid.accessoryHeadEmoji && (
-        <span className="absolute -top-1.5 -right-1.5 text-base leading-none">{kid.accessoryHeadEmoji}</span>
+        <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-base leading-none">{kid.accessoryHeadEmoji}</span>
       )}
       {kid.accessoryFaceEmoji && (
-        <span className="absolute -top-1.5 -left-1.5 text-base leading-none">{kid.accessoryFaceEmoji}</span>
+        <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-base leading-none">
+          {kid.accessoryFaceEmoji}
+        </span>
       )}
       {kid.accessoryNeckEmoji && (
-        <span className="absolute -bottom-1 -right-1 text-sm leading-none">{kid.accessoryNeckEmoji}</span>
+        <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-sm leading-none">{kid.accessoryNeckEmoji}</span>
       )}
       {kid.petEmoji && (
         <span className="absolute top-1/2 -right-4 -translate-y-1/2 text-sm leading-none">{kid.petEmoji}</span>
       )}
       {showTestBadge && kid.isTest && (
-        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] bg-navy text-white rounded-full px-1 leading-tight">
+        <span className="absolute -top-1.5 -right-1.5 text-[9px] bg-navy text-white rounded-full px-1 leading-tight">
           🧪
         </span>
       )}
