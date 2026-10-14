@@ -9,8 +9,17 @@ import { FUNDAMENTAL_LABELS } from '@/lib/stockEarnings';
 import { EVENT_REPEAT_TYPES } from '@/lib/events';
 import { QUIZ_TYPES, MIN_CHOICES, MAX_CHOICES, MIN_QUESTIONS, MAX_QUESTIONS } from '@/lib/quiz';
 import { FORTUNE_TIERS } from '@/lib/fortunes';
+import {
+  AVATAR_CATALOG,
+  ACCESSORY_HEAD_CATALOG,
+  ACCESSORY_FACE_CATALOG,
+  ACCESSORY_NECK_CATALOG,
+  WING_CATALOG,
+  PET_CATALOG,
+} from '@/lib/shop';
 import FortuneWheel from '@/components/FortuneWheel';
 import GrowthTrendChart from '@/components/GrowthTrendChart';
+import AvatarBadge from '@/components/AvatarBadge';
 
 const TABS = [
   { key: 'attendance', label: '출석 · 코인 지급' },
@@ -2462,6 +2471,16 @@ function KidsTab({ kids, reload, showToast }) {
   const [previewFortune, setPreviewFortune] = useState(null);
   const [fortuneWeights, setFortuneWeights] = useState(null);
   const [savingWeights, setSavingWeights] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState({
+    avatar: '',
+    head: '',
+    face: '',
+    neck: '',
+    wing: '',
+    pet: '',
+    ring: '',
+    anim: '',
+  });
 
   useEffect(() => {
     fetch('/api/admin/settings/fortune-weights')
@@ -2759,6 +2778,93 @@ function KidsTab({ kids, reload, showToast }) {
           )}
         </div>
       </Card>
+
+      <Card title="🎨 아바타 꾸미기 미리보기">
+        <p className="text-[11px] text-gray-400 -mt-2 mb-2.5">
+          실제로 사고 입히지 않아도 조합이 어떻게 보이는지 바로 확인할 수 있어요(저장 안 됨,
+          새 상점 아이템 추가했을 때 꼭 여기서 먼저 확인해보세요).
+        </p>
+        <div className="flex justify-center mb-3">
+          <AvatarBadge
+            kid={{
+              avatarEmoji: AVATAR_CATALOG.find((i) => i.key === avatarPreview.avatar)?.emoji || null,
+              accessoryHeadEmoji: ACCESSORY_HEAD_CATALOG.find((i) => i.key === avatarPreview.head)?.emoji || null,
+              accessoryFaceEmoji: ACCESSORY_FACE_CATALOG.find((i) => i.key === avatarPreview.face)?.emoji || null,
+              accessoryNeckEmoji: ACCESSORY_NECK_CATALOG.find((i) => i.key === avatarPreview.neck)?.emoji || null,
+              wingEmoji: WING_CATALOG.find((i) => i.key === avatarPreview.wing)?.emoji || null,
+              petEmoji: PET_CATALOG.find((i) => i.key === avatarPreview.pet)?.emoji || null,
+              avatarRing: avatarPreview.ring === 'gold',
+              avatarRingRainbow: avatarPreview.ring === 'rainbow',
+              avatarRingFire: avatarPreview.ring === 'fire',
+              avatarRingDiamond: avatarPreview.ring === 'diamond',
+              avatarBounce: avatarPreview.anim === 'bounce',
+              avatarSpin: avatarPreview.anim === 'spin',
+              avatarPulse: avatarPreview.anim === 'pulse',
+              avatarWiggle: avatarPreview.anim === 'wiggle',
+              avatarShimmer: avatarPreview.anim === 'shimmer',
+              level: 1,
+            }}
+            showLevel={false}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            ['avatar', '아바타', AVATAR_CATALOG],
+            ['head', '머리꾸미기', ACCESSORY_HEAD_CATALOG],
+            ['face', '얼굴꾸미기', ACCESSORY_FACE_CATALOG],
+            ['neck', '목꾸미기', ACCESSORY_NECK_CATALOG],
+            ['wing', '날개·망토', WING_CATALOG],
+            ['pet', '미니펫', PET_CATALOG],
+          ].map(([slot, label, catalog]) => (
+            <div key={slot}>
+              <label className="block text-[10.5px] text-gray-500 mb-0.5">{label}</label>
+              <select
+                value={avatarPreview[slot]}
+                onChange={(e) => setAvatarPreview((prev) => ({ ...prev, [slot]: e.target.value }))}
+                className="w-full border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-xs"
+              >
+                <option value="">없음</option>
+                {catalog.map((item) => (
+                  <option key={item.key} value={item.key}>
+                    {item.emoji} {item.name}
+                    {item.minLevel ? ` (레벨${item.minLevel}+)` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
+          <div>
+            <label className="block text-[10.5px] text-gray-500 mb-0.5">테두리 효과</label>
+            <select
+              value={avatarPreview.ring}
+              onChange={(e) => setAvatarPreview((prev) => ({ ...prev, ring: e.target.value }))}
+              className="w-full border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-xs"
+            >
+              <option value="">없음</option>
+              <option value="gold">골드 링</option>
+              <option value="rainbow">무지개 링</option>
+              <option value="fire">불꽃 링</option>
+              <option value="diamond">다이아몬드 링 (레벨3+)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10.5px] text-gray-500 mb-0.5">움직임 효과</label>
+            <select
+              value={avatarPreview.anim}
+              onChange={(e) => setAvatarPreview((prev) => ({ ...prev, anim: e.target.value }))}
+              className="w-full border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-xs"
+            >
+              <option value="">없음</option>
+              <option value="bounce">통통 튀기</option>
+              <option value="spin">빙글빙글</option>
+              <option value="pulse">두근두근</option>
+              <option value="wiggle">흔들흔들</option>
+              <option value="shimmer">반짝반짝</option>
+            </select>
+          </div>
+        </div>
+      </Card>
+
       {previewFortune && <FortuneWheel result={previewFortune} onClose={() => setPreviewFortune(null)} />}
     </>
   );

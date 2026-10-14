@@ -4,10 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import TopBar from '@/components/TopBar';
 import PinPad from '@/components/PinPad';
 import { ToastProvider, useToast } from '@/components/Toast';
-
-// 아바타를 아직 안 산 청소년은 전부 이 흰색 실루엣으로 통일해서 보여줍니다.
-// (동물 아바타는 상점에서 사서 착용하는 것이므로, 안 산 상태가 "기본값"처럼 예뻐 보이면 안 돼요.)
-const DEFAULT_AVATAR = { emoji: '👤', color: 'gray' };
+import AvatarBadge from '@/components/AvatarBadge';
 
 function KidLoginInner() {
   const router = useRouter();
@@ -72,8 +69,6 @@ function KidLoginInner() {
           )}
           <div className="grid grid-cols-3 gap-3">
             {kids?.map((k) => {
-              const fallback = DEFAULT_AVATAR;
-              const emoji = k.avatarEmoji || fallback.emoji;
               const themeStyle = k.theme
                 ? { background: `linear-gradient(165deg, ${k.theme.from} 0%, ${k.theme.mid} 55%, ${k.theme.to} 100%)`, borderColor: k.theme.to }
                 : undefined;
@@ -86,64 +81,7 @@ function KidLoginInner() {
                     k.theme ? '' : 'bg-white border-gray-200 hover:border-gold'
                   }`}
                 >
-                  <div className="relative">
-                    {k.wingEmoji && (
-                      <span className="absolute inset-0 flex items-center justify-center text-5xl opacity-90 pointer-events-none">
-                        {k.wingEmoji}
-                      </span>
-                    )}
-                    <div
-                      className={`icon-badge icon-badge-${fallback.color} w-12 h-12 rounded-full text-2xl ${
-                        k.isDonationKing
-                          ? 'avatar-ring-donation'
-                          : k.isInvestKing
-                          ? 'avatar-ring-invest'
-                          : k.avatarRingDiamond
-                          ? 'avatar-ring-diamond'
-                          : k.avatarRingFire
-                          ? 'avatar-ring-fire'
-                          : k.avatarRingRainbow
-                          ? 'avatar-ring-rainbow'
-                          : k.avatarRing
-                          ? 'avatar-ring'
-                          : ''
-                      } ${k.starTrail ? 'avatar-star-trail' : ''} ${
-                        k.avatarBounce
-                          ? 'avatar-anim-bounce'
-                          : k.avatarSpin
-                          ? 'avatar-anim-spin'
-                          : k.avatarPulse
-                          ? 'avatar-anim-pulse'
-                          : k.avatarWiggle
-                          ? 'avatar-anim-wiggle'
-                          : k.avatarShimmer
-                          ? 'avatar-anim-shimmer'
-                          : ''
-                      }`}
-                    >
-                      {emoji}
-                    </div>
-                    {k.accessoryHeadEmoji && (
-                      <span className="absolute -top-1.5 -right-1.5 text-base leading-none">{k.accessoryHeadEmoji}</span>
-                    )}
-                    {k.accessoryFaceEmoji && (
-                      <span className="absolute -top-1.5 -left-1.5 text-base leading-none">{k.accessoryFaceEmoji}</span>
-                    )}
-                    {k.accessoryNeckEmoji && (
-                      <span className="absolute -bottom-1 -right-1 text-sm leading-none">{k.accessoryNeckEmoji}</span>
-                    )}
-                    {k.petEmoji && (
-                      <span className="absolute top-1/2 -right-4 -translate-y-1/2 text-sm leading-none">{k.petEmoji}</span>
-                    )}
-                    {preview && k.isTest && (
-                      <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] bg-navy text-white rounded-full px-1 leading-tight">
-                        🧪
-                      </span>
-                    )}
-                    <span className="icon-badge icon-badge-grape absolute -bottom-1 -left-1 w-5 h-5 rounded-full text-[8.5px] font-display text-white">
-                      {k.level}
-                    </span>
-                  </div>
+                  <AvatarBadge kid={k} showTestBadge={preview} />
                   {k.title && (
                     <span
                       className={`text-[9.5px] font-bold leading-none ${k.theme ? 'text-white' : 'text-gold-deep'}`}
