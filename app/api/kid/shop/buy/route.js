@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getKidId } from '@/lib/session';
 import { findShopItem, activeSeasonalItems } from '@/lib/shop';
+import { calcLevel } from '@/lib/level';
 
 export async function POST(req) {
   const kidId = getKidId();
@@ -31,12 +32,20 @@ export async function POST(req) {
 
     const { data: kid, error: kidErr } = await sb
       .from('kids')
-      .select('id, balance, total_spent')
+      .select('id, balance, total_spent, total_earned')
       .eq('id', kidId)
       .single();
     if (kidErr || !kid) return NextResponse.json({ ok: false, error: '학생 정보를 찾을 수 없어요.' }, { status: 404 });
     if (kid.balance < item.price) {
       return NextResponse.json({ ok: false, error: '코인이 부족해요.' }, { status: 400 });
+    }
+    // 레벨 제한이 있는 사치템 — 돈만으로는 못 사고 그만큼 활동해야 살 수 있게 함(2026-10).
+    // 이미 보유한 아이템은 레벨이 떨어져도 계속 쓸 수 있고, "새로 사는" 시점에만 검사함.
+    if (item.minLevel) {
+      const { level } = calcLevel(kid.total_earned || 0);
+      if (level < item.minLevel) {
+        return NextResponse.json({ ok: false, error: `레벨 ${item.minLevel} 이상부터 살 수 있어요(지금 레벨 ${level}).` }, { status: 400 });
+      }
     }
 
     // 꾸미기 상점 구매는 lib/history.js(loadKidHistory)가 kid_inventory에서 직접 읽어와

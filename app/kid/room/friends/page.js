@@ -33,11 +33,25 @@ export default function FriendsRoomListPage() {
                 className="btn-3d btn-3d-white bg-white border-[1.5px] border-gray-200 rounded-2xl py-3.5 px-1 flex flex-col items-center gap-1.5 hover:border-gold transition"
               >
                 <div className="relative">
+                  {k.wingEmoji && (
+                    <span className="absolute inset-0 flex items-center justify-center text-3xl opacity-90 -z-10 pointer-events-none">
+                      {k.wingEmoji}
+                    </span>
+                  )}
                   <div className={`icon-badge icon-badge-${fallback.color} w-12 h-12 rounded-full text-2xl`}>
                     {emoji}
                   </div>
-                  {k.accessoryEmoji && (
-                    <span className="absolute -top-1.5 -right-1.5 text-base leading-none">{k.accessoryEmoji}</span>
+                  {k.accessoryHeadEmoji && (
+                    <span className="absolute -top-1.5 -right-1.5 text-base leading-none">{k.accessoryHeadEmoji}</span>
+                  )}
+                  {k.accessoryFaceEmoji && (
+                    <span className="absolute -top-1.5 -left-1.5 text-base leading-none">{k.accessoryFaceEmoji}</span>
+                  )}
+                  {k.accessoryNeckEmoji && (
+                    <span className="absolute -bottom-1 -right-1 text-sm leading-none">{k.accessoryNeckEmoji}</span>
+                  )}
+                  {k.petEmoji && (
+                    <span className="absolute -bottom-2 -right-3.5 text-sm leading-none">{k.petEmoji}</span>
                   )}
                   <span className="icon-badge icon-badge-grape absolute -bottom-1 -left-1 w-5 h-5 rounded-full text-[8.5px] font-display text-white">
                     {k.level}

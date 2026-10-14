@@ -11,15 +11,25 @@ import { isAdmin } from '@/lib/session';
 async function loadCustomization(sb) {
   try {
     const nowIso = new Date().toISOString();
-    const [{ data: equippedRows, error: eqErr }, { data: specialRows, error: specErr }] = await Promise.all([
-      sb.from('kid_equipped').select('kid_id, avatar_key, accessory_key, sticker_key, theme_key'),
+    let [{ data: equippedRows, error: eqErr }, { data: specialRows, error: specErr }] = await Promise.all([
+      sb
+        .from('kid_equipped')
+        .select('kid_id, avatar_key, accessory_head_key, accessory_face_key, accessory_neck_key, sticker_key, theme_key, wing_key, pet_key'),
       sb
         .from('kid_inventory')
         .select('kid_id, item_key')
         .eq('category', 'special')
         .or(`expires_at.is.null,expires_at.gt.${nowIso}`),
     ]);
-    if (eqErr || specErr) throw eqErr || specErr;
+    if (eqErr) {
+      // 머리/얼굴/목·날개·펫 슬롯 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니,
+      // 그때는 예전 컬럼들만으로 재시도(새 슬롯은 전부 비어있는 것으로 처리됨).
+      const fallback = await sb.from('kid_equipped').select('kid_id, avatar_key, sticker_key, theme_key');
+      if (fallback.error) throw fallback.error;
+      equippedRows = fallback.data;
+      eqErr = null;
+    }
+    if (specErr) throw specErr;
 
     const specialMap = new Map();
     for (const r of specialRows) {
@@ -77,9 +87,13 @@ export async function GET(req) {
     const kids = data.map((k) => {
       const eq = equippedMap.get(k.id);
       const avatarItem = eq ? findShopItem('avatar', eq.avatar_key) : null;
-      const accessoryItem = eq ? findShopItem('accessory', eq.accessory_key) : null;
+      const accessoryHeadItem = eq ? findShopItem('accessory_head', eq.accessory_head_key) : null;
+      const accessoryFaceItem = eq ? findShopItem('accessory_face', eq.accessory_face_key) : null;
+      const accessoryNeckItem = eq ? findShopItem('accessory_neck', eq.accessory_neck_key) : null;
       const stickerItem = eq ? findShopItem('sticker', eq.sticker_key) : null;
       const themeItem = eq ? findShopItem('theme', eq.theme_key) : null;
+      const wingItem = eq ? findShopItem('wing', eq.wing_key) : null;
+      const petItem = eq ? findShopItem('pet', eq.pet_key) : null;
       const specials = specialMap.get(k.id) || new Set();
 
       const isDonationKing = donationMax > 0 && (k.total_donated || 0) === donationMax;
@@ -98,7 +112,14 @@ export async function GET(req) {
         isInvestKing,
         level: calcLevel(k.total_earned).level,
         avatarEmoji: avatarItem?.emoji || null,
-        accessoryEmoji: accessoryItem?.emoji || null,
+        // 머리/얼굴/목 3슬롯 동시 착용(2026-10) — 예전 accessoryEmoji는 하위호환용으로
+        // 머리 슬롯을 그대로 내려줌(헤더/목록 등 아직 안 고친 곳이 있어도 안 깨지게).
+        accessoryEmoji: accessoryHeadItem?.emoji || null,
+        accessoryHeadEmoji: accessoryHeadItem?.emoji || null,
+        accessoryFaceEmoji: accessoryFaceItem?.emoji || null,
+        accessoryNeckEmoji: accessoryNeckItem?.emoji || null,
+        wingEmoji: wingItem?.emoji || null,
+        petEmoji: petItem?.emoji || null,
         stickerEmoji: stickerItem?.emoji || null,
         theme: themeItem ? { from: themeItem.from, mid: themeItem.mid, to: themeItem.to } : null,
         // 같은 효과의 30일/2주 버전 중 하나라도 유효하면 효과가 보이게 함.
@@ -109,6 +130,7 @@ export async function GET(req) {
         avatarRing: specials.has('avatar_ring') || specials.has('avatar_ring_2w'),
         avatarRingRainbow: specials.has('avatar_ring_rainbow') || specials.has('avatar_ring_rainbow_2w'),
         avatarRingFire: specials.has('avatar_ring_fire') || specials.has('avatar_ring_fire_2w'),
+        avatarRingDiamond: specials.has('avatar_ring_diamond') || specials.has('avatar_ring_diamond_2w'),
         starTrail: specials.has('star_trail') || specials.has('star_trail_2w'),
         vipBadge: specials.has('vip_badge') || specials.has('vip_badge_2w'),
         avatarBounce: specials.has('avatar_bounce'),

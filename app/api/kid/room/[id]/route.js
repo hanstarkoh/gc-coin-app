@@ -22,11 +22,20 @@ export async function GET(_req, { params }) {
       .single();
     if (kidErr || !kid) return NextResponse.json({ ok: false, error: '학생을 찾을 수 없어요.' }, { status: 404 });
 
-    const { data: equippedRow } = await sb
+    let { data: equippedRow, error: eqErr } = await sb
       .from('kid_equipped')
-      .select('avatar_key, accessory_key, sticker_key, theme_key')
+      .select('avatar_key, accessory_head_key, accessory_face_key, accessory_neck_key, sticker_key, theme_key, wing_key, pet_key')
       .eq('kid_id', kid.id)
       .maybeSingle();
+    if (eqErr) {
+      // 새 슬롯 컬럼이 아직 없는(마이그레이션 전) 상태일 수 있으니 예전 컬럼들로 재시도.
+      const fallback = await sb
+        .from('kid_equipped')
+        .select('avatar_key, sticker_key, theme_key')
+        .eq('kid_id', kid.id)
+        .maybeSingle();
+      equippedRow = fallback.data;
+    }
 
     const { data: placements, error: placeErr } = await sb
       .from('kid_room_items')
@@ -48,7 +57,12 @@ export async function GET(_req, { params }) {
       title: getActiveTitle(kid),
       level: calcLevel(kid.total_earned).level,
       avatarEmoji: findShopItem('avatar', equippedRow?.avatar_key)?.emoji || null,
-      accessoryEmoji: findShopItem('accessory', equippedRow?.accessory_key)?.emoji || null,
+      accessoryEmoji: findShopItem('accessory_head', equippedRow?.accessory_head_key)?.emoji || null,
+      accessoryHeadEmoji: findShopItem('accessory_head', equippedRow?.accessory_head_key)?.emoji || null,
+      accessoryFaceEmoji: findShopItem('accessory_face', equippedRow?.accessory_face_key)?.emoji || null,
+      accessoryNeckEmoji: findShopItem('accessory_neck', equippedRow?.accessory_neck_key)?.emoji || null,
+      wingEmoji: findShopItem('wing', equippedRow?.wing_key)?.emoji || null,
+      petEmoji: findShopItem('pet', equippedRow?.pet_key)?.emoji || null,
       stickerEmoji: findShopItem('sticker', equippedRow?.sticker_key)?.emoji || null,
       balance: kid.room_balance_public ? kid.balance : null,
       balancePublic: kid.room_balance_public,

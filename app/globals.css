@@ -153,6 +153,15 @@ html, body {
   50% { box-shadow: 0 0 0 4px #ffd23d, 0 0 18px 5px rgba(255, 138, 61, 0.9); }
 }
 
+/* ---- 상점 특별효과: 아바타 링(다이아몬드, 최상위 티어) ---- */
+.avatar-ring-diamond {
+  animation: ringDiamond 1.8s ease-in-out infinite;
+}
+@keyframes ringDiamond {
+  0%, 100% { box-shadow: 0 0 0 3px #e8f6ff, 0 0 10px 3px rgba(110, 198, 255, 0.6), 0 0 18px 6px rgba(124, 92, 191, 0.35); }
+  50% { box-shadow: 0 0 0 5px #ffffff, 0 0 20px 6px rgba(110, 198, 255, 0.95), 0 0 30px 10px rgba(124, 92, 191, 0.6); }
+}
+
 /* ---- 상점 특별효과: 아바타 주변 별가루 ---- */
 .avatar-star-trail {
   position: relative;

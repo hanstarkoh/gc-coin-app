@@ -87,12 +87,19 @@ function KidLoginInner() {
                   }`}
                 >
                   <div className="relative">
+                    {k.wingEmoji && (
+                      <span className="absolute inset-0 flex items-center justify-center text-3xl opacity-90 -z-10 pointer-events-none">
+                        {k.wingEmoji}
+                      </span>
+                    )}
                     <div
                       className={`icon-badge icon-badge-${fallback.color} w-12 h-12 rounded-full text-2xl ${
                         k.isDonationKing
                           ? 'avatar-ring-donation'
                           : k.isInvestKing
                           ? 'avatar-ring-invest'
+                          : k.avatarRingDiamond
+                          ? 'avatar-ring-diamond'
                           : k.avatarRingFire
                           ? 'avatar-ring-fire'
                           : k.avatarRingRainbow
@@ -116,11 +123,20 @@ function KidLoginInner() {
                     >
                       {emoji}
                     </div>
-                    {k.accessoryEmoji && (
-                      <span className="absolute -top-1.5 -right-1.5 text-base leading-none">{k.accessoryEmoji}</span>
+                    {k.accessoryHeadEmoji && (
+                      <span className="absolute -top-1.5 -right-1.5 text-base leading-none">{k.accessoryHeadEmoji}</span>
+                    )}
+                    {k.accessoryFaceEmoji && (
+                      <span className="absolute -top-1.5 -left-1.5 text-base leading-none">{k.accessoryFaceEmoji}</span>
+                    )}
+                    {k.accessoryNeckEmoji && (
+                      <span className="absolute -bottom-1 -right-1 text-sm leading-none">{k.accessoryNeckEmoji}</span>
+                    )}
+                    {k.petEmoji && (
+                      <span className="absolute -bottom-2 -right-3.5 text-sm leading-none">{k.petEmoji}</span>
                     )}
                     {preview && k.isTest && (
-                      <span className="absolute -top-2 -left-2 text-[9px] bg-navy text-white rounded-full px-1 leading-tight">
+                      <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] bg-navy text-white rounded-full px-1 leading-tight">
                         🧪
                       </span>
                     )}

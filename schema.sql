@@ -514,3 +514,20 @@ alter table kids add column if not exists is_test boolean not null default false
 -- 오늘의 운세 등급별 확률(가중치)을 관리자가 화면에서 조절할 수 있게. null이면
 -- lib/fortunes.js의 기본값을 씀(마이그레이션 전에도 안전하게 동작).
 alter table settings add column if not exists fortune_weights jsonb;
+
+-- 꾸미기 상점 확장(2026-10): 액세서리를 머리/얼굴/목 3슬롯으로 나눠서 동시에 여러 개
+-- 착용할 수 있게 하고, 날개·망토/미니펫 동반 슬롯을 새로 추가함. 기존 accessory_key
+-- 컬럼은 그대로 남겨두고(과거 기록 보존, lib/shop.js의 findShopItem 레거시 조회용), 그
+-- 값을 새 슬롯 중 알맞은 곳으로 옮겨둠(머리류/얼굴류/목류 매핑은 lib/shop.js 참고).
+alter table kid_equipped add column if not exists accessory_head_key text;
+alter table kid_equipped add column if not exists accessory_face_key text;
+alter table kid_equipped add column if not exists accessory_neck_key text;
+alter table kid_equipped add column if not exists wing_key text;
+alter table kid_equipped add column if not exists pet_key text;
+
+update kid_equipped set accessory_head_key = accessory_key
+  where accessory_key in ('hat', 'ribbon', 'flower', 'crown', 'headphones', 'cap');
+update kid_equipped set accessory_face_key = accessory_key
+  where accessory_key in ('glasses', 'mask', 'goggles');
+update kid_equipped set accessory_neck_key = accessory_key
+  where accessory_key in ('scarf', 'necklace');

@@ -589,7 +589,7 @@ function DashboardInner() {
           <BadgeGrid earnedKeys={badges.map((b) => b.key)} />
         </Collapsible>
 
-        <ShopCard kidBalance={kid.balance} onChange={loadMe} showToast={showToast} />
+        <ShopCard kidBalance={kid.balance} kidLevel={level.level} onChange={loadMe} showToast={showToast} />
 
         <Collapsible icon="📈" badgeColor="navy" title="모의투자" defaultOpen={true}>
           <button
@@ -1362,14 +1362,18 @@ function DashboardInner() {
 
 const SHOP_SECTIONS = [
   { key: 'avatar', label: '아바타', icon: '🐻', equippable: true },
-  { key: 'accessory', label: '액세서리', icon: '🎩', equippable: true },
+  { key: 'accessory_head', label: '머리꾸미기', icon: '👑', equippable: true },
+  { key: 'accessory_face', label: '얼굴꾸미기', icon: '🕶️', equippable: true },
+  { key: 'accessory_neck', label: '목꾸미기', icon: '📿', equippable: true },
+  { key: 'wing', label: '날개·망토', icon: '🪽', equippable: true },
+  { key: 'pet', label: '미니펫', icon: '🐿️', equippable: true },
   { key: 'sticker', label: '이름 스티커', icon: '⭐', equippable: true },
   { key: 'theme', label: '카드 테마', icon: '🎨', equippable: true },
   { key: 'furniture', label: '가구', icon: '🛋️', equippable: false },
   { key: 'special', label: '특별 효과', icon: '✨', equippable: false },
 ];
 
-function ShopCard({ kidBalance, onChange, showToast }) {
+function ShopCard({ kidBalance, kidLevel, onChange, showToast }) {
   const [data, setData] = useState(null);
   const [busyKey, setBusyKey] = useState(null);
   const [activeCat, setActiveCat] = useState('avatar');
@@ -1450,11 +1454,12 @@ function ShopCard({ kidBalance, onChange, showToast }) {
             {data.categories[sec.key].map((item) => {
               const isEquipped = sec.equippable && data.equipped[sec.key] === item.key;
               const isBusy = busyKey === item.key;
+              const levelLocked = !item.owned && item.minLevel && kidLevel < item.minLevel;
               return (
                 <div
                   key={item.key}
                   className={`rounded-xl border-2 p-2 text-center ${
-                    isEquipped ? 'border-gold bg-gold/10' : 'border-gray-100'
+                    isEquipped ? 'border-gold bg-gold/10' : levelLocked ? 'border-gray-100 opacity-60' : 'border-gray-100'
                   }`}
                 >
                   {sec.key === 'theme' ? (
@@ -1467,6 +1472,11 @@ function ShopCard({ kidBalance, onChange, showToast }) {
                   )}
                   <div className="text-[10px] font-medium text-navy leading-tight">{item.name}</div>
                   {!item.owned && <div className="text-[10px] text-gold-deep font-bold">{item.price} GC</div>}
+                  {!item.owned && item.minLevel && (
+                    <div className={`text-[9px] font-bold ${levelLocked ? 'text-coral-deep' : 'text-gray-400'}`}>
+                      🔒 레벨 {item.minLevel}+
+                    </div>
+                  )}
                   {sec.key === 'special' && item.owned && item.expiresAt && (
                     <div className="text-[9px] text-gray-400">
                       {Math.max(1, Math.ceil((new Date(item.expiresAt) - Date.now()) / 86400000))}일 남음
@@ -1474,11 +1484,11 @@ function ShopCard({ kidBalance, onChange, showToast }) {
                   )}
                   {!item.owned ? (
                     <button
-                      disabled={isBusy || kidBalance < item.price}
+                      disabled={isBusy || kidBalance < item.price || levelLocked}
                       onClick={() => buy(sec.key, item.key)}
                       className="btn-3d btn-3d-gold mt-1 w-full text-[10px] bg-gold text-navy-deep rounded-lg py-1 disabled:opacity-40"
                     >
-                      구매
+                      {levelLocked ? '레벨 부족' : '구매'}
                     </button>
                   ) : sec.equippable ? (
                     <button
