@@ -56,6 +56,7 @@ function DashboardInner() {
   const [todayTx, setTodayTx] = useState([]);
   const [pendingEventCount, setPendingEventCount] = useState(0);
   const [readyGoalCount, setReadyGoalCount] = useState(0);
+  const [statModal, setStatModal] = useState(null); // 'earn' | 'spend' | null
 
   const checkAuth = useCallback(async () => {
     const res = await fetch('/api/admin/me');
@@ -109,7 +110,10 @@ function DashboardInner() {
   if (!ready) return <p className="text-center text-gray-400 text-sm mt-16">불러오는 중...</p>;
 
   const attendedTodaySet = new Set(todayTx.filter((t) => t.reason === '출석').map((t) => t.kid_id));
-  const earnedToday = todayTx.filter((t) => t.type !== 'spend').reduce((s, t) => s + t.amount, 0);
+  const earnedTodayTx = todayTx
+    .filter((t) => t.type !== 'spend')
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const earnedToday = earnedTodayTx.reduce((s, t) => s + t.amount, 0);
   const todayOrders = todayTx
     .filter((t) => t.type === 'spend')
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -123,8 +127,8 @@ function DashboardInner() {
         <div className="grid grid-cols-4 gap-2.5 mb-5">
           <StatBox icon="🧒" badge="navy" num={kids.filter((k) => !k.is_test).length} label="전체 청소년" />
           <StatBox icon="✅" badge="mint" num={attendedTodaySet.size} label="오늘 출석" />
-          <StatBox icon="🪙" badge="gold" num={`+${earnedToday}`} label="오늘 지급 GC" />
-          <StatBox icon="🛍️" badge="grape" num={`-${spentToday}`} label="오늘 사용 GC" />
+          <StatBox icon="🪙" badge="gold" num={`+${earnedToday}`} label="오늘 지급 GC" onClick={() => setStatModal('earn')} />
+          <StatBox icon="🛍️" badge="grape" num={`-${spentToday}`} label="오늘 사용 GC" onClick={() => setStatModal('spend')} />
         </div>
 
         <div className="flex gap-1.5 overflow-x-auto pb-1 mb-4">
@@ -176,16 +180,72 @@ function DashboardInner() {
         {tab === 'quiz' && <QuizTab showToast={showToast} />}
         {tab === 'settings' && <SettingsTab showToast={showToast} />}
       </div>
+
+      {statModal && (
+        <TodayTxModal
+          type={statModal}
+          transactions={statModal === 'earn' ? earnedTodayTx : todayOrders}
+          onClose={() => setStatModal(null)}
+        />
+      )}
     </div>
   );
 }
 
-function StatBox({ icon, badge, num, label }) {
+function StatBox({ icon, badge, num, label, onClick }) {
+  const Tag = onClick ? 'button' : 'div';
   return (
-    <div className="bg-white border-[1.5px] border-gray-200 rounded-2xl p-3 text-center">
+    <Tag
+      onClick={onClick}
+      className={`bg-white border-[1.5px] border-gray-200 rounded-2xl p-3 text-center w-full ${
+        onClick ? 'active:scale-95 transition-transform' : ''
+      }`}
+    >
       <div className={`icon-badge icon-badge-${badge} w-9 h-9 rounded-full text-base mx-auto mb-1.5`}>{icon}</div>
       <div className="font-display text-xl text-navy">{num}</div>
       <div className="text-[11px] text-gray-500 mt-0.5">{label}</div>
+    </Tag>
+  );
+}
+
+function TodayTxModal({ type, transactions, onClose }) {
+  const isEarn = type === 'earn';
+  const total = transactions.reduce((s, t) => s + t.amount, 0);
+  return (
+    <div className="fixed inset-0 z-50 bg-navy-deep/60 flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        className="bg-white rounded-3xl p-5 max-w-sm w-full max-h-[80vh] flex flex-col animate-popIn"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-1">
+          <div className="font-display text-lg text-navy">{isEarn ? '오늘 지급 내역' : '오늘 사용 내역'}</div>
+          <button onClick={onClose} className="text-gray-400 text-xl leading-none px-1">
+            ✕
+          </button>
+        </div>
+        <div className={`text-sm font-bold mb-3 ${isEarn ? 'text-gold-deep' : 'text-grape-deep'}`}>
+          {isEarn ? '+' : '-'}
+          {total} GC · {transactions.length}건
+        </div>
+        <div className="overflow-y-auto -mx-1 px-1">
+          {transactions.length === 0 && <p className="text-xs text-gray-400 text-center py-6">오늘 내역이 없어요.</p>}
+          {transactions.map((t) => (
+            <div key={t.id} className="flex items-center justify-between py-2 border-b border-dashed border-gray-100 last:border-0">
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-navy truncate">{t.kid_name}</div>
+                <div className="text-[11px] text-gray-400 truncate">{t.reason || (isEarn ? '지급' : '구매')}</div>
+              </div>
+              <div className="shrink-0 text-right ml-2">
+                <div className={`text-sm font-bold ${isEarn ? 'text-gold-deep' : 'text-grape-deep'}`}>
+                  {isEarn ? '+' : '-'}
+                  {t.amount} GC
+                </div>
+                <div className="text-[10.5px] text-gray-400">{fmtTime(t.created_at)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
