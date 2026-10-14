@@ -34,7 +34,7 @@ export default function FriendsRoomListPage() {
               >
                 <div className="relative">
                   {k.wingEmoji && (
-                    <span className="absolute inset-0 flex items-center justify-center text-3xl opacity-90 -z-10 pointer-events-none">
+                    <span className="absolute inset-0 flex items-center justify-center text-5xl opacity-90 pointer-events-none">
                       {k.wingEmoji}
                     </span>
                   )}
@@ -51,7 +51,7 @@ export default function FriendsRoomListPage() {
                     <span className="absolute -bottom-1 -right-1 text-sm leading-none">{k.accessoryNeckEmoji}</span>
                   )}
                   {k.petEmoji && (
-                    <span className="absolute -bottom-2 -right-3.5 text-sm leading-none">{k.petEmoji}</span>
+                    <span className="absolute top-1/2 -right-4 -translate-y-1/2 text-sm leading-none">{k.petEmoji}</span>
                   )}
                   <span className="icon-badge icon-badge-grape absolute -bottom-1 -left-1 w-5 h-5 rounded-full text-[8.5px] font-display text-white">
                     {k.level}

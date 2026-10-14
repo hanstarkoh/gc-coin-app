@@ -88,7 +88,7 @@ function KidLoginInner() {
                 >
                   <div className="relative">
                     {k.wingEmoji && (
-                      <span className="absolute inset-0 flex items-center justify-center text-3xl opacity-90 -z-10 pointer-events-none">
+                      <span className="absolute inset-0 flex items-center justify-center text-5xl opacity-90 pointer-events-none">
                         {k.wingEmoji}
                       </span>
                     )}
@@ -133,7 +133,7 @@ function KidLoginInner() {
                       <span className="absolute -bottom-1 -right-1 text-sm leading-none">{k.accessoryNeckEmoji}</span>
                     )}
                     {k.petEmoji && (
-                      <span className="absolute -bottom-2 -right-3.5 text-sm leading-none">{k.petEmoji}</span>
+                      <span className="absolute top-1/2 -right-4 -translate-y-1/2 text-sm leading-none">{k.petEmoji}</span>
                     )}
                     {preview && k.isTest && (
                       <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] bg-navy text-white rounded-full px-1 leading-tight">
