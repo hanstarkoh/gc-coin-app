@@ -10,9 +10,9 @@
   <rect x="24" y="222" width="672" height="205" rx="22" fill="#FFFFFF" stroke="#3FB68B" stroke-width="3" />
   <circle cx="104" cy="324" r="48" fill="#3FB68B" />
   <text x="104" y="341" font-size="44" text-anchor="middle">📊</text>
-  <text x="172" y="288" font-size="27" font-weight="700" fill="#16324F">고평가·저평가 뱃지를 믿어요</text>
-  <text x="172" y="330" font-size="21" fill="#6B7280">쌀 때(저평가) 사고,</text>
-  <text x="172" y="364" font-size="21" fill="#6B7280">비쌀 때(고평가) 팔면 진짜 유리해요!</text>
+  <text x="172" y="288" font-size="27" font-weight="700" fill="#16324F">가격 흐름을 보고 직접 판단해요</text>
+  <text x="172" y="330" font-size="21" fill="#6B7280">최근에 많이 올랐다면 고평가,</text>
+  <text x="172" y="364" font-size="21" fill="#6B7280">많이 내렸다면 저평가일 수 있어요</text>
 
   <!-- Card 2 -->
   <rect x="24" y="447" width="672" height="205" rx="22" fill="#FFFFFF" stroke="#F2AC1E" stroke-width="3" />

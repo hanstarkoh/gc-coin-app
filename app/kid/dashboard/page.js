@@ -683,11 +683,6 @@ function DashboardInner() {
                         🔥 많이 올라서 추격매수 수수료 {Math.round(s.buyFeeRate * 1000) / 10}%
                       </div>
                     )}
-                    {s.valuation && (
-                      <div className={`text-[10.5px] font-bold ${s.valuation === 'over' ? 'text-coral-deep' : 'text-mint-deep'}`}>
-                        {s.valuation === 'over' ? '📊 고평가 상태예요' : '📉 저평가 상태예요'}
-                      </div>
-                    )}
                     {(() => {
                       const dday = daysUntil(s.next_earnings_at);
                       if (dday === null) return null;

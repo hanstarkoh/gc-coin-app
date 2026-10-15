@@ -1,14 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getKidId } from '@/lib/session';
-import {
-  maybeUpdateStockPrices,
-  getLiveSentiments,
-  momentumFromHistory,
-  buyFeeRate,
-  movingAverage,
-  valuationStatus,
-} from '@/lib/stocks';
+import { maybeUpdateStockPrices, getLiveSentiments, momentumFromHistory, buyFeeRate } from '@/lib/stocks';
 
 const HISTORY_POINTS = 14;
 
@@ -77,7 +70,6 @@ export async function GET() {
           plAmount: avgPrice > 0 ? (s.price - avgPrice) * myShares : 0,
           sentiment: sentiments[s.id] || null,
           buyFeeRate: buyFeeRate(momentumFromHistory(prices)),
-          valuation: valuationStatus(s.price, movingAverage(prices)),
         };
       })
     );
