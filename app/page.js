@@ -277,6 +277,41 @@ export default async function Home() {
           🙋 청소년으로 시작하기
         </Link>
 
+        {(donationRanking.length > 0 || profitRanking.length > 0) && (
+          <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="icon-badge icon-badge-gold w-7 h-7 rounded-lg text-sm">🏆</div>
+              <div className="font-display text-base text-navy">명예의 전당</div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="text-xs font-bold text-coral-deep mb-1.5">🎁 기부 랭킹</div>
+                {donationRanking.length === 0 && <p className="text-[11px] text-gray-400">아직 없어요</p>}
+                {donationRanking.map((k, i) => (
+                  <div key={k.name + i} className="flex items-center justify-between text-xs py-0.5">
+                    <span className={i === 0 ? 'font-bold text-navy' : 'text-gray-600'}>
+                      {i + 1}. {k.name}
+                    </span>
+                    <span className="text-gray-500">{k.total_donated}</span>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <div className="text-xs font-bold text-mint-deep mb-1.5">📈 수익 랭킹</div>
+                {profitRanking.length === 0 && <p className="text-[11px] text-gray-400">아직 없어요</p>}
+                {profitRanking.map((k, i) => (
+                  <div key={k.name + i} className="flex items-center justify-between text-xs py-0.5">
+                    <span className={i === 0 ? 'font-bold text-navy' : 'text-gray-600'}>
+                      {i + 1}. {k.name}
+                    </span>
+                    <span className="text-gray-500">+{k.invest_realized_profit}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {goal && (
           <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -399,40 +434,6 @@ export default async function Home() {
           </div>
         )}
 
-        {(donationRanking.length > 0 || profitRanking.length > 0) && (
-          <div className="bg-white border-2 border-gray-100 rounded-3xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="icon-badge icon-badge-gold w-7 h-7 rounded-lg text-sm">🏆</div>
-              <div className="font-display text-base text-navy">명예의 전당</div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <div className="text-xs font-bold text-coral-deep mb-1.5">🎁 기부 랭킹</div>
-                {donationRanking.length === 0 && <p className="text-[11px] text-gray-400">아직 없어요</p>}
-                {donationRanking.map((k, i) => (
-                  <div key={k.name + i} className="flex items-center justify-between text-xs py-0.5">
-                    <span className={i === 0 ? 'font-bold text-navy' : 'text-gray-600'}>
-                      {i + 1}. {k.name}
-                    </span>
-                    <span className="text-gray-500">{k.total_donated}</span>
-                  </div>
-                ))}
-              </div>
-              <div>
-                <div className="text-xs font-bold text-mint-deep mb-1.5">📈 수익 랭킹</div>
-                {profitRanking.length === 0 && <p className="text-[11px] text-gray-400">아직 없어요</p>}
-                {profitRanking.map((k, i) => (
-                  <div key={k.name + i} className="flex items-center justify-between text-xs py-0.5">
-                    <span className={i === 0 ? 'font-bold text-navy' : 'text-gray-600'}>
-                      {i + 1}. {k.name}
-                    </span>
-                    <span className="text-gray-500">+{k.invest_realized_profit}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
