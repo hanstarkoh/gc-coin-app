@@ -1,9 +1,19 @@
 'use client';
 import { useEffect, useState } from 'react';
 
+// toLocaleTimeString('ko-KR', ...)을 썼더니 서버(Node, ICU 데이터 환경에 따라 'ko-KR'이
+// 'en-US'로 조용히 폴백돼 "AM 3:20")와 브라우저(항상 "오전 3:20")가 다르게 렌더링돼서
+// 하이드레이션 경고가 났음(2026-10, 실제로 콘솔에서 확인). Intl 로케일/타임존을 환경에
+// 맡기지 않고 KST(UTC+9) 기준으로 직접 계산해서 서버/클라이언트가 항상 똑같이 찍히게 함.
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 function fmtTime(iso) {
   try {
-    return new Date(iso).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
+    const kst = new Date(new Date(iso).getTime() + KST_OFFSET_MS);
+    let h = kst.getUTCHours();
+    const m = String(kst.getUTCMinutes()).padStart(2, '0');
+    const period = h < 12 ? '오전' : '오후';
+    h = h % 12 || 12;
+    return `${period} ${h}:${m}`;
   } catch {
     return '';
   }

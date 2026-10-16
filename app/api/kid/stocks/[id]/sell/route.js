@@ -54,15 +54,22 @@ export async function POST(req, { params }) {
     const netCredit = amount - fee;
     const realized = (stock.price - holding.avg_price) * qty - fee;
 
-    const { error: updErr } = await sb
+    // balance가 읽은 값 그대로일 때만 갱신해서, 두 요청이 거의 동시에 들어와도(더블탭 등)
+    // 하나만 성공하게 함 — 안 그러면 둘 다 보유 주식은 깎이는데 코인은 두 배로 들어와요.
+    const { data: updRows, error: updErr } = await sb
       .from('kids')
       .update({
         balance: kid.balance + netCredit,
         invest_realized_profit: (kid.invest_realized_profit || 0) + realized,
         invest_trade_count: (kid.invest_trade_count || 0) + 1,
       })
-      .eq('id', kid.id);
+      .eq('id', kid.id)
+      .eq('balance', kid.balance)
+      .select('id');
     if (updErr) throw updErr;
+    if (!updRows || updRows.length === 0) {
+      return NextResponse.json({ ok: false, error: '잠시 후 다시 시도해주세요.' }, { status: 409 });
+    }
 
     const { error: holdingUpdErr } = await sb
       .from('stock_holdings')

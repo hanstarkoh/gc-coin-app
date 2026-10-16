@@ -3011,8 +3011,14 @@ function StatsTab({ kids, showToast }) {
   const [period, setPeriod] = useState('all');
   const [stats, setStats] = useState(null);
 
+  // 보기 범위를 빠르게 바꾸면(전체 -> 남자 -> 여자 등) 먼저 보낸 느린 응답이 나중에 와서
+  // 최신 선택 결과를 덮어쓸 수 있어서(GrowthTab의 load()와 같은 문제), 매 호출마다 번호를
+  // 매겨 "가장 최근 요청"의 응답만 반영합니다.
+  const requestIdRef = useRef(0);
+
   const load = useCallback(
     async (currentScope, currentKidId, currentPeriod) => {
+      const myRequestId = ++requestIdRef.current;
       setStats(null);
       const params = new URLSearchParams();
       if (currentScope === 'kid' && currentKidId) params.set('kidId', currentKidId);
@@ -3022,6 +3028,7 @@ function StatsTab({ kids, showToast }) {
       if (to) params.set('to', to);
       const res = await fetch(`/api/admin/stats?${params.toString()}`);
       const data = await res.json();
+      if (requestIdRef.current !== myRequestId) return;
       if (data.ok) setStats(data);
       else showToast(data.error || '통계를 불러오지 못했어요.');
     },

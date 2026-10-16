@@ -93,8 +93,18 @@ export async function POST(req) {
       return NextResponse.json({ ok: false, error: '코인이 부족해요.' }, { status: 400 });
     }
 
-    const { error: updErr } = await sb.from('kids').update({ balance: kid.balance - principal }).eq('id', kidId);
+    // balance가 읽은 값 그대로일 때만 갱신해서, 두 요청이 거의 동시에 들어와도(더블탭 등)
+    // 하나만 성공하게 함 — 안 그러면 코인은 두 번 깎이는데 예금은 한 번만 들어가요.
+    const { data: updRows, error: updErr } = await sb
+      .from('kids')
+      .update({ balance: kid.balance - principal })
+      .eq('id', kidId)
+      .eq('balance', kid.balance)
+      .select('id');
     if (updErr) throw updErr;
+    if (!updRows || updRows.length === 0) {
+      return NextResponse.json({ ok: false, error: '잠시 후 다시 시도해주세요.' }, { status: 409 });
+    }
 
     const maturesAt = new Date(Date.now() + plan.days * 24 * 60 * 60 * 1000).toISOString();
     const { error: insErr } = await sb.from('kid_deposits').insert({

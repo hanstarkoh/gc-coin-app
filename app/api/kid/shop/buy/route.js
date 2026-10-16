@@ -51,11 +51,18 @@ export async function POST(req) {
     // 꾸미기 상점 구매는 lib/history.js(loadKidHistory)가 kid_inventory에서 직접 읽어와
     // "🛍️ ○○ 구매"로 이미 합쳐서 보여주고 있어서, 여기서 transactions에 따로 남기면
     // 관리자 화면에 같은 구매가 두 번 찍힘 — total_spent만 갱신합니다.
-    const { error: updErr } = await sb
+    // balance가 읽은 값 그대로일 때만 갱신해서, 두 요청이 거의 동시에 들어와도(더블탭 등)
+    // 하나만 성공하게 함 — 안 그러면 코인은 두 번 깎이는데 아이템은 한 번만 들어와요.
+    const { data: updRows, error: updErr } = await sb
       .from('kids')
       .update({ balance: kid.balance - item.price, total_spent: (kid.total_spent || 0) + item.price })
-      .eq('id', kidId);
+      .eq('id', kidId)
+      .eq('balance', kid.balance)
+      .select('id');
     if (updErr) throw updErr;
+    if (!updRows || updRows.length === 0) {
+      return NextResponse.json({ ok: false, error: '잠시 후 다시 시도해주세요.' }, { status: 409 });
+    }
 
     if (item.durationDays) {
       const expiresAt = new Date(now.getTime() + item.durationDays * 24 * 60 * 60 * 1000).toISOString();

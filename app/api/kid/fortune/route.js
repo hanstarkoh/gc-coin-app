@@ -55,11 +55,19 @@ export async function POST() {
     const result = drawFortune(settings?.fortune_weights);
 
     const newBalance = kid.balance - FORTUNE_PRICE;
-    const { error: updErr } = await sb
+    // balance가 읽은 값 그대로일 때만 갱신해서, 두 요청이 거의 동시에 들어와도(더블탭 등)
+    // 하나만 성공하게 함 — 위의 "오늘 이미 뽑았는지" 체크만으로는 두 요청이 동시에 그
+    // 체크를 통과해버릴 수 있어서, 여기서 지면 거래 기록(=오늘 뽑음 표시)도 안 남게 됨.
+    const { data: updRows, error: updErr } = await sb
       .from('kids')
       .update({ balance: newBalance, total_spent: kid.total_spent + FORTUNE_PRICE })
-      .eq('id', kidId);
+      .eq('id', kidId)
+      .eq('balance', kid.balance)
+      .select('id');
     if (updErr) throw updErr;
+    if (!updRows || updRows.length === 0) {
+      return NextResponse.json({ ok: false, error: '잠시 후 다시 시도해주세요.' }, { status: 409 });
+    }
 
     const { error: txErr } = await sb.from('transactions').insert({
       kid_id: kidId,
