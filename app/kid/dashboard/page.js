@@ -19,6 +19,7 @@ import { MEGAPHONE_PRICE, MESSAGE_MAX_LENGTH } from '@/lib/announcements';
 import { FORTUNE_PRICE } from '@/lib/fortunes';
 import FortuneWheel from '@/components/FortuneWheel';
 import { MENU_CATEGORIES } from '@/lib/menuCategories';
+import AvatarBadge from '@/components/AvatarBadge';
 
 function fmtDate(d) {
   return d.replaceAll('-', '.');
@@ -562,7 +563,10 @@ function DashboardInner() {
         )}
 
         <div className="hero-coin-card text-white rounded-3xl p-6 text-center" style={heroStyle}>
-          <div className="icon-badge icon-badge-gold w-14 h-14 rounded-full text-2xl mx-auto mb-2">🪙</div>
+          <div className="flex items-center justify-center gap-4 mb-2">
+            <AvatarBadge kid={kid} showLevel={false} />
+            <div className="icon-badge icon-badge-gold w-14 h-14 rounded-full text-2xl">🪙</div>
+          </div>
           <div className="text-xs text-white/60">현재 보유 코인</div>
           <div className="balance-glow font-display text-5xl text-gold my-1">{kid.balance} GC</div>
           <div className="text-sm">{nameLabel}님</div>
@@ -1467,6 +1471,9 @@ function ShopCard({ kidBalance, kidLevel, onChange, showToast }) {
                   )}
                   <div className="text-[10px] font-medium text-navy leading-tight">{item.name}</div>
                   {!item.owned && <div className="text-[10px] text-gold-deep font-bold">{item.price} GC</div>}
+                  {!item.owned && item.durationDays && (
+                    <div className="text-[9px] text-gray-400">⏳ {item.durationDays}일간 유지</div>
+                  )}
                   {!item.owned && item.minLevel && (
                     <div className={`text-[9px] font-bold ${levelLocked ? 'text-coral-deep' : 'text-gray-400'}`}>
                       🔒 레벨 {item.minLevel}+
