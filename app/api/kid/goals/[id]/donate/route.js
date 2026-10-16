@@ -79,7 +79,20 @@ export async function POST(req, { params }) {
         goalUpdated = true;
       }
     }
-    if (!goalUpdated) throw new Error('목표 갱신이 너무 몰려서 실패했어요. 잠시 후 목표 진행률을 확인해주세요.');
+    if (!goalUpdated) {
+      // 목표 갱신에 끝내 실패하면(동시 기부가 몰려서 5번 다 경합에 짐) 이미 빠진 코인을
+      // 되돌려줍니다 — 안 그러면 코인만 사라지고 기부 기록·목표 반영은 전혀 안 남아요.
+      // 되돌리는 쪽도 "방금 내가 쓴 값 그대로일 때만" 되돌려서 그 사이 다른 변경을 덮지 않음.
+      await sb
+        .from('kids')
+        .update({ balance: kid.balance, total_donated: kid.total_donated || 0, total_spent: kid.total_spent || 0 })
+        .eq('id', kid.id)
+        .eq('balance', kid.balance - amt);
+      return NextResponse.json(
+        { ok: false, error: '기부가 너무 몰려서 처리하지 못했어요. 코인은 되돌려드렸으니 잠시 후 다시 시도해주세요.' },
+        { status: 409 }
+      );
+    }
 
     const { error: donationErr } = await sb.from('group_goal_donations').insert({
       goal_id: goal.id,

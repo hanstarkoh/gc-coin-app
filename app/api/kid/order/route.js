@@ -76,10 +76,14 @@ export async function POST(req) {
         .select('id');
       if (stockErr) throw stockErr;
       if (!stockRows || stockRows.length === 0) {
+        // 되돌리는 쪽도 "방금 내가 쓴 값(newBalance) 그대로일 때만" 되돌려서, 그 사이에
+        // (예: 관리자 보너스 지급 등) 다른 경로가 balance를 또 바꿨다면 그 변경을 덮어쓰지
+        // 않게 함.
         await sb
           .from('kids')
           .update({ balance: kid.balance, total_spent: kid.total_spent, purchase_count: kid.purchase_count })
-          .eq('id', kidId);
+          .eq('id', kidId)
+          .eq('balance', newBalance);
         return NextResponse.json({ ok: false, error: '방금 품절됐어요. 다시 확인해주세요.' }, { status: 409 });
       }
     }
