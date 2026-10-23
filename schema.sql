@@ -531,3 +531,34 @@ update kid_equipped set accessory_face_key = accessory_key
   where accessory_key in ('glasses', 'mask', 'goggles');
 update kid_equipped set accessory_neck_key = accessory_key
   where accessory_key in ('scarf', 'necklace');
+
+-- 예측 시장(베팅 풀) -> 투표(설문) 기능으로 개편(2026-10). 기존 predictions/prediction_bets
+-- 테이블은 과거 기록 보존을 위해 그대로 둠(지움/드롭 안 함) — 새 기능은 아예 새 테이블 씀.
+-- 코인을 걸고 맞춘 사람이 못 맞춘 사람 판돈을 나눠 갖는 "베팅" 대신, 관리자가 궁금한 걸
+-- 물어보면 청소년은 코인 안 걸고 그냥 한 선택지를 고르고, 투표 자체에 참여 보상(고정 코인)을
+-- 받는 "설문조사" 방식으로 바뀜. 선택지는 2~6개까지 자유롭게(jsonb 배열) — 찬반(예/아니오)
+-- 뿐 아니라 "다음 체험학습 어디로 갈까요?" 같은 여러 선택지 질문도 가능하게 하기 위함.
+create table if not exists polls (
+  id uuid primary key default gen_random_uuid(),
+  question text not null,
+  options jsonb not null,
+  reward int not null default 10,
+  status text not null default 'open' check (status in ('open', 'closed')),
+  created_at timestamptz not null default now(),
+  closes_at timestamptz,
+  closed_at timestamptz
+);
+
+create table if not exists poll_votes (
+  id uuid primary key default gen_random_uuid(),
+  poll_id uuid not null references polls(id) on delete cascade,
+  kid_id uuid not null references kids(id) on delete cascade,
+  kid_name text not null,
+  option_index int not null,
+  created_at timestamptz not null default now(),
+  unique (poll_id, kid_id)
+);
+create index if not exists idx_poll_votes_poll on poll_votes(poll_id);
+create index if not exists idx_poll_votes_kid on poll_votes(kid_id);
+alter table polls enable row level security;
+alter table poll_votes enable row level security;

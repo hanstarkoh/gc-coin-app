@@ -892,7 +892,7 @@ function DashboardInner() {
 
         <DepositsCard kidBalance={kid.balance} onChange={loadMe} showToast={showToast} />
 
-        <PredictionsCard kidBalance={kid.balance} onChange={loadMe} showToast={showToast} />
+        <PollsCard onChange={loadMe} showToast={showToast} />
 
         <Collapsible icon="🎉" badgeColor="coral" title="기부함" defaultOpen={true}>
           {goals === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
@@ -1635,159 +1635,106 @@ function DepositsCard({ kidBalance, onChange, showToast }) {
   );
 }
 
-function PredictionsCard({ kidBalance, onChange, showToast }) {
-  const [predictions, setPredictions] = useState(null);
-  const [betId, setBetId] = useState(null);
-  const [betOption, setBetOption] = useState(null);
-  const [betAmount, setBetAmount] = useState('');
-  const [busy, setBusy] = useState(false);
+function PollsCard({ onChange, showToast }) {
+  const [polls, setPolls] = useState(null);
+  const [busyId, setBusyId] = useState(null);
 
   const load = useCallback(async () => {
-    const res = await fetch('/api/kid/predictions');
+    const res = await fetch('/api/kid/polls');
     const json = await res.json();
-    if (json.ok) setPredictions(json.predictions);
+    if (json.ok) setPolls(json.polls);
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const openBet = (p) => {
-    setBetId(p.id === betId ? null : p.id);
-    setBetOption(null);
-    setBetAmount('');
-  };
-
-  const confirmBet = async (p) => {
-    const amt = parseInt(betAmount, 10);
-    if (!betOption || !amt || amt <= 0) return;
-    setBusy(true);
+  const vote = async (p, optionIndex) => {
+    setBusyId(p.id);
     try {
-      const res = await fetch(`/api/kid/predictions/${p.id}/bet`, {
+      const res = await fetch(`/api/kid/polls/${p.id}/vote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ option: betOption, amount: amt }),
+        body: JSON.stringify({ optionIndex }),
       });
       const json = await res.json();
       if (json.ok) {
-        showToast('베팅했어요!');
-        setBetId(null);
+        showToast(`투표 완료! +${json.reward} GC 받았어요.`);
         await load();
         await onChange();
       } else {
-        showToast(json.error || '베팅에 실패했어요.');
+        showToast(json.error || '투표에 실패했어요.');
       }
     } finally {
-      setBusy(false);
+      setBusyId(null);
     }
   };
 
   return (
-    <Collapsible icon="🎲" badgeColor="grape" title="예측 시장" defaultOpen={false}>
-      {predictions === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
-      {predictions && predictions.length === 0 && (
-        <p className="text-xs text-gray-400 py-4 text-center">아직 올라온 질문이 없어요.</p>
+    <Collapsible icon="🗳️" badgeColor="grape" title="투표" defaultOpen={false}>
+      {polls === null && <p className="text-xs text-gray-400 py-4 text-center">불러오는 중...</p>}
+      {polls && polls.length === 0 && (
+        <p className="text-xs text-gray-400 py-4 text-center">아직 올라온 투표가 없어요.</p>
       )}
-      {predictions?.map((p) => {
-        const total = p.poolA + p.poolB;
-        const pctA = total > 0 ? Math.round((p.poolA / total) * 100) : 50;
-        const isBetting = betId === p.id;
+      {polls?.map((p) => {
         const isOpen = p.status === 'open';
+        const hasVoted = p.myVote !== null;
+        // 투표하기 전까지는 다른 애들 선택을 안 보여줘서(쏠림 방지), 내가 투표했거나
+        // 마감된 뒤에만 집계를 보여줍니다.
+        const showTally = hasVoted || !isOpen;
+        const total = p.counts.reduce((s, c) => s + c, 0);
         return (
           <div key={p.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
             <div className="flex items-center justify-between gap-2">
               <div className="font-bold text-sm">{p.question}</div>
               <span
                 className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                  p.status === 'open'
-                    ? 'bg-mint/15 text-mint-deep'
-                    : p.status === 'closed'
-                    ? 'bg-gray-100 text-gray-500'
-                    : 'bg-gold/15 text-gold-deep'
+                  isOpen ? 'bg-mint/15 text-mint-deep' : 'bg-gray-100 text-gray-500'
                 }`}
               >
-                {p.status === 'open' ? '진행 중' : p.status === 'closed' ? '마감' : '결과 발표'}
-              </span>
-            </div>
-            <div className="h-2.5 rounded-full bg-coral/20 overflow-hidden mt-2">
-              <div className="h-full bg-mint" style={{ width: `${pctA}%` }} />
-            </div>
-            <div className="flex justify-between text-[11px] text-gray-500 mt-1">
-              <span>
-                {p.option_a} {p.poolA} GC
-              </span>
-              <span>
-                {p.option_b} {p.poolB} GC
+                {isOpen ? '진행 중' : '마감'}
               </span>
             </div>
 
-            {p.status === 'resolved' && (
-              <p className="text-xs font-bold text-gold-deep mt-1.5">
-                정답: {p.resolved_option === 'a' ? p.option_a : p.option_b}
-                {p.myBet && (
-                  <span className={p.myBet.payout > 0 ? 'text-mint-deep' : 'text-coral-deep'}>
-                    {' '}
-                    · {p.myBet.payout > 0 ? `+${p.myBet.payout} GC 받음!` : '틀렸어요'}
-                  </span>
-                )}
-              </p>
-            )}
-
-            {p.status !== 'resolved' && p.myBet && (
-              <p className="text-xs text-gray-500 mt-1.5">
-                내 베팅: {p.myBet.option === 'a' ? p.option_a : p.option_b} {p.myBet.amount} GC
-              </p>
-            )}
-
-            {isOpen && !p.myBet && (
-              <>
-                <button
-                  onClick={() => openBet(p)}
-                  className="btn-3d btn-3d-grape mt-2 w-full text-xs bg-grape text-white rounded-lg py-1.5"
-                >
-                  {isBetting ? '접기' : '베팅하기'}
-                </button>
-                {isBetting && (
-                  <div className="mt-2 bg-paper rounded-lg p-2">
-                    <div className="flex gap-1.5 mb-1.5">
-                      <button
-                        onClick={() => setBetOption('a')}
-                        className={`flex-1 text-xs rounded-lg py-1.5 ${
-                          betOption === 'a' ? 'bg-mint text-white font-bold' : 'border-2 border-gray-200 text-gray-500'
-                        }`}
-                      >
-                        {p.option_a}
-                      </button>
-                      <button
-                        onClick={() => setBetOption('b')}
-                        className={`flex-1 text-xs rounded-lg py-1.5 ${
-                          betOption === 'b' ? 'bg-coral text-white font-bold' : 'border-2 border-gray-200 text-gray-500'
-                        }`}
-                      >
-                        {p.option_b}
-                      </button>
+            {showTally ? (
+              <div className="space-y-1.5 mt-2">
+                {p.options.map((label, i) => {
+                  const count = p.counts[i] || 0;
+                  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                  const mine = p.myVote === i;
+                  return (
+                    <div key={i}>
+                      <div className={`flex justify-between text-[11px] mb-0.5 ${mine ? 'font-bold text-grape-deep' : 'text-gray-600'}`}>
+                        <span>
+                          {label}
+                          {mine ? ' ✓ 내 선택' : ''}
+                        </span>
+                        <span>{count}표</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                        <div className={`h-full rounded-full ${mine ? 'bg-grape' : 'bg-gray-300'}`} style={{ width: `${pct}%` }} />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        min="1"
-                        value={betAmount}
-                        onChange={(e) => setBetAmount(e.target.value)}
-                        placeholder="베팅할 GC"
-                        className="flex-1 min-w-0 border-[1.5px] border-gray-200 rounded-lg px-2 py-1.5 text-sm"
-                      />
-                      <button
-                        disabled={busy || !betOption || !betAmount || Number(betAmount) > kidBalance}
-                        onClick={() => confirmBet(p)}
-                        className="btn-3d btn-3d-navy shrink-0 text-xs bg-navy text-white rounded-lg px-3 py-1.5 disabled:opacity-40"
-                      >
-                        확인
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-1.5 mt-2">
+                {p.options.map((label, i) => (
+                  <button
+                    key={i}
+                    disabled={busyId === p.id}
+                    onClick={() => vote(p, i)}
+                    className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg py-1.5 disabled:opacity-40"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             )}
+
+            {hasVoted && <p className="text-[11px] text-gray-400 mt-1.5">참여 보상으로 {p.reward} GC 받았어요.</p>}
+            {!hasVoted && !isOpen && <p className="text-[11px] text-gray-400 mt-1.5">투표가 마감됐어요.</p>}
           </div>
         );
       })}

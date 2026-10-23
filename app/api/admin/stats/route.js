@@ -6,7 +6,7 @@ import { TRADE_FEE_RATE, calcFee } from '@/lib/stocks';
 import { MEGAPHONE_PRICE } from '@/lib/announcements';
 
 // transactions.reason에 카테고리별로 이모지 접두사를 붙여온 기존 관례를 이용해서
-// (🏦=예금, 🏠=마이룸 확장, 🎲=예측 시장, 🔮=운세, 💝=기부, 📢=확성기) 어떤 소비인지
+// (🏦=예금, 🏠=마이룸 확장, 🗳️=투표 참여 보상, 🔮=운세, 💝=기부, 📢=확성기) 어떤 소비/지급인지
 // 나눕니다. 기부는 group_goal_donations에서 이미 따로 집계하므로(아래 spendBreakdown),
 // 여기서는 'snack'으로 잘못 묻히지 않게만 구분해내고 별도 합산하지는 않습니다.
 function categorizeTx(t) {
@@ -15,7 +15,7 @@ function categorizeTx(t) {
   if (t.type === 'event') return 'event';
   if (t.reason && t.reason.startsWith('🏦')) return 'deposit';
   if (t.reason && t.reason.startsWith('🏠')) return 'room_expand';
-  if (t.reason && t.reason.startsWith('🎲')) return 'prediction';
+  if (t.reason && t.reason.startsWith('🗳️')) return 'poll';
   if (t.reason && t.reason.startsWith('🔮')) return 'fortune';
   if (t.reason && t.reason.startsWith('💝')) return 'donation';
   if (t.reason && t.reason.startsWith('📢')) return 'megaphone';
@@ -87,7 +87,7 @@ export async function GET(req) {
       { data: txs, error: txErr },
       { data: stockOrders, error: soErr },
       { data: deposits, error: depErr },
-      { data: bets, error: betErr },
+      { data: pollVotes, error: pollErr },
       { data: donations, error: donErr },
       { data: announcements, error: annErr },
       { data: inventory, error: invErr },
@@ -111,7 +111,7 @@ export async function GET(req) {
         to
       ),
       applyPeriod(
-        sb.from('prediction_bets').select('kid_id, amount, payout, created_at').in('kid_id', scopeIds),
+        sb.from('poll_votes').select('kid_id, created_at').in('kid_id', scopeIds),
         'created_at',
         from,
         to
@@ -138,7 +138,7 @@ export async function GET(req) {
     if (txErr) throw txErr;
     if (soErr) throw soErr;
     if (depErr) throw depErr;
-    if (betErr) throw betErr;
+    if (pollErr) throw pollErr;
     if (donErr) throw donErr;
     if (annErr) throw annErr;
     if (invErr) throw invErr;
@@ -163,13 +163,11 @@ export async function GET(req) {
       donation: donations.reduce((s, d) => s + d.amount, 0),
       deposit: deposits.reduce((s, d) => s + d.principal, 0),
       stockBuy: buyOrders.reduce((s, o) => s + o.amount + (o.fee || 0), 0),
-      predictionBet: bets.reduce((s, b) => s + b.amount, 0),
       fortune: txs.filter((t) => categorizeTx(t) === 'fortune').reduce((s, t) => s + t.amount, 0),
       megaphone: announcements.length * MEGAPHONE_PRICE,
     };
 
-    const resolvedBets = bets.filter((b) => b.payout !== null);
-    const wonBets = resolvedBets.filter((b) => b.payout > 0);
+    const pollRewardTotal = txs.filter((t) => categorizeTx(t) === 'poll').reduce((s, t) => s + t.amount, 0);
 
     const balances = scopeKids.map((k) => k.balance);
 
@@ -178,7 +176,7 @@ export async function GET(req) {
       shop: distinctKidIds(shopRows).size,
       deposit: distinctKidIds(deposits).size,
       stock: distinctKidIds(stockOrders).size,
-      prediction: distinctKidIds(bets).size,
+      poll: distinctKidIds(pollVotes).size,
       donation: distinctKidIds(donations).size,
       megaphone: distinctKidIds(announcements).size,
     };
@@ -209,12 +207,9 @@ export async function GET(req) {
         totalPrincipal: deposits.reduce((s, d) => s + d.principal, 0),
         avgTermDays: deposits.length > 0 ? Math.round(deposits.reduce((s, d) => s + d.term_days, 0) / deposits.length) : 0,
       },
-      predictions: {
-        totalBets: bets.length,
-        resolvedCount: resolvedBets.length,
-        winCount: wonBets.length,
-        winRatePct: resolvedBets.length > 0 ? Math.round((wonBets.length / resolvedBets.length) * 1000) / 10 : 0,
-        avgBetAmount: bets.length > 0 ? Math.round(bets.reduce((s, b) => s + b.amount, 0) / bets.length) : 0,
+      polls: {
+        voteCount: pollVotes.length,
+        totalReward: pollRewardTotal,
       },
       balance: {
         sum: balances.reduce((s, b) => s + b, 0),

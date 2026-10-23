@@ -9,6 +9,7 @@ import { FUNDAMENTAL_LABELS } from '@/lib/stockEarnings';
 import { EVENT_REPEAT_TYPES } from '@/lib/events';
 import { QUIZ_TYPES, MIN_CHOICES, MAX_CHOICES, MIN_QUESTIONS, MAX_QUESTIONS } from '@/lib/quiz';
 import { FORTUNE_TIERS } from '@/lib/fortunes';
+import { POLL_MIN_OPTIONS, POLL_MAX_OPTIONS, POLL_DEFAULT_REWARD } from '@/lib/polls';
 import {
   AVATAR_CATALOG,
   ACCESSORY_HEAD_CATALOG,
@@ -28,7 +29,7 @@ const TABS = [
   { key: 'events', label: '이벤트' },
   { key: 'jobs', label: '구인시장' },
   { key: 'stocks', label: '종목 관리' },
-  { key: 'predictions', label: '예측 시장' },
+  { key: 'polls', label: '투표' },
   { key: 'goals', label: '기부함' },
   { key: 'announcements', label: '확성기' },
   { key: 'kids', label: '청소년 관리' },
@@ -177,7 +178,7 @@ function DashboardInner() {
         )}
         {tab === 'jobs' && <JobsTab showToast={showToast} />}
         {tab === 'stocks' && <StocksTab showToast={showToast} />}
-        {tab === 'predictions' && <PredictionsTab showToast={showToast} />}
+        {tab === 'polls' && <PollsTab showToast={showToast} />}
         {tab === 'goals' && <GoalsTab showToast={showToast} onReadyCountChange={setReadyGoalCount} />}
         {tab === 'announcements' && <AnnouncementsTab showToast={showToast} />}
         {tab === 'kids' && (
@@ -2256,81 +2257,75 @@ function StocksTab({ showToast }) {
   );
 }
 
-/* ---------------- PREDICTIONS TAB ---------------- */
-function PredictionsTab({ showToast }) {
-  const [predictions, setPredictions] = useState(null);
+/* ---------------- POLLS TAB ---------------- */
+function PollsTab({ showToast }) {
+  const [polls, setPolls] = useState(null);
   const [question, setQuestion] = useState('');
-  const [optionA, setOptionA] = useState('예');
-  const [optionB, setOptionB] = useState('아니오');
-  const [resolving, setResolving] = useState(null);
+  const [options, setOptions] = useState(['', '']);
+  const [reward, setReward] = useState(String(POLL_DEFAULT_REWARD));
+  const [adding, setAdding] = useState(false);
 
   const load = useCallback(async () => {
-    const res = await fetch('/api/admin/predictions');
+    const res = await fetch('/api/admin/polls');
     const data = await res.json();
-    if (data.ok) setPredictions(data.predictions);
+    if (data.ok) setPolls(data.polls);
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  const setOption = (i, value) => {
+    setOptions((prev) => prev.map((o, idx) => (idx === i ? value : o)));
+  };
+  const addOptionField = () => {
+    if (options.length >= POLL_MAX_OPTIONS) return;
+    setOptions((prev) => [...prev, '']);
+  };
+  const removeOptionField = (i) => {
+    if (options.length <= POLL_MIN_OPTIONS) return;
+    setOptions((prev) => prev.filter((_, idx) => idx !== i));
+  };
+
   const add = async () => {
     if (!question.trim()) return showToast('질문을 입력해주세요.');
-    const res = await fetch('/api/admin/predictions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, optionA, optionB }),
-    });
-    const data = await res.json();
-    if (data.ok) {
-      showToast('예측 질문을 올렸어요.');
-      setQuestion('');
-      setOptionA('예');
-      setOptionB('아니오');
-      await load();
-    } else {
-      showToast(data.error || '등록에 실패했어요.');
+    const cleanOptions = options.map((o) => o.trim()).filter(Boolean);
+    if (cleanOptions.length < POLL_MIN_OPTIONS) return showToast('선택지를 2개 이상 입력해주세요.');
+    const rewardAmount = parseInt(reward, 10);
+    if (!rewardAmount || rewardAmount <= 0) return showToast('참여 보상 코인을 확인해주세요.');
+
+    setAdding(true);
+    try {
+      const res = await fetch('/api/admin/polls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, options: cleanOptions, reward: rewardAmount }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast('투표를 올렸어요.');
+        setQuestion('');
+        setOptions(['', '']);
+        setReward(String(POLL_DEFAULT_REWARD));
+        await load();
+      } else {
+        showToast(data.error || '등록에 실패했어요.');
+      }
+    } finally {
+      setAdding(false);
     }
   };
 
   const close = async (p) => {
-    const res = await fetch(`/api/admin/predictions/${p.id}/close`, { method: 'POST' });
+    const res = await fetch(`/api/admin/polls/${p.id}/close`, { method: 'POST' });
     const data = await res.json();
     if (data.ok) await load();
     else showToast(data.error || '실패했어요.');
   };
 
-  const resolve = async (p, winner) => {
-    const label = winner === 'a' ? p.option_a : p.option_b;
-    if (!confirm(`"${label}"(을)를 정답으로 발표할까요? 맞춘 사람들에게 바로 코인이 지급돼요.`)) return;
-    setResolving(p.id);
-    try {
-      const res = await fetch(`/api/admin/predictions/${p.id}/resolve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ winner }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        showToast('결과를 발표하고 코인을 지급했어요.');
-        await load();
-      } else {
-        showToast(data.error || '실패했어요.');
-      }
-    } finally {
-      setResolving(null);
-    }
-  };
-
   const del = async (p) => {
-    const warning =
-      p.status === 'resolved'
-        ? '이 질문을 삭제할까요? (이미 정산이 끝나서 추가 환불은 없어요)'
-        : p.betCount > 0
-        ? `이 질문을 삭제할까요? 베팅한 ${p.betCount}명에게 걸었던 코인을 그대로 환불해요.`
-        : '이 질문을 삭제할까요?';
-    if (!confirm(warning)) return;
-    const res = await fetch(`/api/admin/predictions/${p.id}`, { method: 'DELETE' });
+    if (!confirm(`"${p.question}" 투표를 삭제할까요? (이미 지급된 참여 보상은 그대로예요)`)) return;
+    const res = await fetch(`/api/admin/polls/${p.id}`, { method: 'DELETE' });
     const data = await res.json();
     if (data.ok) {
       showToast('삭제했어요.');
@@ -2342,118 +2337,118 @@ function PredictionsTab({ showToast }) {
 
   return (
     <>
-      <Card title="새 질문 올리기">
+      <Card title="새 투표 올리기">
         <p className="text-xs text-gray-500 -mt-2 mb-2.5">
-          애들끼리 코인을 걸고, 맞춘 사람들이 틀린 사람들의 판돈을 나눠 가져요. 코인이 새로 생기지
-          않아서 경제에 부담이 없어요.
+          궁금한 걸 물어보면 청소년들이 선택지 하나를 고르고, 참여만 해도 정한 코인을 받아요.
+          코인을 걸거나 맞추는 게 아니라 그냥 의견을 물어보는 설문이에요.
         </p>
         <div className="mb-3">
           <label className="block text-xs text-gray-500 mb-1">질문</label>
           <input
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="예: 이번 주 출석 20명 넘을까?"
+            placeholder="예: 다음 체험학습 어디로 갈까요?"
             className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
           />
         </div>
-        <div className="flex gap-2 mb-3">
-          <div className="flex-1">
-            <label className="block text-xs text-gray-500 mb-1">선택지 A</label>
-            <input
-              value={optionA}
-              onChange={(e) => setOptionA(e.target.value)}
-              className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
-            />
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">선택지 (2~{POLL_MAX_OPTIONS}개)</label>
+          <div className="space-y-1.5">
+            {options.map((o, i) => (
+              <div key={i} className="flex gap-1.5">
+                <input
+                  value={o}
+                  onChange={(e) => setOption(i, e.target.value)}
+                  placeholder={`선택지 ${i + 1}`}
+                  className="flex-1 border-[1.5px] border-gray-200 rounded-lg px-3 py-2 text-sm"
+                />
+                {options.length > POLL_MIN_OPTIONS && (
+                  <button
+                    onClick={() => removeOptionField(i)}
+                    className="text-xs text-gray-400 border-2 border-gray-200 rounded-lg px-2.5"
+                  >
+                    삭제
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
-          <div className="flex-1">
-            <label className="block text-xs text-gray-500 mb-1">선택지 B</label>
-            <input
-              value={optionB}
-              onChange={(e) => setOptionB(e.target.value)}
-              className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
-            />
-          </div>
+          {options.length < POLL_MAX_OPTIONS && (
+            <button onClick={addOptionField} className="text-xs text-navy underline mt-1.5">
+              + 선택지 추가
+            </button>
+          )}
+        </div>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-500 mb-1">참여 보상 (코인, 무엇을 고르든 동일)</label>
+          <input
+            type="number"
+            min="1"
+            value={reward}
+            onChange={(e) => setReward(e.target.value)}
+            className="w-full border-[1.5px] border-gray-200 rounded-lg px-3 py-2.5 text-sm"
+          />
         </div>
         <button
+          disabled={adding}
           onClick={add}
-          className="btn-3d btn-3d-gold w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm"
+          className="btn-3d btn-3d-gold w-full bg-gold text-navy-deep font-display rounded-xl py-3 text-sm disabled:opacity-40"
         >
-          질문 올리기
+          투표 올리기
         </button>
       </Card>
 
-      <Card title="질문 목록">
-        {predictions === null && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
-        {predictions && predictions.length === 0 && (
-          <p className="text-xs text-gray-400 text-center py-4">올린 질문이 없어요.</p>
-        )}
-        {predictions?.map((p) => {
-          const total = p.poolA + p.poolB;
-          const pctA = total > 0 ? Math.round((p.poolA / total) * 100) : 50;
+      <Card title="투표 목록">
+        {polls === null && <p className="text-xs text-gray-400 text-center py-4">불러오는 중...</p>}
+        {polls && polls.length === 0 && <p className="text-xs text-gray-400 text-center py-4">올린 투표가 없어요.</p>}
+        {polls?.map((p) => {
+          const total = p.counts.reduce((s, c) => s + c, 0);
           return (
             <div key={p.id} className="py-3 border-b border-dashed border-gray-200 last:border-0">
               <div className="flex items-center justify-between gap-2">
                 <div className="font-bold text-sm">{p.question}</div>
                 <span
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                    p.status === 'open'
-                      ? 'bg-mint/15 text-mint-deep'
-                      : p.status === 'closed'
-                      ? 'bg-gray-100 text-gray-500'
-                      : 'bg-gold/15 text-gold-deep'
+                    p.status === 'open' ? 'bg-mint/15 text-mint-deep' : 'bg-gray-100 text-gray-500'
                   }`}
                 >
-                  {p.status === 'open' ? '진행 중' : p.status === 'closed' ? '마감' : '결과 발표됨'}
+                  {p.status === 'open' ? '진행 중' : '마감'}
                 </span>
               </div>
-              <div className="h-2.5 rounded-full bg-coral/20 overflow-hidden mt-2">
-                <div className="h-full bg-mint" style={{ width: `${pctA}%` }} />
+              <div className="space-y-1.5 mt-2">
+                {p.options.map((label, i) => {
+                  const count = p.counts[i] || 0;
+                  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                  return (
+                    <div key={i}>
+                      <div className="flex justify-between text-[11px] text-gray-600 mb-0.5">
+                        <span>{label}</span>
+                        <span>{count}표</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                        <div className="h-full bg-grape rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="flex justify-between text-[11px] text-gray-500 mt-1">
-                <span>
-                  {p.option_a} {p.poolA} GC
-                </span>
-                <span>
-                  {p.option_b} {p.poolB} GC
-                </span>
-              </div>
-              <p className="text-[11px] text-gray-400 mt-1">참여 {p.betCount}명</p>
+              <p className="text-[11px] text-gray-400 mt-1.5">
+                참여 {p.voteCount}명 · 참여 보상 {p.reward} GC
+              </p>
 
-              {p.status === 'resolved' && (
-                <p className="text-xs font-bold text-gold-deep mt-1.5">
-                  정답: {p.resolved_option === 'a' ? p.option_a : p.option_b}
-                </p>
-              )}
-
-              {p.status !== 'resolved' && (
-                <div className="flex gap-1.5 mt-2 flex-wrap">
-                  {p.status === 'open' && (
-                    <button
-                      onClick={() => close(p)}
-                      className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1.5"
-                    >
-                      베팅 마감
-                    </button>
-                  )}
+              <div className="flex gap-1.5 mt-2 flex-wrap items-center">
+                {p.status === 'open' && (
                   <button
-                    disabled={resolving === p.id}
-                    onClick={() => resolve(p, 'a')}
-                    className="btn-3d btn-3d-mint text-xs bg-mint text-white rounded-lg px-2.5 py-1.5 disabled:opacity-40"
+                    onClick={() => close(p)}
+                    className="btn-3d btn-3d-outline text-xs border-2 border-navy text-navy rounded-lg px-2.5 py-1.5"
                   >
-                    &quot;{p.option_a}&quot; 정답 발표
+                    투표 마감
                   </button>
-                  <button
-                    disabled={resolving === p.id}
-                    onClick={() => resolve(p, 'b')}
-                    className="btn-3d btn-3d-coral text-xs bg-coral text-white rounded-lg px-2.5 py-1.5 disabled:opacity-40"
-                  >
-                    &quot;{p.option_b}&quot; 정답 발표
-                  </button>
-                </div>
-              )}
-              <button onClick={() => del(p)} className="text-xs text-gray-400 underline px-1.5 py-1.5 mt-1">
-                삭제
-              </button>
+                )}
+                <button onClick={() => del(p)} className="text-xs text-gray-400 underline px-1.5 py-1.5">
+                  삭제
+                </button>
+              </div>
             </div>
           );
         })}
@@ -3045,7 +3040,7 @@ function StatsTab({ kids, showToast }) {
     ['꾸미기 상점', 'shop'],
     ['예금', 'deposit'],
     ['주식', 'stock'],
-    ['예측 시장', 'prediction'],
+    ['투표', 'poll'],
     ['기부', 'donation'],
     ['확성기', 'megaphone'],
   ];
@@ -3057,7 +3052,6 @@ function StatsTab({ kids, showToast }) {
     ['기부', 'donation'],
     ['예금(원금)', 'deposit'],
     ['주식 매수', 'stockBuy'],
-    ['예측 베팅', 'predictionBet'],
     ['오늘의 운세', 'fortune'],
     ['확성기', 'megaphone'],
   ];
@@ -3265,17 +3259,13 @@ function StatsTab({ kids, showToast }) {
             </div>
           </Card>
 
-          <Card title="예측 시장">
+          <Card title="투표">
             <div className="grid grid-cols-2 gap-y-2 text-xs">
               <div>
-                총 베팅 <b>{stats.predictions.totalBets}</b>건
+                총 참여 <b>{stats.polls.voteCount}</b>건
               </div>
               <div>
-                평균 베팅액 <b>{stats.predictions.avgBetAmount}</b> GC
-              </div>
-              <div className="col-span-2">
-                승률 <b>{stats.predictions.winRatePct}%</b> ({stats.predictions.winCount}/
-                {stats.predictions.resolvedCount}건 정산됨)
+                지급된 참여 보상 <b>{stats.polls.totalReward}</b> GC
               </div>
             </div>
           </Card>
